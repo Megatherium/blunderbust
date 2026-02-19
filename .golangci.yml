@@ -1,0 +1,79 @@
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  default: standard
+  enable:
+    # Bugs & correctness
+    - bodyclose
+    - nilerr
+    - sqlclosecheck
+    - contextcheck
+
+    # Style & consistency
+    - misspell
+    - unconvert
+    - unparam
+    - usestdlibvars
+
+    # Complexity & maintainability
+    - gocyclo
+    - cyclop
+    - nestif
+    - funlen
+
+    # Performance
+    - prealloc
+    - gocritic
+
+    # Security (external input via DSN, config files, tmux commands)
+    - gosec
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    cyclop:
+      max-complexity: 15
+    funlen:
+      lines: 100
+      statements: 60
+    nestif:
+      min-complexity: 5
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        - hugeParam
+    gosec:
+      excludes:
+        - G104
+    misspell:
+      locale: US
+
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+    rules:
+      # Test files get more leeway
+      - path: _test\.go
+        linters:
+          - funlen
+          - gosec
+          - gocritic
+      # Fake implementations are intentionally simple
+      - path: fake/
+        linters:
+          - unparam
+    paths:
+      - tmp
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

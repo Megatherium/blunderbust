@@ -26,7 +26,8 @@ var _ data.TicketStore = (*TicketStore)(nil)
 // ListTickets returns tickets matching the given filter.
 func (s *TicketStore) ListTickets(_ context.Context, filter data.TicketFilter) ([]domain.Ticket, error) {
 	var results []domain.Ticket
-	for _, t := range s.Tickets {
+	for i := range s.Tickets {
+		t := &s.Tickets[i]
 		if filter.Status != "" && t.Status != filter.Status {
 			continue
 		}
@@ -36,7 +37,7 @@ func (s *TicketStore) ListTickets(_ context.Context, filter data.TicketFilter) (
 		if filter.Search != "" && !strings.Contains(strings.ToLower(t.Title), strings.ToLower(filter.Search)) {
 			continue
 		}
-		results = append(results, t)
+		results = append(results, *t)
 		if filter.Limit > 0 && len(results) >= filter.Limit {
 			break
 		}

@@ -1,0 +1,61 @@
+# Blunderbuss Configuration File
+# This file defines harness configurations for launching development environments
+# in tmux windows. Each harness specifies how to invoke a tool with the right
+# context for a given ticket.
+
+harnesses:
+  # Opencode harness - launches opencode CLI with ticket context
+  - name: opencode
+    # Command template: rendered with Go text/template
+    # Available fields: see TemplateContext in domain/template_context.go
+    command_template: "opencode --model {{.Model}} --agent {{.Agent}}"
+    # Prompt template: optional, sent to the tool as context
+    prompt_template: "Work on ticket {{.TicketID}}: {{.TicketTitle}}\n\n{{.TicketDescription}}"
+    # Supported models for this harness
+    models:
+      - claude-sonnet-4-20250514
+      - o3
+      - o3-mini
+    # Supported agent modes
+    agents:
+      - coder
+      - task
+      - researcher
+      - debugger
+    # Environment variables to set when launching
+    env:
+      OPENCODE_LOG_LEVEL: "info"
+
+  # Amp harness - Amp AI assistant with minimal configuration
+  - name: amp
+    # Simple command without template variables
+    command_template: "amp"
+    prompt_template: "Pick up {{.TicketID}}: {{.TicketTitle}}"
+    models:
+      - claude-sonnet-4-20250514
+    # Empty agents list means this harness doesn't support agent selection
+    agents: []
+
+  # Claude Code harness - Direct claude-code invocation
+  - name: claude-code
+    command_template: "claude --model {{.Model}}"
+    prompt_template: |
+      Ticket: {{.TicketID}}
+      Title: {{.TicketTitle}}
+      Type: {{.TicketIssueType}}
+      Priority: {{.TicketPriority}}
+      
+      {{.TicketDescription}}
+    models:
+      - claude-opus-4
+      - claude-sonnet-4
+      - claude-haiku-4
+    agents:
+      - code
+      - architect
+
+# Default selections for quickdraw/blitzdraw modes (optional)
+defaults:
+  harness: opencode
+  model: claude-sonnet-4-20250514
+  agent: coder

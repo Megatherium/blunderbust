@@ -38,3 +38,4 @@ config.local.yaml
 dist/
 build/
 tmp/
+error.log

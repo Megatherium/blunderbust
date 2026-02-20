@@ -20,7 +20,9 @@ For full workflow details: `bd prime`
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session** before sayind "done" or "complete", you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**When ending a work session** before sayind "done" or "complete", you MUST complete ALL steps below. 
+Work is NOT complete until `git push` succeeds.
+Push is not allowed until the work is REVIEWED
 
 **MANDATORY WORKFLOW:**
 Phase 1:
@@ -46,6 +48,7 @@ Phase 2 (after SOMEONE ELSE has reviewed it):
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+- MODIFY ticket, bd SYNC, git STAGE/PUSH - else you will be creating extra commits 
 
 ## Project Structure
 

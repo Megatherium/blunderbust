@@ -136,63 +136,7 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "esc":
-			if m.step > StepTicketList && m.step != StepResult {
-				m.step--
-				// Handle skip backwards tracking if we skipped lists
-				if m.step == StepAgentSelect && len(m.selection.Harness.SupportedAgents) <= 1 {
-					m.step--
-				}
-				if m.step == StepModelSelect && len(m.selection.Harness.SupportedModels) <= 1 {
-					m.step--
-				}
-				if m.step == StepHarnessSelect && len(m.harnesses) == 1 {
-					m.step--
-				}
-				return m, nil
-			}
-		case "enter":
-			switch m.step {
-			case StepTicketList:
-				if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
-					m.selection.Ticket = i.ticket
-					m.step = StepHarnessSelect
-
-					// Smart skip harness
-					if len(m.harnesses) == 1 {
-						m.selection.Harness = m.harnesses[0]
-						m.step = StepModelSelect
-					}
-					return m.handleModelSkip()
-				}
-			case StepHarnessSelect:
-				if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
-					m.selection.Harness = i.harness
-					m.step = StepModelSelect
-					return m.handleModelSkip()
-				}
-			case StepModelSelect:
-				if i, ok := m.modelList.SelectedItem().(modelItem); ok {
-					m.selection.Model = i.name
-					m.step = StepAgentSelect
-					return m.handleAgentSkip()
-				}
-			case StepAgentSelect:
-				if i, ok := m.agentList.SelectedItem().(agentItem); ok {
-					m.selection.Agent = i.name
-					m.step = StepConfirm
-					return m, nil
-				}
-			case StepConfirm:
-				m.step = StepResult // visually transition immediately
-				return m, launchCmd(m.app.launcher, m.selection)
-			case StepResult:
-				return m, tea.Quit
-			}
-		}
+		return m.handleKeyMsg(msg)
 	}
 
 	switch m.step {
@@ -206,6 +150,70 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.agentList, cmd = m.agentList.Update(msg)
 	}
 	return m, cmd
+}
+
+func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "esc":
+		if m.step > StepTicketList && m.step != StepResult {
+			m.step--
+			// Handle skip backwards tracking if we skipped lists
+			if m.step == StepAgentSelect && len(m.selection.Harness.SupportedAgents) <= 1 {
+				m.step--
+			}
+			if m.step == StepModelSelect && len(m.selection.Harness.SupportedModels) <= 1 {
+				m.step--
+			}
+			if m.step == StepHarnessSelect && len(m.harnesses) == 1 {
+				m.step--
+			}
+			return m, nil
+		}
+	case "enter":
+		return m.handleEnterKey()
+	}
+	return m, nil
+}
+
+func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
+	switch m.step {
+	case StepTicketList:
+		if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
+			m.selection.Ticket = i.ticket
+			m.step = StepHarnessSelect
+			if len(m.harnesses) == 1 {
+				m.selection.Harness = m.harnesses[0]
+				m.step = StepModelSelect
+			}
+			return m.handleModelSkip()
+		}
+	case StepHarnessSelect:
+		if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+			m.selection.Harness = i.harness
+			m.step = StepModelSelect
+			return m.handleModelSkip()
+		}
+	case StepModelSelect:
+		if i, ok := m.modelList.SelectedItem().(modelItem); ok {
+			m.selection.Model = i.name
+			m.step = StepAgentSelect
+			return m.handleAgentSkip()
+		}
+	case StepAgentSelect:
+		if i, ok := m.agentList.SelectedItem().(agentItem); ok {
+			m.selection.Agent = i.name
+			m.step = StepConfirm
+			return m, nil
+		}
+	case StepConfirm:
+		m.step = StepResult
+		return m, launchCmd(m.app.launcher, m.selection)
+	case StepResult:
+		return m, tea.Quit
+	}
+	return m, nil
 }
 
 func (m UIModel) handleModelSkip() (tea.Model, tea.Cmd) {
@@ -226,13 +234,14 @@ func (m UIModel) handleModelSkip() (tea.Model, tea.Cmd) {
 
 func (m UIModel) handleAgentSkip() (tea.Model, tea.Cmd) {
 	agents := m.selection.Harness.SupportedAgents
-	if len(agents) == 1 {
+	switch len(agents) {
+	case 1:
 		m.selection.Agent = agents[0]
 		m.step = StepConfirm
-	} else if len(agents) == 0 {
+	case 0:
 		m.selection.Agent = ""
 		m.step = StepConfirm
-	} else {
+	default:
 		m.agentList = newAgentList(agents)
 		initList(&m.agentList, m.width, m.height, "Select an Agent (esc: back)")
 	}
@@ -251,7 +260,7 @@ func (m UIModel) View() string {
 	case StepAgentSelect:
 		s = m.agentList.View()
 	case StepConfirm:
-		s = confirmView(m.selection)
+		s = confirmView(m.selection, m.app.Renderer)
 	case StepResult:
 		if m.launchResult == nil && m.err == nil {
 			s = "Launching..."

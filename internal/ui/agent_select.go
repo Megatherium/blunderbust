@@ -13,7 +13,7 @@ func (i agentItem) Description() string { return "AI Agent" }
 func (i agentItem) FilterValue() string { return i.name }
 
 func newAgentList(agents []string) list.Model {
-	var items []list.Item
+	items := make([]list.Item, 0, len(agents))
 	for _, a := range agents {
 		items = append(items, agentItem{name: a})
 	}

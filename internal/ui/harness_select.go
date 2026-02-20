@@ -18,9 +18,9 @@ func (i harnessItem) Description() string {
 func (i harnessItem) FilterValue() string { return i.harness.Name }
 
 func newHarnessList(harnesses []domain.Harness) list.Model {
-	var items []list.Item
-	for _, h := range harnesses {
-		items = append(items, harnessItem{harness: h})
+	items := make([]list.Item, 0, len(harnesses))
+	for i := range harnesses {
+		items = append(items, harnessItem{harness: harnesses[i]})
 	}
 
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)

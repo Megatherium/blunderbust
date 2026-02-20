@@ -13,7 +13,7 @@ func (i modelItem) Description() string { return "LLM Model" }
 func (i modelItem) FilterValue() string { return i.name }
 
 func newModelList(models []string) list.Model {
-	var items []list.Item
+	items := make([]list.Item, 0, len(models))
 	for _, m := range models {
 		items = append(items, modelItem{name: m})
 	}

@@ -9,11 +9,12 @@ import (
 
 func resultView(res *domain.LaunchResult, err error) string {
 	s := titleStyle.Render("Launch Result") + "\n\n"
-	if err != nil {
+	switch {
+	case err != nil:
 		s += lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(fmt.Sprintf("Error: %v", err))
-	} else if res != nil && res.Error != nil {
+	case res != nil && res.Error != nil:
 		s += lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(fmt.Sprintf("Launch Error: %v", res.Error))
-	} else if res != nil {
+	case res != nil:
 		s += lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Render("Success!") + "\n"
 		s += fmt.Sprintf("Window: %s\n", res.WindowName)
 	}

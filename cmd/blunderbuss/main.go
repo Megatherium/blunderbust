@@ -26,6 +26,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/megatherium/blunderbuss/internal/config"
 	"github.com/megatherium/blunderbuss/internal/data/fake"
 	"github.com/megatherium/blunderbuss/internal/domain"
 	execfake "github.com/megatherium/blunderbuss/internal/exec/fake"
@@ -118,7 +119,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		ConfigPath: cfgPath,
 		Debug:      debug,
 	}
-	app := ui.NewApp(store, nil, launcher, appOpts)
+	app := ui.NewApp(store, nil, launcher, config.NewRenderer(), appOpts)
 	m := ui.NewUIModel(app, harnesses)
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

@@ -18,15 +18,17 @@ type App struct {
 	store    data.TicketStore
 	loader   config.Loader
 	launcher exec.Launcher
+	Renderer *config.Renderer
 	opts     AppOptions
 }
 
 // NewApp creates a new App instance with necessary dependencies.
-func NewApp(store data.TicketStore, loader config.Loader, launcher exec.Launcher, opts AppOptions) *App {
+func NewApp(store data.TicketStore, loader config.Loader, launcher exec.Launcher, renderer *config.Renderer, opts AppOptions) *App {
 	return &App{
 		store:    store,
 		loader:   loader,
 		launcher: launcher,
+		Renderer: renderer,
 		opts:     opts,
 	}
 }

@@ -18,9 +18,9 @@ func (i ticketItem) Description() string {
 func (i ticketItem) FilterValue() string { return i.ticket.Title }
 
 func newTicketList(tickets []domain.Ticket) list.Model {
-	var items []list.Item
-	for _, t := range tickets {
-		items = append(items, ticketItem{ticket: t})
+	items := make([]list.Item, 0, len(tickets))
+	for i := range tickets {
+		items = append(items, ticketItem{ticket: tickets[i]})
 	}
 
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)

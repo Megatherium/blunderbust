@@ -25,6 +25,11 @@ import (
 	"fmt"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/megatherium/blunderbuss/internal/data/fake"
+	"github.com/megatherium/blunderbuss/internal/domain"
+	execfake "github.com/megatherium/blunderbuss/internal/exec/fake"
+	"github.com/megatherium/blunderbuss/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -89,15 +94,37 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("checking config path: %w", err)
 	}
 
-	// TODO(bb-sxs): Initialize config loader from internal/config
-	// TODO(bb-sxs): Initialize ticket store from internal/data
-	// TODO(bb-sxs): Initialize launcher from internal/exec
-	// TODO(bb-?): Initialize and run TUI from internal/ui
+	// Wire fake implementations for the visual tracer bullet.
+	store := fake.NewWithSampleData()
+	launcher := &execfake.Launcher{}
 
-	_ = ctx // Will be used when we wire up the real implementation.
+	_ = ctx
 
-	fmt.Println("Blunderbuss initialized successfully!")
-	fmt.Println("Use 'blunderbuss --help' for usage information.")
+	// Create some fake harnesses for the config
+	harnesses := []domain.Harness{
+		{
+			Name:            "OpenCode (Global)",
+			SupportedModels: []string{"gemini-3.0-pro", "gemini-3.0-flash"},
+			SupportedAgents: []string{"agent1", "agent2"},
+		},
+		{
+			Name:            "Continue (Local)",
+			SupportedModels: []string{"claude-3-5-sonnet", "gpt-4o"},
+		},
+	}
+
+	appOpts := ui.AppOptions{
+		DryRun:     dryRun,
+		ConfigPath: cfgPath,
+		Debug:      debug,
+	}
+	app := ui.NewApp(store, nil, launcher, appOpts)
+	m := ui.NewUIModel(app, harnesses)
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("running TUI: %w", err)
+	}
 
 	return nil
 }

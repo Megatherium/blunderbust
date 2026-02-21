@@ -46,6 +46,7 @@ type UIModel struct {
 	height int
 
 	err          error
+	warnings     []string
 	launchResult *domain.LaunchResult
 	loading      bool
 
@@ -93,11 +94,8 @@ func (m UIModel) Init() tea.Cmd {
 		func() tea.Msg {
 			// Load model discovery registry in the background
 			if err := m.app.Registry.Load(context.Background()); err != nil {
-				// If load fails, we still continue but discovery might be empty
-				if m.app.opts.Debug {
-					// This is not a critical error, just log it
-					return tea.Println(fmt.Sprintf("Non-critical error: Model discovery load failed: %v", err))
-				}
+				// Return a warning message to display in the UI
+				return warningMsg{err: fmt.Errorf("model discovery load failed: %w", err)}
 			}
 			return nil // No message needed on success
 		},
@@ -117,6 +115,7 @@ func (m UIModel) Init() tea.Cmd {
 
 type ticketsLoadedMsg []domain.Ticket
 type errMsg struct{ err error }
+type warningMsg struct{ err error }
 type launchResultMsg struct {
 	res *domain.LaunchResult
 	err error
@@ -197,6 +196,9 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		return m.handleErrMsg(msg)
 
+	case warningMsg:
+		return m.handleWarningMsg(msg)
+
 	case launchResultMsg:
 		return m.handleLaunchResult(msg)
 
@@ -243,6 +245,11 @@ func (m UIModel) handleErrMsg(msg errMsg) (tea.Model, tea.Cmd) {
 	m.err = msg.err
 	m.loading = false
 	m.step = StepError
+	return m, nil
+}
+
+func (m UIModel) handleWarningMsg(msg warningMsg) (tea.Model, tea.Cmd) {
+	m.warnings = append(m.warnings, msg.err.Error())
 	return m, nil
 }
 
@@ -441,6 +448,13 @@ func (m UIModel) View() string {
 		}
 	case StepError:
 		s = errorView(m.err)
+	}
+
+	if len(m.warnings) > 0 {
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).MarginTop(1)
+		for _, w := range m.warnings {
+			s += "\n" + warningStyle.Render("⚠ "+w)
+		}
 	}
 
 	return docStyle.Render(s)

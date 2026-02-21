@@ -13,7 +13,11 @@ harnesses:
   # Opencode harness - launches opencode CLI with ticket context
   - name: opencode
     # Command template: rendered with Go text/template
-    # Available fields: see TemplateContext in domain/template_context.go
+    # Available fields: see TemplateContext in internal/domain/template_context.go
+    # Includes: TicketID, TicketTitle, TicketDescription, TicketPriority, etc.
+    #           HarnessName, Model, Agent
+    #           RepoPath, Branch, WorkDir, User, Hostname
+    #           DryRun, Debug, Timestamp
     command_template: "opencode --model {{.Model}} --agent {{.Agent}}"
     # Prompt template: optional, sent to the tool as context
     prompt_template: "Work on ticket {{.TicketID}}: {{.TicketTitle}}\n\n{{.TicketDescription}}"

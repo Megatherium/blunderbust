@@ -113,6 +113,98 @@ The interface is nicer for humans. You pick whatever feels right for you.
 - **Beads extra**: Add a line like "Affected ticket(s): bb-foo", can be multiple with e.g. review tickets
 - **WARNING**: Forgetting the ticket reference line is a commit message format violation. Double-check before committing.
 
+## Blunderbuss-Specific Instructions
+
+### Building Blunderbuss
+
+```bash
+# Standard build (requires CGO for embedded Dolt mode)
+make build
+
+# Server mode only (no CGO required)
+CGO_ENABLED=0 go build -o blunderbuss ./cmd/blunderbuss
+
+# Development build with debug info
+go build -gcflags="all=-N -l" -o blunderbuss ./cmd/blunderbuss
+```
+
+### Running Blunderbuss
+
+**Critical**: Blunderbuss must run inside tmux to create new windows.
+
+```bash
+# Start tmux if not already running
+tmux
+
+# Run with default config
+./blunderbuss
+
+# Run with custom config
+./blunderbuss --config /path/to/config.yaml
+
+# Dry run mode (useful for testing without launching)
+./blunderbuss --dry-run
+
+# Debug mode (verbose logging)
+./blunderbuss --debug
+
+# Demo mode (uses fake data)
+./blunderbuss --demo
+```
+
+### Testing
+
+```bash
+# Run all tests with coverage
+make test
+
+# Run tests without coverage
+go test -v ./...
+
+# Run tests for a specific package
+go test -v ./internal/config
+
+# Run with race detector
+go test -race ./...
+```
+
+### Common Development Tasks
+
+**Testing config rendering**:
+```bash
+# Use dry-run to see rendered commands without launching
+./blunderbuss --dry-run --debug
+```
+
+**Testing TUI with fake data**:
+```bash
+# Use demo mode to test UI without database
+./blunderbuss --demo
+```
+
+**Debugging connection issues**:
+```bash
+# Enable debug logging to see database connection details
+./blunderbuss --debug --beads-dir ./.beads
+```
+
+### Exit Codes
+
+When implementing CLI behavior:
+- `0` - Success
+- `1` - General error
+- `2` - Config error (file not found, parse error, validation error)
+- `3` - No tmux (running outside tmux)
+
+### Key Files to Understand
+
+- `cmd/blunderbuss/main.go` - CLI entrypoint, flag parsing, composition root
+- `internal/config/yaml.go` - YAML config loading
+- `internal/config/render.go` - Template rendering for commands/prompts
+- `internal/domain/template_context.go` - Available fields for templates
+- `internal/ui/` - TUI implementation with Bubbletea
+- `internal/data/dolt/` - Beads/Dolt database access
+
 ## Documentation
 
 - **New Features**: When implementing new features, **must** update documentation:

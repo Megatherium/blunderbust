@@ -31,6 +31,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version information (set via ldflags at build time)
+var (
+	Version   = "v0.1.0"
+	BuildTime = "unknown"
+)
+
 // Global flags populated from command-line arguments.
 var (
 	configPath string
@@ -53,16 +59,34 @@ configurations, and launching development sessions.`,
 	RunE: runRoot,
 }
 
+// versionCmd prints the version and build information.
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version and exit",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Blunderbuss %s\nBuilt: %s\n", Version, BuildTime)
+	},
+}
+
 func init() {
+	rootCmd.AddCommand(versionCmd)
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default: ./config.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print commands without executing")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().StringVar(&beadsDir, "beads-dir", "", "Path to beads directory (default: ./.beads)")
 	rootCmd.PersistentFlags().StringVar(&dsn, "dsn", "", "DSN for Dolt server mode (optional, overrides metadata)")
 	rootCmd.PersistentFlags().BoolVar(&demo, "demo", false, "Use fake data instead of real beads database")
+	// --version flag for compatibility (also available as 'blunderbuss version' subcommand)
+	rootCmd.PersistentFlags().Bool("version", false, "Print version and exit")
 }
 
 func main() {
+	// Handle --version flag early (before cobra processes arguments)
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Printf("Blunderbuss %s\nBuilt: %s\n", Version, BuildTime)
+		os.Exit(0)
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -72,6 +96,13 @@ func main() {
 // runRoot executes the main blunderbuss workflow.
 // For the bootstrap phase, this validates flags and prints configuration.
 func runRoot(cmd *cobra.Command, args []string) error {
+	// Check if running inside tmux before starting TUI
+	if os.Getenv("TMUX") == "" {
+		fmt.Fprintln(os.Stderr, "Error: blunderbuss must be run inside a tmux session")
+		fmt.Fprintln(os.Stderr, "Start tmux first: tmux")
+		os.Exit(3)
+	}
+
 	if debug {
 		fmt.Fprintln(os.Stderr, "Debug mode enabled")
 	}
@@ -101,7 +132,8 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	cfgLoader := config.NewYAMLLoader()
 	cfg, err := cfgLoader.Load(cfgPath)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+		os.Exit(2)
 	}
 
 	if debug {

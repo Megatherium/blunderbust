@@ -75,17 +75,23 @@ func (r *Renderer) renderTemplate(harnessName, templateName, templateStr string,
 
 // RenderSelection renders both command and prompt for a complete selection.
 // Returns a LaunchSpec with all fields populated.
+// Note: Prompt is rendered before command to allow {{.Prompt}} in command templates.
 func (r *Renderer) RenderSelection(selection domain.Selection) (*domain.LaunchSpec, error) {
 	ctx := BuildTemplateContext(selection)
 
-	renderedCmd, err := r.RenderCommand(selection.Harness, ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to render command: %w", err)
-	}
-
+	// Render prompt first so it's available in the context for command rendering
 	renderedPrompt, err := r.RenderPrompt(selection.Harness, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render prompt: %w", err)
+	}
+
+	// Update context with rendered prompt for use in command template
+	ctx.Prompt = renderedPrompt
+
+	// Now render command with the updated context (which includes Prompt)
+	renderedCmd, err := r.RenderCommand(selection.Harness, ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render command: %w", err)
 	}
 
 	return &domain.LaunchSpec{
@@ -129,5 +135,9 @@ func BuildTemplateContext(sel domain.Selection) domain.TemplateContext {
 		DryRun:    false,
 		Debug:     false,
 		Timestamp: sel.Ticket.UpdatedAt,
+
+		// Prompt field - will be populated during RenderSelection
+		// if a prompt_template is configured
+		Prompt: "",
 	}
 }

@@ -40,4 +40,10 @@ type TemplateContext struct {
 	DryRun    bool
 	Debug     bool
 	Timestamp time.Time
+
+	// Prompt field for command template access
+	// This is populated with the rendered prompt text (from prompt_template)
+	// and can be referenced in command_template using {{.Prompt}}
+	// If no prompt_template is configured, this field will be empty.
+	Prompt string
 }

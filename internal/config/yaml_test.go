@@ -7,6 +7,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -459,6 +460,39 @@ harnesses:
   - name: test
     command_template: "@./nested/templates/cmd.txt"
 `
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	config, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if config.Harnesses[0].CommandTemplate != cmdContent {
+		t.Errorf("Unexpected command_template: %q", config.Harnesses[0].CommandTemplate)
+	}
+}
+
+func TestYAMLLoader_Load_FileBasedTemplates_AbsolutePath(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a template file in a known location (using /tmp for simplicity)
+	absTemplatesDir := t.TempDir()
+	cmdContent := "absolute path command {{.TicketID}}"
+	cmdPath := filepath.Join(absTemplatesDir, "cmd.txt")
+	if err := os.WriteFile(cmdPath, []byte(cmdContent), 0644); err != nil {
+		t.Fatalf("Failed to write absolute path template: %v", err)
+	}
+
+	// Config directory is different from template directory
+	yamlContent := fmt.Sprintf(`
+harnesses:
+  - name: test
+    command_template: "@%s"
+`, cmdPath)
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)

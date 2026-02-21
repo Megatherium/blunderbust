@@ -127,10 +127,17 @@ Both `command_template` and `prompt_template` are rendered with Go's `text/templ
 - Harness: `HarnessName`, `Model`, `Agent`
 - Environment: `RepoPath`, `Branch`, `WorkDir`, `User`, `Hostname`
 - Runtime: `DryRun`, `Debug`, `Timestamp`
+- Prompt: `Prompt` (in `command_template` only - contains the rendered prompt text from `prompt_template`)
 
 Example:
 ```yaml
 command_template: "opencode --model {{.Model}} --agent {{.Agent}} --repo {{.RepoPath}}"
+```
+
+Using the rendered prompt in command templates:
+```yaml
+command_template: "ai-agent --prompt \"{{.Prompt}}\""
+prompt_template: "Work on {{.TicketID}}: {{.TicketTitle}}"
 ```
 
 ## Beads Database Connection

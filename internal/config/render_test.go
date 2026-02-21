@@ -422,3 +422,131 @@ func TestRenderer_Escaping(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expected, result)
 	}
 }
+
+func TestRenderer_RenderCommand_WithPromptVariable(t *testing.T) {
+	renderer := NewRenderer()
+	now := time.Now()
+
+	selection := domain.Selection{
+		Ticket: domain.Ticket{
+			ID:          "bb-xyz",
+			Title:       "Test Ticket",
+			Description: "Test description",
+			Status:      "open",
+			Priority:    2,
+			IssueType:   "task",
+			Assignee:    "user",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		Harness: domain.Harness{
+			Name:            "test",
+			CommandTemplate: "ai-agent --prompt \"{{.Prompt}}\"",
+			PromptTemplate:  "Fix issue {{.TicketID}}: {{.TicketTitle}}",
+		},
+		Model: "gpt-4",
+		Agent: "coder",
+	}
+
+	spec, err := renderer.RenderSelection(selection)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Verify prompt was rendered correctly
+	expectedPrompt := "Fix issue bb-xyz: Test Ticket"
+	if spec.RenderedPrompt != expectedPrompt {
+		t.Errorf("Expected prompt %q, got %q", expectedPrompt, spec.RenderedPrompt)
+	}
+
+	// Verify command contains the rendered prompt
+	expectedCmd := `ai-agent --prompt "Fix issue bb-xyz: Test Ticket"`
+	if spec.RenderedCommand != expectedCmd {
+		t.Errorf("Expected command %q, got %q", expectedCmd, spec.RenderedCommand)
+	}
+}
+
+func TestRenderer_RenderCommand_PromptVariable_EmptyPrompt(t *testing.T) {
+	renderer := NewRenderer()
+	now := time.Now()
+
+	selection := domain.Selection{
+		Ticket: domain.Ticket{
+			ID:          "bb-empty",
+			Title:       "Test",
+			Description: "Desc",
+			Status:      "open",
+			Priority:    2,
+			IssueType:   "task",
+			Assignee:    "user",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		Harness: domain.Harness{
+			Name:            "test",
+			CommandTemplate: "echo '{{.Prompt}}'",
+			// No PromptTemplate - will be empty
+		},
+		Model: "gpt-4",
+		Agent: "coder",
+	}
+
+	spec, err := renderer.RenderSelection(selection)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Verify prompt is empty
+	if spec.RenderedPrompt != "" {
+		t.Errorf("Expected empty prompt, got %q", spec.RenderedPrompt)
+	}
+
+	// Verify command with empty Prompt field
+	expectedCmd := "echo ''"
+	if spec.RenderedCommand != expectedCmd {
+		t.Errorf("Expected command %q, got %q", expectedCmd, spec.RenderedCommand)
+	}
+}
+
+func TestRenderer_RenderCommand_PromptVariable_Multiline(t *testing.T) {
+	renderer := NewRenderer()
+	now := time.Now()
+
+	selection := domain.Selection{
+		Ticket: domain.Ticket{
+			ID:          "bb-multi",
+			Title:       "Multiline Test",
+			Description: "Test",
+			Status:      "open",
+			Priority:    2,
+			IssueType:   "task",
+			Assignee:    "user",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		Harness: domain.Harness{
+			Name:            "test",
+			CommandTemplate: "script.sh << 'EOF'\n{{.Prompt}}\nEOF",
+			PromptTemplate:  "Line 1: {{.TicketID}}\nLine 2: {{.TicketTitle}}\nLine 3: Done",
+		},
+		Model: "gpt-4",
+		Agent: "coder",
+	}
+
+	spec, err := renderer.RenderSelection(selection)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Verify multi-line prompt
+	expectedPrompt := "Line 1: bb-multi\nLine 2: Multiline Test\nLine 3: Done"
+	if spec.RenderedPrompt != expectedPrompt {
+		t.Errorf("Expected prompt %q, got %q", expectedPrompt, spec.RenderedPrompt)
+	}
+
+	// Verify command contains multi-line prompt
+	expectedCmd := "script.sh << 'EOF'\nLine 1: bb-multi\nLine 2: Multiline Test\nLine 3: Done\nEOF"
+	if spec.RenderedCommand != expectedCmd {
+		t.Errorf("Expected command %q, got %q", expectedCmd, spec.RenderedCommand)
+	}
+}

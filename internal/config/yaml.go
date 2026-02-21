@@ -56,7 +56,15 @@ func loadTemplateValue(value, configDir string) (string, error) {
 	}
 
 	filePath := strings.TrimPrefix(value, "@")
-	resolvedPath := filepath.Join(configDir, filePath)
+	var resolvedPath string
+
+	// If the path starts with "/", it's an absolute path - use it as-is
+	// Otherwise, treat it as relative to the config directory
+	if filepath.IsAbs(filePath) {
+		resolvedPath = filePath
+	} else {
+		resolvedPath = filepath.Join(configDir, filePath)
+	}
 
 	content, err := os.ReadFile(resolvedPath)
 	if err != nil {

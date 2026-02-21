@@ -509,6 +509,43 @@ harnesses:
 	}
 }
 
+func TestYAMLLoader_Load_DuplicateHarnessNames(t *testing.T) {
+	yamlContent := `
+harnesses:
+  - name: opencode
+    command_template: "opencode --model {{.Model}}"
+  - name: amp
+    command_template: "amp"
+  - name: opencode
+    command_template: "opencode --model {{.Model}}"
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	_, err := loader.Load(configPath)
+
+	if err == nil {
+		t.Fatal("Expected error for duplicate harness name")
+	}
+
+	if !strings.Contains(err.Error(), "duplicate harness name") {
+		t.Errorf("Error should mention 'duplicate harness name', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "\"opencode\"") {
+		t.Errorf("Error should mention the duplicate name, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "index 2") {
+		t.Errorf("Error should mention duplicate at index 2, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "first defined at index 0") {
+		t.Errorf("Error should mention first index, got: %v", err)
+	}
+}
+
 func TestYAMLLoader_InterfaceCompliance(t *testing.T) {
 	// This test ensures YAMLLoader implements the Loader interface
 	var _ Loader = (*YAMLLoader)(nil)

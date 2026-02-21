@@ -103,6 +103,18 @@ func (l *YAMLLoader) convertAndValidate(raw *yamlConfig, configDir string) (*dom
 		return nil, fmt.Errorf("config must define at least one harness")
 	}
 
+	seenNames := make(map[string]int)
+	for i, rawHarness := range raw.Harnesses {
+		name := rawHarness.Name
+		if name == "" {
+			continue
+		}
+		if firstIdx, exists := seenNames[name]; exists {
+			return nil, fmt.Errorf("duplicate harness name %q at index %d (first defined at index %d)", name, i, firstIdx)
+		}
+		seenNames[name] = i
+	}
+
 	config := &domain.Config{
 		Harnesses: make([]domain.Harness, 0, len(raw.Harnesses)),
 	}

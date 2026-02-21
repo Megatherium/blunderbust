@@ -7,7 +7,7 @@ import (
 	"github.com/megatherium/blunderbuss/internal/domain"
 )
 
-func resultView(res *domain.LaunchResult, err error) string {
+func resultView(res *domain.LaunchResult, err error, statusEmoji, status string) string {
 	s := titleStyle.Render("Launch Result") + "\n\n"
 	switch {
 	case err != nil:
@@ -17,6 +17,9 @@ func resultView(res *domain.LaunchResult, err error) string {
 	case res != nil:
 		s += lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Render("Success!") + "\n"
 		s += fmt.Sprintf("Window: %s\n", res.WindowName)
+		if statusEmoji != "" && status != "" {
+			s += fmt.Sprintf("Status: %s %s\n", statusEmoji, status)
+		}
 	}
 	s += "\n[Press q to quit]"
 	return s

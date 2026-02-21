@@ -9,6 +9,7 @@ import (
 	"github.com/megatherium/blunderbuss/internal/data/dolt"
 	"github.com/megatherium/blunderbuss/internal/data/fake"
 	"github.com/megatherium/blunderbuss/internal/exec"
+	"github.com/megatherium/blunderbuss/internal/exec/tmux"
 )
 
 // AppOptions configure the TUI application.
@@ -17,27 +18,35 @@ type AppOptions struct {
 	ConfigPath string
 	Debug      bool
 	BeadsDir   string
+	DSN        string
 	Demo       bool
 }
 
 // App encapsulates the Bubble Tea program's dependencies.
 type App struct {
-	store    data.TicketStore
-	loader   config.Loader
-	launcher exec.Launcher
-	Renderer *config.Renderer
-	opts     AppOptions
+	store         data.TicketStore
+	loader        config.Loader
+	launcher      exec.Launcher
+	statusChecker *tmux.StatusChecker
+	Renderer      *config.Renderer
+	opts          AppOptions
 }
 
 // NewApp creates a new App instance with necessary dependencies.
 // Store is created lazily via CreateStore().
-func NewApp(loader config.Loader, launcher exec.Launcher, renderer *config.Renderer, opts AppOptions) *App {
+func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, renderer *config.Renderer, opts AppOptions) *App {
 	return &App{
-		loader:   loader,
-		launcher: launcher,
-		Renderer: renderer,
-		opts:     opts,
+		loader:        loader,
+		launcher:      launcher,
+		statusChecker: statusChecker,
+		Renderer:      renderer,
+		opts:          opts,
 	}
+}
+
+// StatusChecker returns the status checker for monitoring tmux windows.
+func (a *App) StatusChecker() *tmux.StatusChecker {
+	return a.statusChecker
 }
 
 // CreateStore initializes the TicketStore based on AppOptions.

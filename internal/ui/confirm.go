@@ -10,12 +10,24 @@ import (
 )
 
 var (
-	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).MarginBottom(1)
-	itemStyle  = lipgloss.NewStyle().MarginLeft(2)
+	titleStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).MarginBottom(1)
+	itemStyle        = lipgloss.NewStyle().MarginLeft(2)
+	dryRunBadgeStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("#FFF")).
+				Background(lipgloss.Color("#FF6B6B")).
+				Padding(0, 1).
+				MarginBottom(1)
 )
 
-func confirmView(selection domain.Selection, renderer *config.Renderer) string {
-	s := titleStyle.Render("Confirm Launch Spec") + "\n"
+func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun bool) string {
+	s := ""
+
+	if dryRun {
+		s += dryRunBadgeStyle.Render("[DRY RUN]") + "\n"
+	}
+
+	s += titleStyle.Render("Confirm Launch Spec") + "\n"
 	s += fmt.Sprintf("Ticket:  %s (%s)\n", itemStyle.Render(selection.Ticket.ID), selection.Ticket.Title)
 	s += fmt.Sprintf("Harness: %s\n", itemStyle.Render(selection.Harness.Name))
 

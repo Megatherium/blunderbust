@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,7 +11,7 @@ import (
 
 	"github.com/megatherium/blunderbuss/internal/data"
 	"github.com/megatherium/blunderbuss/internal/domain"
-	"github.com/megatherium/blunderbuss/internal/exec"
+	"github.com/megatherium/blunderbuss/internal/exec/tmux"
 )
 
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
@@ -45,6 +46,11 @@ type UIModel struct {
 	err          error
 	launchResult *domain.LaunchResult
 	loading      bool
+
+	// Window status monitoring
+	windowStatus      string
+	windowStatusEmoji string
+	monitoringWindow  string
 }
 
 func initList(l *list.Model, width, height int, title string) {
@@ -100,6 +106,10 @@ type launchResultMsg struct {
 	res *domain.LaunchResult
 	err error
 }
+type statusUpdateMsg struct {
+	status string
+	emoji  string
+}
 
 func (e errMsg) Error() string { return e.err.Error() }
 
@@ -113,15 +123,53 @@ func loadTicketsCmd(store data.TicketStore) tea.Cmd {
 	}
 }
 
-func launchCmd(launcher exec.Launcher, selection domain.Selection) tea.Cmd {
+func (m UIModel) launchCmd() tea.Cmd {
 	return func() tea.Msg {
-		spec := domain.LaunchSpec{
-			Selection:  selection,
-			WindowName: fmt.Sprintf("dev-%s", selection.Ticket.ID),
+		spec, err := m.app.Renderer.RenderSelection(m.selection)
+		if err != nil {
+			return launchResultMsg{res: nil, err: fmt.Errorf("failed to render launch spec: %w", err)}
 		}
-		res, err := launcher.Launch(context.Background(), spec)
+
+		// Set window name to ticket ID
+		spec.WindowName = m.selection.Ticket.ID
+
+		res, err := m.app.launcher.Launch(context.Background(), *spec)
 		return launchResultMsg{res: res, err: err}
 	}
+}
+
+// pollWindowStatusCmd creates a command that checks tmux window status
+func (m UIModel) pollWindowStatusCmd(windowName string) tea.Cmd {
+	return func() tea.Msg {
+		if m.app.StatusChecker() == nil {
+			return statusUpdateMsg{status: "Unknown", emoji: "⚪"}
+		}
+
+		status := m.app.StatusChecker().CheckStatus(context.Background(), windowName)
+		var emoji string
+		switch status {
+		case tmux.Running:
+			emoji = "🟢"
+		case tmux.Dead:
+			emoji = "🔴"
+		default:
+			emoji = "⚪"
+		}
+
+		return statusUpdateMsg{status: status.String(), emoji: emoji}
+	}
+}
+
+// startMonitoringCmd starts the polling loop for window status
+func (m UIModel) startMonitoringCmd(windowName string) tea.Cmd {
+	return tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
+		// This is a recurring tick, the actual check happens in Update
+		return tickMsg{windowName: windowName}
+	})
+}
+
+type tickMsg struct {
+	windowName string
 }
 
 func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -149,6 +197,31 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.launchResult = msg.res
 		m.err = msg.err
 		m.step = StepResult
+
+		// Start monitoring if launch was successful
+		if msg.err == nil && msg.res != nil && msg.res.WindowName != "" {
+			m.monitoringWindow = msg.res.WindowName
+			// Initial status check + start polling
+			return m, tea.Batch(
+				m.pollWindowStatusCmd(msg.res.WindowName),
+				m.startMonitoringCmd(msg.res.WindowName),
+			)
+		}
+		return m, nil
+
+	case statusUpdateMsg:
+		m.windowStatus = msg.status
+		m.windowStatusEmoji = msg.emoji
+		return m, nil
+
+	case tickMsg:
+		// Continue polling if still on result screen and monitoring the same window
+		if m.step == StepResult && m.monitoringWindow == msg.windowName {
+			return m, tea.Batch(
+				m.pollWindowStatusCmd(msg.windowName),
+				m.startMonitoringCmd(msg.windowName),
+			)
+		}
 		return m, nil
 
 	case tea.WindowSizeMsg:
@@ -239,7 +312,7 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 		}
 	case StepConfirm:
 		m.step = StepResult
-		return m, launchCmd(m.app.launcher, m.selection)
+		return m, m.launchCmd()
 	case StepResult:
 		return m, tea.Quit
 	}
@@ -294,12 +367,12 @@ func (m UIModel) View() string {
 	case StepAgentSelect:
 		s = m.agentList.View()
 	case StepConfirm:
-		s = confirmView(m.selection, m.app.Renderer)
+		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun)
 	case StepResult:
 		if m.launchResult == nil && m.err == nil {
 			s = "Launching..."
 		} else {
-			s = resultView(m.launchResult, m.err)
+			s = resultView(m.launchResult, m.err, m.windowStatusEmoji, m.windowStatus)
 		}
 	case StepError:
 		s = errorView(m.err)

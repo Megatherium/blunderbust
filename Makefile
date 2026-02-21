@@ -7,7 +7,7 @@
 .PHONY: all build run clean lint test fmt vet install help
 
 # Binary name
-BINARY_NAME := blunderbuss
+BINARY_NAME := bdb
 BINARY_PATH := ./cmd/blunderbuss
 
 # Build variables

@@ -39,3 +39,4 @@ dist/
 build/
 tmp/
 error.log
+bdb

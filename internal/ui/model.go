@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/megatherium/blunderbuss/internal/data"
+	"github.com/megatherium/blunderbuss/internal/discovery"
 	"github.com/megatherium/blunderbuss/internal/domain"
 	"github.com/megatherium/blunderbuss/internal/exec/tmux"
 )
@@ -91,7 +92,7 @@ func (m UIModel) Init() tea.Cmd {
 	return tea.Batch(
 		func() tea.Msg {
 			// Load model discovery registry in the background
-			if err := m.app.Registry.Load(); err != nil {
+			if err := m.app.Registry.Load(context.Background()); err != nil {
 				// If load fails, we still continue but discovery might be empty
 				if m.app.opts.Debug {
 					// This is not a critical error, just log it
@@ -362,11 +363,11 @@ func (m UIModel) handleModelSkip() (tea.Model, tea.Cmd) {
 	expandedModels := make([]string, 0, len(models))
 	for _, model := range models {
 		switch {
-		case strings.HasPrefix(model, "provider:"):
-			providerID := strings.TrimPrefix(model, "provider:")
+		case strings.HasPrefix(model, discovery.PrefixProvider):
+			providerID := strings.TrimPrefix(model, discovery.PrefixProvider)
 			providerModels := m.app.Registry.GetModelsForProvider(providerID)
 			expandedModels = append(expandedModels, providerModels...)
-		case model == "discover:active":
+		case model == discovery.KeywordDiscoverActive:
 			activeModels := m.app.Registry.GetActiveModels()
 			expandedModels = append(expandedModels, activeModels...)
 		default:

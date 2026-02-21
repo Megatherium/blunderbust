@@ -84,7 +84,10 @@ func (l *Launcher) validateTmuxContext() error {
 func (l *Launcher) buildCommand(spec domain.LaunchSpec) []string {
 	// Preallocate with a reasonable capacity
 	args := make([]string, 0, 10)
-	args = append(args, "tmux", "new-window")
+
+	// Unset LINES and COLUMNS which are incorrectly set to 0 when
+	// running inside bubbletea's alternate screen mode.
+	args = append(args, "tmux", "new-window", "-e", "LINES=", "-e", "COLUMNS=")
 
 	// Set environment variables
 	for key, val := range spec.Selection.Harness.Env {

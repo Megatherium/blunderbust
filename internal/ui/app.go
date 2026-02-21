@@ -36,15 +36,20 @@ type App struct {
 
 // NewApp creates a new App instance with necessary dependencies.
 // Store is created lazily via CreateStore().
-func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, renderer *config.Renderer, opts AppOptions) *App {
+func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, renderer *config.Renderer, opts AppOptions) (*App, error) {
+	registry, err := discovery.NewRegistry("")
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize discovery registry: %w", err)
+	}
+
 	return &App{
 		loader:        loader,
 		launcher:      launcher,
 		statusChecker: statusChecker,
 		Renderer:      renderer,
-		Registry:      discovery.NewRegistry(""),
+		Registry:      registry,
 		opts:          opts,
-	}
+	}, nil
 }
 
 // StatusChecker returns the status checker for monitoring tmux windows.

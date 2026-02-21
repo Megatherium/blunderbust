@@ -299,8 +299,8 @@ func TestLauncher_buildCommand(t *testing.T) {
 
 	cmd := launcher.buildCommand(spec)
 
-	if len(cmd) != 5 {
-		t.Fatalf("Expected 5 arguments, got %d: %v", len(cmd), cmd)
+	if len(cmd) != 9 {
+		t.Fatalf("Expected 9 arguments, got %d: %v", len(cmd), cmd)
 	}
 
 	if cmd[0] != "tmux" {
@@ -311,17 +311,25 @@ func TestLauncher_buildCommand(t *testing.T) {
 		t.Errorf("Expected second arg to be 'new-window', got %q", cmd[1])
 	}
 
-	if cmd[2] != "-n" {
-		t.Errorf("Expected third arg to be '-n', got %q", cmd[2])
+	if cmd[2] != "-e" || cmd[3] != "LINES=" {
+		t.Errorf("Expected args 2-3 to be '-e LINES=', got %q %q", cmd[2], cmd[3])
 	}
 
-	if cmd[3] != "bb-3zg" {
-		t.Errorf("Expected fourth arg to be 'bb-3zg', got %q", cmd[3])
+	if cmd[4] != "-e" || cmd[5] != "COLUMNS=" {
+		t.Errorf("Expected args 4-5 to be '-e COLUMNS=', got %q %q", cmd[4], cmd[5])
+	}
+
+	if cmd[6] != "-n" {
+		t.Errorf("Expected seventh arg to be '-n', got %q", cmd[6])
+	}
+
+	if cmd[7] != "bb-3zg" {
+		t.Errorf("Expected eighth arg to be 'bb-3zg', got %q", cmd[7])
 	}
 
 	expectedCommand := "opencode --model claude-sonnet-4-20250514 --agent coder"
-	if cmd[4] != expectedCommand {
-		t.Errorf("Expected command %q, got %q", expectedCommand, cmd[4])
+	if cmd[8] != expectedCommand {
+		t.Errorf("Expected command %q, got %q", expectedCommand, cmd[8])
 	}
 }
 

@@ -74,9 +74,12 @@ var updateModelsCmd = &cobra.Command{
 	Use:   "update-models",
 	Short: "Fetch the latest model discovery data from models.dev",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		registry := discovery.NewRegistry("")
+		registry, err := discovery.NewRegistry("")
+		if err != nil {
+			return fmt.Errorf("failed to initialize registry: %w", err)
+		}
 		fmt.Printf("Updating model discovery data...\n")
-		if err := registry.Refresh(); err != nil {
+		if err := registry.Refresh(cmd.Context()); err != nil {
 			return fmt.Errorf("failed to update models: %w", err)
 		}
 		fmt.Printf("Successfully updated model discovery data at %s\n", registry.GetCachePath())
@@ -170,7 +173,11 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		DSN:        dsn,
 		Demo:       demo,
 	}
-	app := ui.NewApp(cfgLoader, launcher, statusChecker, config.NewRenderer(), appOpts)
+	app, err := ui.NewApp(cfgLoader, launcher, statusChecker, config.NewRenderer(), appOpts)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "App initialization error: %v\n", err)
+		os.Exit(1)
+	}
 	defer app.Close() // Ensure store is closed on exit
 
 	m := ui.NewUIModel(app, cfg.Harnesses)

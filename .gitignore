@@ -40,3 +40,4 @@ build/
 tmp/
 error.log
 bdb
+config.yaml

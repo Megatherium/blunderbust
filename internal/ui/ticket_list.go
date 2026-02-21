@@ -27,3 +27,19 @@ func newTicketList(tickets []domain.Ticket) list.Model {
 	l.Title = "Select a Ticket"
 	return l
 }
+
+// emptyTicketItem represents the empty state message
+type emptyTicketItem struct{}
+
+func (i emptyTicketItem) Title() string       { return "No ready tickets found" }
+func (i emptyTicketItem) Description() string { return "Press 'r' to refresh or 'q' to quit" }
+func (i emptyTicketItem) FilterValue() string { return "" }
+
+// newEmptyTicketList creates a list with a single empty state item
+func newEmptyTicketList() list.Model {
+	items := []list.Item{emptyTicketItem{}}
+	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	l.Title = "Select a Ticket"
+	l.SetShowStatusBar(false)
+	return l
+}

@@ -24,6 +24,7 @@ const (
 	StepAgentSelect
 	StepConfirm
 	StepResult
+	StepError
 )
 
 type UIModel struct {
@@ -43,6 +44,7 @@ type UIModel struct {
 
 	err          error
 	launchResult *domain.LaunchResult
+	loading      bool
 }
 
 func initList(l *list.Model, width, height int, title string) {
@@ -74,11 +76,22 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		harnessList: hl,
 		modelList:   ml,
 		agentList:   al,
+		loading:     true,
 	}
 }
 
 func (m UIModel) Init() tea.Cmd {
-	return loadTicketsCmd(m.app.store)
+	return func() tea.Msg {
+		store, err := m.app.CreateStore(context.Background())
+		if err != nil {
+			return errMsg{err}
+		}
+		tickets, err := store.ListTickets(context.Background(), data.TicketFilter{})
+		if err != nil {
+			return errMsg{err}
+		}
+		return ticketsLoadedMsg(tickets)
+	}
 }
 
 type ticketsLoadedMsg []domain.Ticket
@@ -116,8 +129,20 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case ticketsLoadedMsg:
-		m.ticketList = newTicketList(msg)
+		if len(msg) == 0 {
+			// No tickets found - show empty state
+			m.ticketList = newEmptyTicketList()
+		} else {
+			m.ticketList = newTicketList(msg)
+		}
 		initList(&m.ticketList, m.width, m.height, "Select a Ticket")
+		m.loading = false
+		return m, nil
+
+	case errMsg:
+		m.err = msg.err
+		m.loading = false
+		m.step = StepError
 		return m, nil
 
 	case launchResultMsg:
@@ -156,8 +181,13 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q":
 		return m, tea.Quit
+	case "r":
+		if m.step == StepTicketList {
+			m.loading = true
+			return m, loadTicketsCmd(m.app.store)
+		}
 	case "esc":
-		if m.step > StepTicketList && m.step != StepResult {
+		if m.step > StepTicketList && m.step != StepResult && m.step != StepError {
 			m.step--
 			// Handle skip backwards tracking if we skipped lists
 			if m.step == StepAgentSelect && len(m.selection.Harness.SupportedAgents) <= 1 {
@@ -252,7 +282,11 @@ func (m UIModel) View() string {
 	var s string
 	switch m.step {
 	case StepTicketList:
-		s = m.ticketList.View()
+		if m.loading {
+			s = "Loading tickets..."
+		} else {
+			s = m.ticketList.View()
+		}
 	case StepHarnessSelect:
 		s = m.harnessList.View()
 	case StepModelSelect:
@@ -267,6 +301,8 @@ func (m UIModel) View() string {
 		} else {
 			s = resultView(m.launchResult, m.err)
 		}
+	case StepError:
+		s = errorView(m.err)
 	}
 
 	return docStyle.Render(s)

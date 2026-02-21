@@ -107,7 +107,8 @@ The interface is nicer for humans. You pick whatever feels right for you.
 - **Conventional Commits**: All commit messages **must** adhere to the Conventional Commits specification.
   - **Format**: `<type>[optional scope]: <description>`
   - **Example**: `feat(harvester): implement reverse-scroll logic for Gemini`
-  - **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`.
+  - **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`
+- **Beads extra**: Add a line like "Affected ticket(s): bb-foo", can be multiple with e.g. review tickets
 
 ## Documentation
 

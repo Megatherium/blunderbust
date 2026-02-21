@@ -21,13 +21,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/megatherium/blunderbuss/internal/config"
-	"github.com/megatherium/blunderbuss/internal/data/fake"
 	"github.com/megatherium/blunderbuss/internal/domain"
 	"github.com/megatherium/blunderbuss/internal/exec/tmux"
 	"github.com/megatherium/blunderbuss/internal/ui"
@@ -37,9 +35,10 @@ import (
 // Global flags populated from command-line arguments.
 var (
 	configPath string
-	dsn        string
 	dryRun     bool
 	debug      bool
+	beadsDir   string
+	demo       bool
 )
 
 // rootCmd is the base command for the blunderbuss CLI.
@@ -56,9 +55,10 @@ configurations, and launching development sessions.`,
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default: ./config.yaml)")
-	rootCmd.PersistentFlags().StringVar(&dsn, "dsn", "", "Dolt database DSN (default: beads local)")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print commands without executing")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug logging")
+	rootCmd.PersistentFlags().StringVar(&beadsDir, "beads-dir", "", "Path to beads directory (default: ./.beads)")
+	rootCmd.PersistentFlags().BoolVar(&demo, "demo", false, "Use fake data instead of real beads database")
 }
 
 func main() {
@@ -71,10 +71,17 @@ func main() {
 // runRoot executes the main blunderbuss workflow.
 // For the bootstrap phase, this validates flags and prints configuration.
 func runRoot(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
-
 	if debug {
 		fmt.Fprintln(os.Stderr, "Debug mode enabled")
+	}
+
+	// Resolve beads directory
+	beadsPath := beadsDir
+	if beadsPath == "" {
+		beadsPath = "./.beads"
+	}
+	if debug {
+		fmt.Fprintf(os.Stderr, "Beads directory: %s\n", beadsPath)
 	}
 
 	// Validate and resolve configuration path.
@@ -85,8 +92,8 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 	if debug {
 		fmt.Fprintf(os.Stderr, "Config path: %s\n", cfgPath)
-		fmt.Fprintf(os.Stderr, "DSN: %s\n", dsn)
 		fmt.Fprintf(os.Stderr, "Dry run: %v\n", dryRun)
+		fmt.Fprintf(os.Stderr, "Demo mode: %v\n", demo)
 	}
 
 	// Bootstrap phase: just validate that we can load the config path exists
@@ -95,11 +102,8 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("checking config path: %w", err)
 	}
 
-	// Wire fake implementations for the visual tracer bullet.
-	store := fake.NewWithSampleData()
+	// Wire real tmux launcher
 	launcher := tmux.NewTmuxLauncher(tmux.NewRealRunner(), dryRun, false)
-
-	_ = ctx
 
 	// Create some fake harnesses for the config
 	harnesses := []domain.Harness{
@@ -118,8 +122,12 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		DryRun:     dryRun,
 		ConfigPath: cfgPath,
 		Debug:      debug,
+		BeadsDir:   beadsPath,
+		Demo:       demo,
 	}
-	app := ui.NewApp(store, nil, launcher, config.NewRenderer(), appOpts)
+	app := ui.NewApp(nil, launcher, config.NewRenderer(), appOpts)
+	defer app.Close() // Ensure store is closed on exit
+
 	m := ui.NewUIModel(app, harnesses)
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

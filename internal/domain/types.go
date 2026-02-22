@@ -70,3 +70,13 @@ type Defaults struct {
 	Model   string
 	Agent   string
 }
+
+// AppOptions configure the application at a global level.
+type AppOptions struct {
+	DryRun     bool
+	ConfigPath string
+	Debug      bool
+	BeadsDir   string
+	DSN        string
+	Demo       bool
+}

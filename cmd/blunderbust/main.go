@@ -28,6 +28,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/megatherium/blunderbust/internal/config"
 	"github.com/megatherium/blunderbust/internal/discovery"
+	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
 	"github.com/megatherium/blunderbust/internal/ui"
 	"github.com/spf13/cobra"
@@ -177,7 +178,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	launcher := tmux.NewTmuxLauncher(runner, dryRun, false)
 	statusChecker := tmux.NewStatusChecker(runner)
 
-	appOpts := ui.AppOptions{
+	appOpts := domain.AppOptions{
 		DryRun:     dryRun,
 		ConfigPath: cfgPath,
 		Debug:      debug,

@@ -9,19 +9,10 @@ import (
 	"github.com/megatherium/blunderbust/internal/data/dolt"
 	"github.com/megatherium/blunderbust/internal/data/fake"
 	"github.com/megatherium/blunderbust/internal/discovery"
+	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/megatherium/blunderbust/internal/exec"
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
-
-// AppOptions configure the TUI application.
-type AppOptions struct {
-	DryRun     bool
-	ConfigPath string
-	Debug      bool
-	BeadsDir   string
-	DSN        string
-	Demo       bool
-}
 
 // App encapsulates the Bubble Tea program's dependencies.
 type App struct {
@@ -31,12 +22,12 @@ type App struct {
 	statusChecker *tmux.StatusChecker
 	Renderer      *config.Renderer
 	Registry      *discovery.Registry
-	opts          AppOptions
+	opts          domain.AppOptions
 }
 
 // NewApp creates a new App instance with necessary dependencies.
 // Store is created lazily via CreateStore().
-func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, renderer *config.Renderer, opts AppOptions) (*App, error) {
+func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, renderer *config.Renderer, opts domain.AppOptions) (*App, error) {
 	registry, err := discovery.NewRegistry("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize discovery registry: %w", err)
@@ -67,7 +58,7 @@ func (a *App) CreateStore(ctx context.Context) (data.TicketStore, error) {
 		return fake.NewWithSampleData(), nil
 	}
 
-	store, err := dolt.NewStore(ctx, a.opts.BeadsDir)
+	store, err := dolt.NewStore(ctx, a.opts)
 	if err != nil {
 		return nil, err
 	}

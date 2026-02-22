@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/megatherium/blunderbust/internal/data"
@@ -31,7 +32,12 @@ var _ data.TicketStore = (*Store)(nil)
 //
 // For embedded mode: opens .beads/dolt/ using the embedded driver.
 // For server mode: connects to the configured dolt sql-server.
-func NewStore(ctx context.Context, beadsDir string) (*Store, error) {
+func NewStore(ctx context.Context, opts domain.AppOptions) (*Store, error) {
+	beadsDir := opts.BeadsDir
+	if beadsDir == "" {
+		beadsDir = ".beads"
+	}
+
 	metadata, err := LoadMetadata(beadsDir)
 	if err != nil {
 		return nil, err
@@ -39,8 +45,14 @@ func NewStore(ctx context.Context, beadsDir string) (*Store, error) {
 
 	switch metadata.ConnectionMode() {
 	case ServerMode:
+		if opts.Debug {
+			fmt.Fprintf(os.Stderr, "Dolt server mode enabled\n")
+		}
 		return newServerStore(ctx, beadsDir, metadata)
 	case EmbeddedMode:
+		if opts.Debug {
+			fmt.Fprintf(os.Stderr, "Dolt embedded mode enabled\n")
+		}
 		return newEmbeddedStore(ctx, beadsDir, metadata)
 	default:
 		return nil, fmt.Errorf("unknown connection mode: %v", metadata.ConnectionMode())

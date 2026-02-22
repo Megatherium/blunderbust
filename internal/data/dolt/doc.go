@@ -28,9 +28,9 @@
 //
 // Usage
 //
-//	store, err := dolt.NewStore(ctx, ".beads")
+//	store, err := dolt.NewStore(ctx, domain.AppOptions{BeadsDir: ".beads"})
 //	if err != nil {
-//	    return err
+//		return err
 //	}
 //	defer store.Close()
 //

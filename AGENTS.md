@@ -71,7 +71,7 @@ The `dolt` package implements `data.TicketStore` for reading tickets from Beads/
 
 **Usage:**
 ```go
-store, err := dolt.NewStore(ctx, ".beads")
+store, err := dolt.NewStore(ctx, domain.AppOptions{BeadsDir: ".beads"})
 if err != nil {
     // Handle with actionable error message
 }

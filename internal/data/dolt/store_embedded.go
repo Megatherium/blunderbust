@@ -4,6 +4,8 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+//go:build embedded
+
 package dolt
 
 import (
@@ -13,16 +15,12 @@ import (
 	"os"
 	"path/filepath"
 
-	// Import the embedded Dolt driver - registers "dolt" driver
 	_ "github.com/dolthub/driver"
 )
 
-// newEmbeddedStore creates a Store using the embedded Dolt driver.
-// Requires CGO. Opens the database at .beads/dolt/ in read-only mode.
 func newEmbeddedStore(ctx context.Context, beadsDir string, metadata *Metadata) (*Store, error) {
 	doltPath := DoltDir(beadsDir)
 
-	// Check if the dolt directory exists
 	if _, err := os.Stat(doltPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf(
 			"dolt database directory not found at %q: "+
@@ -31,15 +29,11 @@ func newEmbeddedStore(ctx context.Context, beadsDir string, metadata *Metadata) 
 		)
 	}
 
-	// Use absolute path for DSN (required by embedded driver)
 	absPath, err := filepath.Abs(doltPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve absolute path for %q: %w", doltPath, err)
 	}
 
-	// Build DSN for embedded driver
-	// Format: file://<path>?database=<name>&commitname=<name>&commitemail=<email>
-	// For read-only access, we still need committer info for the driver to accept the DSN
 	dsn := fmt.Sprintf(
 		"file://%s?database=%s&commitname=blunderbust&commitemail=blunderbust@local",
 		absPath,
@@ -51,12 +45,10 @@ func newEmbeddedStore(ctx context.Context, beadsDir string, metadata *Metadata) 
 		return nil, fmt.Errorf("failed to open embedded Dolt database: %w", err)
 	}
 
-	// Configure connection pool for embedded mode (single connection only)
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(0)
 
-	// Test the connection
 	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf(
@@ -66,7 +58,6 @@ func newEmbeddedStore(ctx context.Context, beadsDir string, metadata *Metadata) 
 		)
 	}
 
-	// Verify the database is accessible by checking if ready_issues view exists
 	if err := verifySchema(ctx, db); err != nil {
 		_ = db.Close()
 		return nil, err

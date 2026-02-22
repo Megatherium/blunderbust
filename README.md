@@ -38,24 +38,63 @@ cd /path/to/your/beads/project
 
 ## Building
 
-### Embedded Dolt Mode (Default)
+Blunderbust supports two build configurations to balance binary size and functionality:
 
-The default mode connects to a local Dolt database stored in `.beads/dolt/`.
-**This mode requires CGO** due to the github.com/dolthub/driver dependency.
+### Server-Only Build (Default, ~20-30MB)
+
+The default build only includes support for connecting to a Dolt sql-server. This is the smallest option and requires CGO.
 
 ```bash
 make build
 ```
 
-This builds the binary as `blunderbust` in the current directory.
+This builds the binary as `bdb` in the current directory.
 
-### Server Mode (No CGO Required)
+### Full Build with Embedded Support (~93MB)
 
-If you only use server mode connections (remote Dolt sql-server), you can build without CGO:
+If you need embedded Dolt mode (local `.beads/dolt/` database), build with the embedded tag:
 
 ```bash
-CGO_ENABLED=0 go build -o blunderbust ./cmd/blunderbust
+make build-full
 ```
+
+This includes the github.com/dolthub/driver and all its dependencies, resulting in a larger binary that supports both server and embedded modes.
+
+### Which Build Should You Use?
+
+**Use the default build (server-only) if:**
+- You always run `dolt sql-server` separately
+- You connect to remote Dolt servers
+- You prefer smaller binaries
+
+**Use the full build (with embedded) if:**
+- You want blunderbust to work out-of-the-box without starting a server
+- You use the local `.beads/dolt/` database directly
+- You need maximum compatibility with existing Beads setups
+
+### Development Builds
+
+For debugging with symbols:
+```bash
+make debug          # Server-only with debug symbols
+make debug-full     # Full build with debug symbols
+```
+
+### Installation
+
+```bash
+make install        # Install server-only build to GOPATH/bin
+make install-full   # Install full build with embedded support
+```
+
+### Quick Reference
+
+| Command | Size | Features |
+|---------|-------|----------|
+| `make build` | ~11MB | Server mode only |
+| `make build-full` | ~93MB | Server + Embedded modes |
+| `go build ./cmd/blunderbust` | ~11MB | Server mode only |
+| `go build -tags=embedded ./cmd/blunderbust` | ~93MB | Server + Embedded modes |
 
 ## Running
 
@@ -177,7 +216,7 @@ Default when `dolt_mode` is not set to `server`:
 }
 ```
 
-Requires CGO for the embedded Dolt driver.
+**Requires the full build** (`make build-full` or `-tags=embedded`).
 
 ### Server Mode (Remote Database)
 
@@ -194,6 +233,31 @@ Activated when `dolt_mode: server` or server connection fields are present:
   "dolt_server_user": "mysql-root"
 }
 ```
+
+**Works with both builds** (default and full).
+
+### Error: "embedded Dolt mode is not available in this build"
+
+If you see this error, you're using the default (server-only) build but your metadata.json specifies embedded mode. Choose one of these solutions:
+
+1. **Rebuild with embedded support**:
+   ```bash
+   make build-full
+   ```
+
+2. **Switch to server mode** by updating `.beads/metadata.json`:
+   ```json
+   {
+     "dolt_mode": "server",
+     "dolt_server_host": "127.0.0.1",
+     "dolt_server_port": 3307
+   }
+   ```
+   Then start the Dolt server:
+   ```bash
+   cd .beads
+   dolt sql-server
+   ```
 
 For server mode with authentication, set the password via environment variable:
 

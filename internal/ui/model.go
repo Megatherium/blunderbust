@@ -21,17 +21,17 @@ import (
 
 // Semantic Theme Colors
 var (
-	ThemeFooterBg   = lipgloss.AdaptiveColor{Light: "62", Dark: "62"}
-	ThemeFooterFg   = lipgloss.AdaptiveColor{Light: "230", Dark: "230"}
-	ThemeActive     = lipgloss.AdaptiveColor{Light: "205", Dark: "205"}
-	ThemeInactive   = lipgloss.AdaptiveColor{Light: "240", Dark: "240"}
-	ThemeWarning    = lipgloss.AdaptiveColor{Light: "214", Dark: "214"}
+	ThemeFooterBg = lipgloss.AdaptiveColor{Light: "62", Dark: "62"}
+	ThemeFooterFg = lipgloss.AdaptiveColor{Light: "230", Dark: "230"}
+	ThemeActive   = lipgloss.AdaptiveColor{Light: "205", Dark: "205"}
+	ThemeInactive = lipgloss.AdaptiveColor{Light: "240", Dark: "240"}
+	ThemeWarning  = lipgloss.AdaptiveColor{Light: "214", Dark: "214"}
 )
 
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 const (
-	footerHeight     = 1
+	footerHeight = 1
 	// filterHeight accounts for the top 1-line filter box + 2 lines of padding/border
 	filterHeight     = 3
 	minWindowWidth   = 60
@@ -391,14 +391,14 @@ func (m UIModel) handleTickMsg(msg tickMsg) (tea.Model, tea.Cmd) {
 func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	h, v := docStyle.GetFrameSize()
 	m.width, m.height = msg.Width-h, msg.Height-v-footerHeight
-	
+
 	if m.width < minWindowWidth {
 		m.width = minWindowWidth
 	}
 	if m.height < minWindowHeight {
 		m.height = minWindowHeight
 	}
-	
+
 	m.updateSizes()
 	return m, nil
 }
@@ -492,7 +492,7 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		m.updateSizes()
 		return m, nil, true
 	}
-	
+
 	// Handle manual left/right navigation outside of keys.go since it's intrinsic to the matrix
 	switch msg.String() {
 	case "left":
@@ -513,7 +513,7 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		model, cmd := m.handleEnterKey()
 		return model, cmd, true
 	}
-	
+
 	return m, nil, false
 }
 
@@ -745,7 +745,7 @@ func (m UIModel) renderMainContent() string {
 			Padding(1, 2).
 			Width(modalWidth).
 			Render(m.modalContent)
-			
+
 		s = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
 	}
 

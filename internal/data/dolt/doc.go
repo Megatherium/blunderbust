@@ -13,7 +13,14 @@
 //
 // Uses github.com/dolthub/driver (requires CGO). The database is stored
 // locally in .beads/dolt/ and supports only a single concurrent connection.
-// This is the default mode when no server connection is configured.
+//
+// NOTE: Embedded mode is only available when building with the "embedded" build tag:
+//
+//	go build -tags=embedded ./cmd/blunderbust
+//	make build-full
+//
+// Default builds (no build tags) do not include embedded support and will return
+// an error if embedded mode is requested. This reduces binary size from ~93MB to ~20-30MB.
 //
 // DSN format: file://<abs_path>?database=<name>&commitname=<name>&commitemail=<email>
 //
@@ -23,6 +30,8 @@
 // github.com/go-sql-driver/mysql. Supports multiple concurrent connections.
 // Activated by setting dolt_mode: server or providing server connection
 // details in metadata.json.
+//
+// Server mode is available in all builds (default and with -tags=embedded).
 //
 // DSN format: user:password@tcp(host:port)/database?parseTime=true&loc=UTC
 //

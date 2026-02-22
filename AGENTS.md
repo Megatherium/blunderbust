@@ -60,14 +60,18 @@ The `dolt` package implements `data.TicketStore` for reading tickets from Beads/
 
 **Key files:**
 - `metadata.go` - Parses `.beads/metadata.json` to determine connection mode
-- `embedded.go` - Embedded Dolt driver (requires CGO, single-connection)
+- `store_embedded.go` - Embedded Dolt driver (build tag: `embedded`, requires CGO, single-connection)
 - `server.go` - MySQL driver for Dolt server connections
-- `store.go` - Main `Store` type implementing `TicketStore`
+- `store.go` - Main `Store` type implementing `TicketStore` (build tag: `!embedded`)
 - `schema.go` - Schema verification utilities
 
 **Connection modes:**
-- **Embedded**: Default, uses `github.com/dolthub/driver`, local `.beads/dolt/` directory
-- **Server**: Activated by `dolt_mode: server` in metadata.json, uses MySQL protocol
+- **Embedded**: Requires `-tags=embedded` build, uses `github.com/dolthub/driver`, local `.beads/dolt/` directory
+- **Server**: Available in all builds, activated by `dolt_mode: server` in metadata.json, uses MySQL protocol
+
+**Build modes:**
+- **Default** (no tags): Server-only build (~20-30MB)
+- **Full** (`-tags=embedded`): Server + Embedded modes (~93MB)
 
 **Usage:**
 ```go
@@ -123,15 +127,34 @@ The interface is nicer for humans. You pick whatever feels right for you.
 
 ### Building Blunderbust
 
+Blunderbust supports two build configurations:
+
+**Server-only build (default, ~20-30MB)**:
 ```bash
-# Standard build (requires CGO for embedded Dolt mode)
 make build
+```
 
-# Server mode only (no CGO required)
-CGO_ENABLED=0 go build -o blunderbust ./cmd/blunderbust
+**Full build with embedded support (~93MB)**:
+```bash
+make build-full
+```
 
-# Development build with debug info
-go build -gcflags="all=-N -l" -o blunderbust ./cmd/blunderbust
+**Development builds with debug symbols**:
+```bash
+make debug          # Server-only
+make debug-full     # Full build
+```
+
+**Installation**:
+```bash
+make install        # Server-only to GOPATH/bin
+make install-full   # Full build to GOPATH/bin
+```
+
+**Which build to use**:
+- Default build: Always use when testing or developing (faster builds)
+- Full build: Only when testing embedded mode functionality
+- CI/CD: Default build unless embedded mode is explicitly tested
 ```
 
 ### Running Blunderbust

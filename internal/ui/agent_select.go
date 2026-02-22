@@ -18,7 +18,9 @@ func newAgentList(agents []string) list.Model {
 		items = append(items, agentItem{name: a})
 	}
 
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	delegate := list.NewDefaultDelegate()
+	delegate.ShowDescription = false
+	l := list.New(items, delegate, 0, 0)
 	l.Title = "Select an Agent"
 	return l
 }

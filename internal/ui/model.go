@@ -70,6 +70,13 @@ type UIModel struct {
 
 	showModal    bool
 	modalContent string
+	
+	showSidebar  bool
+	sidebarWidth int
+	tWidth       int
+	hWidth       int
+	mWidth       int
+	aWidth       int
 
 	// Window status monitoring
 	windowStatus      string
@@ -122,6 +129,7 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		keys:        keys,
 		loading:     true,
 		showModal:   false,
+		showSidebar: true,
 	}
 }
 
@@ -297,17 +305,20 @@ func (m *UIModel) updateKeyBindings() {
 			m.keys.Refresh.SetEnabled(false)
 			m.keys.Info.SetEnabled(false)
 		}
+		m.keys.ToggleSidebar.SetEnabled(true)
 		m.keys.Enter.SetEnabled(true)
 	case ViewStateResult, ViewStateError:
 		m.keys.Back.SetEnabled(false)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(false)
 		m.keys.Info.SetEnabled(false)
+		m.keys.ToggleSidebar.SetEnabled(false)
 	default:
 		m.keys.Back.SetEnabled(true)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(true)
 		m.keys.Info.SetEnabled(false)
+		m.keys.ToggleSidebar.SetEnabled(false)
 	}
 }
 
@@ -367,33 +378,50 @@ func (m UIModel) handleTickMsg(msg tickMsg) (tea.Model, tea.Cmd) {
 
 func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	h, v := docStyle.GetFrameSize()
-
 	m.width, m.height = msg.Width-h, msg.Height-v-footerHeight
+	m.updateSizes()
+	return m, nil
+}
 
-	sidebarWidth := 25
-	remainingWidth := m.width - sidebarWidth - 2 // space between sidebar and matrix
-
-	// Calculate width for 4 columns.
-	colWidth := remainingWidth / 4
-	if colWidth < 10 {
-		colWidth = 10
+func (m *UIModel) updateSizes() {
+	if m.width == 0 || m.height == 0 {
+		return
 	}
 
-	// Filter height reserved
 	filterHeight := 3
 	listHeight := m.height - filterHeight
-
-	// The list inside the frame needs to be smaller to account for borders
-	innerColWidth := colWidth - 2
 	innerListHeight := listHeight - 2
 
-	m.ticketList.SetSize(innerColWidth, innerListHeight)
-	m.harnessList.SetSize(innerColWidth, innerListHeight)
-	m.modelList.SetSize(innerColWidth, innerListHeight)
-	m.agentList.SetSize(innerColWidth, innerListHeight)
-	m.help.Width = m.width
+	if m.showSidebar {
+		usableWidth := m.width - 8 // 4 gaps of 2
+		baseX := usableWidth / 4
+		m.sidebarWidth = baseX
+		m.tWidth = baseX
+		m.hWidth = baseX / 2
+		m.mWidth = baseX
+		m.aWidth = usableWidth - (m.sidebarWidth + m.tWidth + m.hWidth + m.mWidth) // absorb remainder
+	} else {
+		usableWidth := m.width - 6 // 3 gaps of 2
+		baseX := usableWidth / 4
+		m.sidebarWidth = 0
+		m.tWidth = baseX
+		m.hWidth = baseX
+		m.mWidth = baseX
+		m.aWidth = usableWidth - (m.tWidth + m.hWidth + m.mWidth) // absorb remainder
+	}
 
-	return m, nil
+	safeW := func(w int) int {
+		if w-2 < 1 {
+			return 1
+		}
+		return w - 2
+	}
+
+	m.ticketList.SetSize(safeW(m.tWidth), innerListHeight)
+	m.harnessList.SetSize(safeW(m.hWidth), innerListHeight)
+	m.modelList.SetSize(safeW(m.mWidth), innerListHeight)
+	m.agentList.SetSize(safeW(m.aWidth), innerListHeight)
+	m.help.Width = m.width
 }
 
 func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
@@ -437,6 +465,10 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 				return m, loadModalCmd(i.ticket.ID), true
 			}
 		}
+	case "p":
+		m.showSidebar = !m.showSidebar
+		m.updateSizes()
+		return m, nil, true
 	case "right":
 		if m.state == ViewStateMatrix && m.focus < FocusAgent {
 			// Ensure current selection is valid before allowing right movement
@@ -539,17 +571,7 @@ func (m UIModel) handleModelSkip() (UIModel, tea.Cmd) {
 		m.selection.Model = ""
 	}
 	m.modelList = newModelList(models)
-	
-	sidebarWidth := 25
-	remainingWidth := m.width - sidebarWidth - 2
-	colWidth := remainingWidth / 4
-	if colWidth < 10 {
-		colWidth = 10
-	}
-	innerColWidth := colWidth - 2
-	innerListHeight := m.height - 3 - 2
-	initList(&m.modelList, innerColWidth, innerListHeight, "Select a Model")
-
+	m.updateSizes()
 	return m, nil
 }
 
@@ -560,17 +582,7 @@ func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 	}
 	
 	m.agentList = newAgentList(agents)
-	
-	sidebarWidth := 25
-	remainingWidth := m.width - sidebarWidth - 2
-	colWidth := remainingWidth / 4
-	if colWidth < 10 {
-		colWidth = 10
-	}
-	innerColWidth := colWidth - 2
-	innerListHeight := m.height - 3 - 2
-	initList(&m.agentList, innerColWidth, innerListHeight, "Select an Agent")
-	
+	m.updateSizes()
 	return m, nil
 }
 
@@ -581,77 +593,93 @@ func (m UIModel) renderMainContent() string {
 		if m.loading {
 			s = "Loading tickets...\n"
 		} else {
-			sidebarWidth := 25
-			remainingWidth := m.width - sidebarWidth - 2
-			colWidth := remainingWidth / 4
-			if colWidth < 10 {
-				colWidth = 10
-			}
 			listHeight := m.height - 3
 
-			activeBorderStyle := lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("205")).
-				Width(colWidth - 2).
-				Height(listHeight - 2)
+			activeBorder := func(w int) lipgloss.Style {
+				if w < 2 {
+					w = 2
+				}
+				return lipgloss.NewStyle().
+					Border(lipgloss.RoundedBorder()).
+					BorderForeground(lipgloss.Color("205")).
+					Width(w - 2).
+					Height(listHeight - 2)
+			}
 
-			inactiveBorderStyle := lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("240")).
-				Width(colWidth - 2).
-				Height(listHeight - 2)
+			inactiveBorder := func(w int) lipgloss.Style {
+				if w < 2 {
+					w = 2
+				}
+				return lipgloss.NewStyle().
+					Border(lipgloss.RoundedBorder()).
+					BorderForeground(lipgloss.Color("240")).
+					Width(w - 2).
+					Height(listHeight - 2)
+			}
 				
 			var tView, hView, mView, aView string
 			
 			if m.focus == FocusTickets {
-				tView = activeBorderStyle.Render(m.ticketList.View())
+				tView = activeBorder(m.tWidth).Render(m.ticketList.View())
 			} else {
-				tView = inactiveBorderStyle.Render(lipgloss.NewStyle().Faint(true).Render(m.ticketList.View()))
+				tView = inactiveBorder(m.tWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.ticketList.View()))
 			}
 			
 			if m.focus == FocusHarness {
-				hView = activeBorderStyle.Render(m.harnessList.View())
+				hView = activeBorder(m.hWidth).Render(m.harnessList.View())
 			} else {
-				hView = inactiveBorderStyle.Render(lipgloss.NewStyle().Faint(true).Render(m.harnessList.View()))
+				hView = inactiveBorder(m.hWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.harnessList.View()))
 			}
 			
 			if m.focus == FocusModel {
-				mView = activeBorderStyle.Render(m.modelList.View())
+				mView = activeBorder(m.mWidth).Render(m.modelList.View())
 			} else {
-				mView = inactiveBorderStyle.Render(lipgloss.NewStyle().Faint(true).Render(m.modelList.View()))
+				mView = inactiveBorder(m.mWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.modelList.View()))
 			}
 			
 			if m.focus == FocusAgent {
-				aView = activeBorderStyle.Render(m.agentList.View())
+				aView = activeBorder(m.aWidth).Render(m.agentList.View())
 			} else {
-				aView = inactiveBorderStyle.Render(lipgloss.NewStyle().Faint(true).Render(m.agentList.View()))
+				aView = inactiveBorder(m.aWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.agentList.View()))
 			}
 			
-			// Top Filter scaffolding
+			matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6
+			
 			filterBox := lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
-				Width(remainingWidth - 2). // -2 for borders
+				Width(matrixWidth - 2).
 				Height(1).
 				Padding(0, 1).
 				Render("Filters: [All] | (Press / to search - Reactive Filter bb-0vw pending)")
 				
 			matrixBox := lipgloss.JoinHorizontal(lipgloss.Top,
 				tView,
+				lipgloss.NewStyle().Width(2).Render("  "),
 				hView,
+				lipgloss.NewStyle().Width(2).Render("  "),
 				mView,
+				lipgloss.NewStyle().Width(2).Render("  "),
 				aView,
 			)
 			
 			rightPanelBox := lipgloss.JoinVertical(lipgloss.Top, filterBox, matrixBox)
 
-			sidebarBox := lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				Width(sidebarWidth - 2).
-				Height(m.height - 2).
-				Padding(0, 1).
-				Render("Project Sidebar\n\n(Pending bb-lh7)")
+			if m.showSidebar {
+				w := m.sidebarWidth
+				if w < 2 {
+					w = 2
+				}
+				sidebarBox := lipgloss.NewStyle().
+					Border(lipgloss.RoundedBorder()).
+					Width(w - 2).
+					Height(m.height - 2).
+					Padding(0, 1).
+					Render("Project Sidebar\n\n(Pending bb-lh7)")
 
-			s = lipgloss.JoinHorizontal(lipgloss.Top, sidebarBox, lipgloss.NewStyle().Width(2).Render("  "), rightPanelBox)
+				s = lipgloss.JoinHorizontal(lipgloss.Top, sidebarBox, lipgloss.NewStyle().Width(2).Render("  "), rightPanelBox)
+			} else {
+				s = rightPanelBox
+			}
 		}
 	case ViewStateConfirm:
 		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun)

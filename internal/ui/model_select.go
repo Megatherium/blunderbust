@@ -18,7 +18,9 @@ func newModelList(models []string) list.Model {
 		items = append(items, modelItem{name: m})
 	}
 
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	delegate := list.NewDefaultDelegate()
+	delegate.ShowDescription = false
+	l := list.New(items, delegate, 0, 0)
 	l.Title = "Select a Model"
 	return l
 }

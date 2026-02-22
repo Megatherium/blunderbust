@@ -25,21 +25,28 @@ const (
 	footerHeight  = 1
 )
 
-type Step int
+type FocusColumn int
 
 const (
-	StepTicketList Step = iota
-	StepHarnessSelect
-	StepModelSelect
-	StepAgentSelect
-	StepConfirm
-	StepResult
-	StepError
+	FocusTickets FocusColumn = iota
+	FocusHarness
+	FocusModel
+	FocusAgent
+)
+
+type ViewState int
+
+const (
+	ViewStateMatrix ViewState = iota
+	ViewStateConfirm
+	ViewStateResult
+	ViewStateError
 )
 
 type UIModel struct {
 	app       *App
-	step      Step
+	state     ViewState
+	focus     FocusColumn
 	selection domain.Selection
 
 	ticketList  list.Model
@@ -76,23 +83,24 @@ func initList(l *list.Model, width, height int, title string) {
 
 func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 	hl := newHarnessList(harnesses)
-	initList(&hl, 0, 0, "Select a Harness (esc: back)")
+	initList(&hl, 0, 0, "Select a Harness")
 
 	tl := newTicketList(nil)
 	initList(&tl, 0, 0, "Select a Ticket")
 
 	ml := newModelList(nil)
-	initList(&ml, 0, 0, "Select a Model (esc: back)")
+	initList(&ml, 0, 0, "Select a Model")
 
 	al := newAgentList(nil)
-	initList(&al, 0, 0, "Select an Agent (esc: back)")
+	initList(&al, 0, 0, "Select an Agent")
 
 	h := help.New()
 	h.ShowAll = false
 
 	return UIModel{
 		app:         app,
-		step:        StepTicketList,
+		state:       ViewStateMatrix,
+		focus:       FocusTickets,
 		harnesses:   harnesses,
 		ticketList:  tl,
 		harnessList: hl,
@@ -232,15 +240,17 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	switch m.step {
-	case StepTicketList:
-		m.ticketList, cmd = m.ticketList.Update(msg)
-	case StepHarnessSelect:
-		m.harnessList, cmd = m.harnessList.Update(msg)
-	case StepModelSelect:
-		m.modelList, cmd = m.modelList.Update(msg)
-	case StepAgentSelect:
-		m.agentList, cmd = m.agentList.Update(msg)
+	if m.state == ViewStateMatrix {
+		switch m.focus {
+		case FocusTickets:
+			m.ticketList, cmd = m.ticketList.Update(msg)
+		case FocusHarness:
+			m.harnessList, cmd = m.harnessList.Update(msg)
+		case FocusModel:
+			m.modelList, cmd = m.modelList.Update(msg)
+		case FocusAgent:
+			m.agentList, cmd = m.agentList.Update(msg)
+		}
 	}
 
 	m.updateKeyBindings()
@@ -248,12 +258,17 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *UIModel) updateKeyBindings() {
-	switch m.step {
-	case StepTicketList:
-		m.keys.Back.SetEnabled(false)
-		m.keys.Refresh.SetEnabled(true)
+	switch m.state {
+	case ViewStateMatrix:
+		if m.focus == FocusTickets {
+			m.keys.Back.SetEnabled(false)
+			m.keys.Refresh.SetEnabled(true)
+		} else {
+			m.keys.Back.SetEnabled(true)
+			m.keys.Refresh.SetEnabled(false)
+		}
 		m.keys.Enter.SetEnabled(true)
-	case StepResult, StepError:
+	case ViewStateResult, ViewStateError:
 		m.keys.Back.SetEnabled(false)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(false)
@@ -278,7 +293,7 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 func (m UIModel) handleErrMsg(msg errMsg) (tea.Model, tea.Cmd) {
 	m.err = msg.err
 	m.loading = false
-	m.step = StepError
+	m.state = ViewStateError
 	return m, nil
 }
 
@@ -290,7 +305,7 @@ func (m UIModel) handleWarningMsg(msg warningMsg) (tea.Model, tea.Cmd) {
 func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 	m.launchResult = msg.res
 	m.err = msg.err
-	m.step = StepResult
+	m.state = ViewStateResult
 
 	if msg.err == nil && msg.res != nil && msg.res.WindowName != "" {
 		m.monitoringWindow = msg.res.WindowName
@@ -309,7 +324,7 @@ func (m UIModel) handleStatusUpdate(msg statusUpdateMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m UIModel) handleTickMsg(msg tickMsg) (tea.Model, tea.Cmd) {
-	if m.step == StepResult && m.monitoringWindow == msg.windowName {
+	if m.state == ViewStateResult && m.monitoringWindow == msg.windowName {
 		return m, tea.Batch(
 			m.pollWindowStatusCmd(msg.windowName),
 			m.startMonitoringCmd(msg.windowName),
@@ -323,10 +338,20 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd)
 
 	m.width, m.height = msg.Width-h, msg.Height-v-footerHeight
 
-	m.ticketList.SetSize(m.width, m.height)
-	m.harnessList.SetSize(m.width, m.height)
-	m.modelList.SetSize(m.width, m.height)
-	m.agentList.SetSize(m.width, m.height)
+	// Calculate width for 4 columns (subtracting margin between them: 3 gaps of 2 chars each = 6)
+	colWidth := (m.width - 6) / 4
+	if colWidth < 10 {
+		colWidth = 10
+	}
+
+	// Filter height reserved
+	filterHeight := 3
+	listHeight := m.height - filterHeight
+
+	m.ticketList.SetSize(colWidth, listHeight)
+	m.harnessList.SetSize(colWidth, listHeight)
+	m.modelList.SetSize(colWidth, listHeight)
+	m.agentList.SetSize(colWidth, listHeight)
 	m.help.Width = m.width
 
 	return m, nil
@@ -337,22 +362,30 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case "ctrl+c", "q":
 		return m, tea.Quit, true
 	case "r":
-		if m.step == StepTicketList {
+		if m.state == ViewStateMatrix && m.focus == FocusTickets {
 			m.loading = true
 			return m, loadTicketsCmd(m.app.store), true
 		}
 	case "esc":
-		if m.step > StepTicketList && m.step != StepResult && m.step != StepError {
-			m.step--
-			if m.step == StepAgentSelect && len(m.selection.Harness.SupportedAgents) <= 1 {
-				m.step--
-			}
-			if m.step == StepModelSelect && len(m.selection.Harness.SupportedModels) <= 1 {
-				m.step--
-			}
-			if m.step == StepHarnessSelect && len(m.harnesses) == 1 {
-				m.step--
-			}
+		if m.state == ViewStateConfirm {
+			m.state = ViewStateMatrix
+			return m, nil, true
+		}
+		if m.state == ViewStateMatrix && m.focus > FocusTickets {
+			m.focus--
+			// Optionally clear selection when going back
+			return m, nil, true
+		}
+	case "left":
+		if m.state == ViewStateMatrix && m.focus > FocusTickets {
+			m.focus--
+			return m, nil, true
+		}
+	case "right":
+		if m.state == ViewStateMatrix && m.focus < FocusAgent {
+			// Ensure current selection is valid before allowing right movement
+			// (Simple logic: just simulate Enter or allow free movement)
+			m.focus++
 			return m, nil, true
 		}
 	case "enter":
@@ -363,45 +396,59 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 }
 
 func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
-	switch m.step {
-	case StepTicketList:
-		if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
-			m.selection.Ticket = i.ticket
-			if len(m.harnesses) == 1 {
-				m.selection.Harness = m.harnesses[0]
-				return m.handleModelSkip()
+	switch m.state {
+	case ViewStateMatrix:
+		switch m.focus {
+		case FocusTickets:
+			if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
+				m.selection.Ticket = i.ticket
+				
+				// Set models based on harness if harness changes
+				if len(m.harnesses) == 1 {
+					m.selection.Harness = m.harnesses[0]
+					m, _ = m.handleModelSkip() // internally populates models
+				}
+				
+				if m.focus < FocusAgent {
+					m.focus++
+				}
+				return m, nil
 			}
-			m.step = StepHarnessSelect
-			return m, nil
+		case FocusHarness:
+			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+				m.selection.Harness = i.harness
+				m, _ = m.handleModelSkip()
+				if m.focus < FocusAgent {
+					m.focus++
+				}
+				return m, nil
+			}
+		case FocusModel:
+			if i, ok := m.modelList.SelectedItem().(modelItem); ok {
+				m.selection.Model = i.name
+				m, _ = m.handleAgentSkip()
+				if m.focus < FocusAgent {
+					m.focus++
+				}
+				return m, nil
+			}
+		case FocusAgent:
+			if i, ok := m.agentList.SelectedItem().(agentItem); ok {
+				m.selection.Agent = i.name
+				m.state = ViewStateConfirm
+				return m, nil
+			}
 		}
-	case StepHarnessSelect:
-		if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
-			m.selection.Harness = i.harness
-			m.step = StepModelSelect
-			return m.handleModelSkip()
-		}
-	case StepModelSelect:
-		if i, ok := m.modelList.SelectedItem().(modelItem); ok {
-			m.selection.Model = i.name
-			m.step = StepAgentSelect
-			return m.handleAgentSkip()
-		}
-	case StepAgentSelect:
-		if i, ok := m.agentList.SelectedItem().(agentItem); ok {
-			m.selection.Agent = i.name
-			m.step = StepConfirm
-			return m, nil
-		}
-	case StepConfirm:
-		m.step = StepResult
+	case ViewStateConfirm:
+		m.state = ViewStateResult
 		return m, m.launchCmd()
-	case StepResult:
+	case ViewStateResult:
 		return m, tea.Quit
 	}
 	return m, nil
 }
 
-func (m UIModel) handleModelSkip() (tea.Model, tea.Cmd) {
+func (m UIModel) handleModelSkip() (UIModel, tea.Cmd) {
 	models := m.selection.Harness.SupportedModels
 
 	// Expand providers if requested
@@ -431,60 +478,102 @@ func (m UIModel) handleModelSkip() (tea.Model, tea.Cmd) {
 	}
 	models = uniqueModels
 
-	if len(models) == 1 {
-		m.selection.Model = models[0]
-		m.step = StepAgentSelect
-		return m.handleAgentSkip()
-	} else if len(models) == 0 {
+	// Allow empty selection
+	if len(models) == 0 {
 		m.selection.Model = ""
-		m.step = StepAgentSelect
-		return m.handleAgentSkip()
 	}
 	m.modelList = newModelList(models)
-	initList(&m.modelList, m.width, m.height, "Select a Model (esc: back)")
+	
+	colWidth := (m.width - 6) / 4
+	if colWidth < 10 {
+		colWidth = 10
+	}
+	listHeight := m.height - 3
+	initList(&m.modelList, colWidth, listHeight, "Select a Model")
+
 	return m, nil
 }
 
-func (m UIModel) handleAgentSkip() (tea.Model, tea.Cmd) {
+func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 	agents := m.selection.Harness.SupportedAgents
-	switch len(agents) {
-	case 1:
-		m.selection.Agent = agents[0]
-		m.step = StepConfirm
-	case 0:
+	if len(agents) == 0 {
 		m.selection.Agent = ""
-		m.step = StepConfirm
-	default:
-		m.agentList = newAgentList(agents)
-		initList(&m.agentList, m.width, m.height, "Select an Agent (esc: back)")
 	}
+	
+	m.agentList = newAgentList(agents)
+	colWidth := (m.width - 6) / 4
+	if colWidth < 10 {
+		colWidth = 10
+	}
+	listHeight := m.height - 3
+	initList(&m.agentList, colWidth, listHeight, "Select an Agent")
+	
 	return m, nil
 }
 
 func (m UIModel) renderMainContent() string {
 	var s string
-	switch m.step {
-	case StepTicketList:
+	switch m.state {
+	case ViewStateMatrix:
 		if m.loading {
-			s = "Loading tickets..."
+			s = "Loading tickets...\n"
 		} else {
-			s = m.ticketList.View()
+			// Dim unfocused lists
+			var tView, hView, mView, aView string
+			
+			if m.focus == FocusTickets {
+				tView = m.ticketList.View()
+			} else {
+				tView = lipgloss.NewStyle().Faint(true).Render(m.ticketList.View())
+			}
+			
+			if m.focus == FocusHarness {
+				hView = m.harnessList.View()
+			} else {
+				hView = lipgloss.NewStyle().Faint(true).Render(m.harnessList.View())
+			}
+			
+			if m.focus == FocusModel {
+				mView = m.modelList.View()
+			} else {
+				mView = lipgloss.NewStyle().Faint(true).Render(m.modelList.View())
+			}
+			
+			if m.focus == FocusAgent {
+				aView = m.agentList.View()
+			} else {
+				aView = lipgloss.NewStyle().Faint(true).Render(m.agentList.View())
+			}
+			
+			// Top Filter scaffolding
+			filterBox := lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder()).
+				Width(m.width - 2). // -2 for borders
+				Height(1).
+				Padding(0, 1).
+				Render("Filters: [All] | (Press / to search - Reactive Filter bb-0vw pending)")
+				
+			matrixBox := lipgloss.JoinHorizontal(lipgloss.Top,
+				tView,
+				lipgloss.NewStyle().Width(2).Render("  "),
+				hView,
+				lipgloss.NewStyle().Width(2).Render("  "),
+				mView,
+				lipgloss.NewStyle().Width(2).Render("  "),
+				aView,
+			)
+			
+			s = lipgloss.JoinVertical(lipgloss.Top, filterBox, matrixBox)
 		}
-	case StepHarnessSelect:
-		s = m.harnessList.View()
-	case StepModelSelect:
-		s = m.modelList.View()
-	case StepAgentSelect:
-		s = m.agentList.View()
-	case StepConfirm:
+	case ViewStateConfirm:
 		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun)
-	case StepResult:
+	case ViewStateResult:
 		if m.launchResult == nil && m.err == nil {
-			s = "Launching..."
+			s = "Launching...\n"
 		} else {
 			s = resultView(m.launchResult, m.err, m.windowStatusEmoji, m.windowStatus)
 		}
-	case StepError:
+	case ViewStateError:
 		s = errorView(m.err)
 	}
 

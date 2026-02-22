@@ -70,7 +70,7 @@ type UIModel struct {
 
 	showModal    bool
 	modalContent string
-	
+
 	showSidebar  bool
 	sidebarWidth int
 	tWidth       int
@@ -108,7 +108,7 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 
 	h := help.New()
 	h.ShowAll = false
-	
+
 	// Apply footer colors to help styles so the background isn't transparent behind the text
 	bgColor := lipgloss.Color(footerBgColor)
 	fgColor := lipgloss.Color(footerFgColor)
@@ -490,13 +490,13 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 		case FocusTickets:
 			if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
 				m.selection.Ticket = i.ticket
-				
+
 				// Set models based on harness if harness changes
 				if len(m.harnesses) == 1 {
 					m.selection.Harness = m.harnesses[0]
 					m, _ = m.handleModelSkip() // internally populates models
 				}
-				
+
 				if m.focus < FocusAgent {
 					m.focus++
 				}
@@ -580,7 +580,7 @@ func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 	if len(agents) == 0 {
 		m.selection.Agent = ""
 	}
-	
+
 	m.agentList = newAgentList(agents)
 	m.updateSizes()
 	return m, nil
@@ -616,42 +616,42 @@ func (m UIModel) renderMainContent() string {
 					Width(w - 2).
 					Height(listHeight - 2)
 			}
-				
+
 			var tView, hView, mView, aView string
-			
+
 			if m.focus == FocusTickets {
 				tView = activeBorder(m.tWidth).Render(m.ticketList.View())
 			} else {
 				tView = inactiveBorder(m.tWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.ticketList.View()))
 			}
-			
+
 			if m.focus == FocusHarness {
 				hView = activeBorder(m.hWidth).Render(m.harnessList.View())
 			} else {
 				hView = inactiveBorder(m.hWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.harnessList.View()))
 			}
-			
+
 			if m.focus == FocusModel {
 				mView = activeBorder(m.mWidth).Render(m.modelList.View())
 			} else {
 				mView = inactiveBorder(m.mWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.modelList.View()))
 			}
-			
+
 			if m.focus == FocusAgent {
 				aView = activeBorder(m.aWidth).Render(m.agentList.View())
 			} else {
 				aView = inactiveBorder(m.aWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.agentList.View()))
 			}
-			
+
 			matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6
-			
+
 			filterBox := lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
-				Width(matrixWidth - 2).
+				Width(matrixWidth-2).
 				Height(1).
 				Padding(0, 1).
 				Render("Filters: [All] | (Press / to search - Reactive Filter bb-0vw pending)")
-				
+
 			matrixBox := lipgloss.JoinHorizontal(lipgloss.Top,
 				tView,
 				lipgloss.NewStyle().Width(2).Render("  "),
@@ -661,7 +661,7 @@ func (m UIModel) renderMainContent() string {
 				lipgloss.NewStyle().Width(2).Render("  "),
 				aView,
 			)
-			
+
 			rightPanelBox := lipgloss.JoinVertical(lipgloss.Top, filterBox, matrixBox)
 
 			if m.showSidebar {
@@ -671,8 +671,8 @@ func (m UIModel) renderMainContent() string {
 				}
 				sidebarBox := lipgloss.NewStyle().
 					Border(lipgloss.RoundedBorder()).
-					Width(w - 2).
-					Height(m.height - 2).
+					Width(w-2).
+					Height(m.height-2).
 					Padding(0, 1).
 					Render("Project Sidebar\n\n(Pending bb-lh7)")
 

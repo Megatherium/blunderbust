@@ -93,6 +93,12 @@ tickets, err := store.ListTickets(ctx, data.TicketFilter{
 
 You can use the timeout command (and should) if you want to start the TUI but guarantee a return to shell
 
+### Taking Visual Screenshots
+
+If you need to visually inspect the TUI to see how it looks, you can use the `make screenshot` target.
+This will use `vhs` (and `ttyd`) to run the TUI in demo mode and save a screenshot as `screenshot.png` in the root of the project.
+Ensure `vhs` and `ttyd` are installed. If missing, the target will output instructions on how to install them.
+
 ## Modern tooling
 
 All kinds of modern replacements for standard shell tools are available: rg, fd, sd, choose, hck

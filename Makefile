@@ -13,10 +13,16 @@ BINARY_PATH := ./cmd/blunderbust
 # Build variables
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
+LDFLAGS := -ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
+DEBUGLDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
 
 # Default target
 all: build
+
+## debug: Build the binary with all symbols
+debug:
+	go build $(DEBUGLDFLAGS) -o $(BINARY_NAME)-debug $(BINARY_PATH)
+	@echo "Built: $(BINARY_NAME)-debug"
 
 ## build: Build the binary
 build:
@@ -56,6 +62,17 @@ fmt:
 ## vet: Run go vet
 vet:
 	go vet ./...
+
+## screenshot: Generate a screenshot of the app TUI using vhs
+screenshot: build
+	@if command -v vhs >/dev/null 2>&1 && command -v ttyd >/dev/null 2>&1; then \
+		vhs scripts/screenshot.tape; \
+	else \
+		echo "vhs or ttyd not installed. Install with:"; \
+		echo "  go install github.com/charmbracelet/vhs@latest"; \
+		echo "  and ensure ttyd is in your PATH (e.g. brew install ttyd, apt install ttyd, or mise use -g ttyd)"; \
+		exit 1; \
+	fi
 
 ## tidy: Tidy and verify module dependencies
 tidy:

@@ -42,3 +42,8 @@ error.log
 bdb
 /blunderbust
 config.yaml
+
+# Screenshots
+screenshot.png
+screenshot.gif
+bdb-debug

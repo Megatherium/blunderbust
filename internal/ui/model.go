@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -20,8 +21,8 @@ import (
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 const (
-	footerBgColor = "236"
-	footerFgColor = "251"
+	footerBgColor = "62"
+	footerFgColor = "230"
 	footerHeight  = 1
 )
 
@@ -67,6 +68,9 @@ type UIModel struct {
 	launchResult *domain.LaunchResult
 	loading      bool
 
+	showModal    bool
+	modalContent string
+
 	// Window status monitoring
 	windowStatus      string
 	windowStatusEmoji string
@@ -76,6 +80,7 @@ type UIModel struct {
 func initList(l *list.Model, width, height int, title string) {
 	l.Title = title
 	l.SetShowHelp(false)
+	l.SetShowStatusBar(false)
 	if width > 0 && height > 0 {
 		l.SetSize(width, height)
 	}
@@ -109,6 +114,7 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		help:        h,
 		keys:        keys,
 		loading:     true,
+		showModal:   false,
 	}
 }
 
@@ -143,6 +149,7 @@ type launchResultMsg struct {
 	res *domain.LaunchResult
 	err error
 }
+type modalContentMsg string
 type statusUpdateMsg struct {
 	status string
 	emoji  string
@@ -157,6 +164,16 @@ func loadTicketsCmd(store data.TicketStore) tea.Cmd {
 			return errMsg{err}
 		}
 		return ticketsLoadedMsg(tickets)
+	}
+}
+
+func loadModalCmd(ticketID string) tea.Cmd {
+	return func() tea.Msg {
+		out, err := exec.Command("bd", "show", ticketID).CombinedOutput()
+		if err != nil {
+			return modalContentMsg(fmt.Sprintf("Error loading bd show:\n%v\n%s", err, string(out)))
+		}
+		return modalContentMsg(string(out))
 	}
 }
 
@@ -222,6 +239,10 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case warningMsg:
 		return m.handleWarningMsg(msg)
 
+	case modalContentMsg:
+		m.modalContent = string(msg)
+		return m, nil
+
 	case launchResultMsg:
 		return m.handleLaunchResult(msg)
 
@@ -263,19 +284,23 @@ func (m *UIModel) updateKeyBindings() {
 		if m.focus == FocusTickets {
 			m.keys.Back.SetEnabled(false)
 			m.keys.Refresh.SetEnabled(true)
+			m.keys.Info.SetEnabled(true)
 		} else {
 			m.keys.Back.SetEnabled(true)
 			m.keys.Refresh.SetEnabled(false)
+			m.keys.Info.SetEnabled(false)
 		}
 		m.keys.Enter.SetEnabled(true)
 	case ViewStateResult, ViewStateError:
 		m.keys.Back.SetEnabled(false)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(false)
+		m.keys.Info.SetEnabled(false)
 	default:
 		m.keys.Back.SetEnabled(true)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(true)
+		m.keys.Info.SetEnabled(false)
 	}
 }
 
@@ -358,6 +383,15 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd)
 }
 
 func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if m.showModal {
+		switch msg.String() {
+		case "esc", "q", "enter", "i":
+			m.showModal = false
+		}
+		// Capture all keystrokes while modal is open
+		return m, nil, true
+	}
+
 	switch msg.String() {
 	case "ctrl+c", "q":
 		return m, tea.Quit, true
@@ -380,6 +414,14 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		if m.state == ViewStateMatrix && m.focus > FocusTickets {
 			m.focus--
 			return m, nil, true
+		}
+	case "i":
+		if m.state == ViewStateMatrix && m.focus == FocusTickets {
+			if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
+				m.showModal = true
+				m.modalContent = "Loading bd show..."
+				return m, loadModalCmd(i.ticket.ID), true
+			}
 		}
 	case "right":
 		if m.state == ViewStateMatrix && m.focus < FocusAgent {
@@ -547,7 +589,7 @@ func (m UIModel) renderMainContent() string {
 			
 			// Top Filter scaffolding
 			filterBox := lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder()).
+				Border(lipgloss.RoundedBorder()).
 				Width(m.width - 2). // -2 for borders
 				Height(1).
 				Padding(0, 1).
@@ -575,6 +617,16 @@ func (m UIModel) renderMainContent() string {
 		}
 	case ViewStateError:
 		s = errorView(m.err)
+	}
+
+	if m.showModal {
+		modalBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("205")).
+			Padding(1, 2).
+			Width(m.width - 10).
+			Render(m.modalContent)
+		s = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
 	}
 
 	if len(m.warnings) > 0 {

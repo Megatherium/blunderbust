@@ -7,6 +7,7 @@ type KeyMap struct {
 	Up      key.Binding
 	Down    key.Binding
 	Enter   key.Binding
+	Info    key.Binding
 	Back    key.Binding
 	Refresh key.Binding
 	Quit    key.Binding
@@ -14,13 +15,13 @@ type KeyMap struct {
 
 // ShortHelp returns keybindings to be shown in the mini help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Enter, k.Back, k.Refresh, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Enter, k.Info, k.Back, k.Refresh, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Enter},
+		{k.Up, k.Down, k.Enter, k.Info},
 		{k.Back, k.Refresh, k.Quit},
 	}
 }
@@ -37,6 +38,10 @@ var keys = KeyMap{
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "select"),
+	),
+	Info: key.NewBinding(
+		key.WithKeys("i"),
+		key.WithHelp("i", "info (bd show)"),
 	),
 	Back: key.NewBinding(
 		key.WithKeys("esc"),

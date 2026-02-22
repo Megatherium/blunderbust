@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/megatherium/blunderbuss/internal/domain"
-	"github.com/megatherium/blunderbuss/internal/exec"
+	"github.com/megatherium/blunderbust/internal/domain"
+	"github.com/megatherium/blunderbust/internal/exec"
 )
 
 // Launcher implements the exec.Launcher interface using tmux.
@@ -67,14 +67,14 @@ func (l *Launcher) Launch(
 	}, nil
 }
 
-// validateTmuxContext checks if blunderbuss is running inside a tmux session.
+// validateTmuxContext checks if bdb is running inside a tmux session.
 func (l *Launcher) validateTmuxContext() error {
 	if l.skipTmuxCheck {
 		return nil
 	}
 
 	if os.Getenv("TMUX") == "" {
-		return fmt.Errorf("blunderbuss must be run inside a tmux session")
+		return fmt.Errorf("bdb must be run inside a tmux session")
 	}
 
 	return nil

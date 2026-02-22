@@ -113,43 +113,43 @@ The interface is nicer for humans. You pick whatever feels right for you.
 - **Beads extra**: Add a line like "Affected ticket(s): bb-foo", can be multiple with e.g. review tickets
 - **WARNING**: Forgetting the ticket reference line is a commit message format violation. Double-check before committing.
 
-## Blunderbuss-Specific Instructions
+## Blunderbust-Specific Instructions
 
-### Building Blunderbuss
+### Building Blunderbust
 
 ```bash
 # Standard build (requires CGO for embedded Dolt mode)
 make build
 
 # Server mode only (no CGO required)
-CGO_ENABLED=0 go build -o blunderbuss ./cmd/blunderbuss
+CGO_ENABLED=0 go build -o blunderbust ./cmd/blunderbust
 
 # Development build with debug info
-go build -gcflags="all=-N -l" -o blunderbuss ./cmd/blunderbuss
+go build -gcflags="all=-N -l" -o blunderbust ./cmd/blunderbust
 ```
 
-### Running Blunderbuss
+### Running Blunderbust
 
-**Critical**: Blunderbuss must run inside tmux to create new windows.
+**Critical**: Blunderbust must run inside tmux to create new windows.
 
 ```bash
 # Start tmux if not already running
 tmux
 
 # Run with default config
-./blunderbuss
+bdb
 
 # Run with custom config
-./blunderbuss --config /path/to/config.yaml
+bdb --config /path/to/config.yaml
 
 # Dry run mode (useful for testing without launching)
-./blunderbuss --dry-run
+bdb --dry-run
 
 # Debug mode (verbose logging)
-./blunderbuss --debug
+bdb --debug
 
 # Demo mode (uses fake data)
-./blunderbuss --demo
+bdb --demo
 ```
 
 ### Testing
@@ -173,19 +173,19 @@ go test -race ./...
 **Testing config rendering**:
 ```bash
 # Use dry-run to see rendered commands without launching
-./blunderbuss --dry-run --debug
+bdb --dry-run --debug
 ```
 
 **Testing TUI with fake data**:
 ```bash
 # Use demo mode to test UI without database
-./blunderbuss --demo
+bdb --demo
 ```
 
 **Debugging connection issues**:
 ```bash
 # Enable debug logging to see database connection details
-./blunderbuss --debug --beads-dir ./.beads
+bdb --debug --beads-dir ./.beads
 ```
 
 ### Exit Codes
@@ -198,7 +198,7 @@ When implementing CLI behavior:
 
 ### Key Files to Understand
 
-- `cmd/blunderbuss/main.go` - CLI entrypoint, flag parsing, composition root
+- `cmd/blunderbust/main.go` - CLI entrypoint, flag parsing, composition root
 - `internal/config/yaml.go` - YAML config loading
 - `internal/config/render.go` - Template rendering for commands/prompts
 - `internal/domain/template_context.go` - Available fields for templates
@@ -208,10 +208,10 @@ When implementing CLI behavior:
 
 ### Model Discovery
 
-Blunderbuss supports dynamic model discovery from `models.dev/api.json`.
+Blunderbust supports dynamic model discovery from `models.dev/api.json`.
 
 **Commands**:
-- `blunderbuss update-models`: Manually refresh the local model cache.
+- `blunderbust update-models`: Manually refresh the local model cache.
 
 **Config Patterns**:
 - `provider:<id>`: Expands to all active models for that provider.

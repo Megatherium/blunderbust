@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 func resultView(res *domain.LaunchResult, err error, statusEmoji, status string) string {

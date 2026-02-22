@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 func TestNewTmuxLauncher(t *testing.T) {

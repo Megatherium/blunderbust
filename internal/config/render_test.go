@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 func TestRenderer_RenderCommand_Simple(t *testing.T) {

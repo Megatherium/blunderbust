@@ -1,4 +1,4 @@
-module github.com/megatherium/blunderbuss
+module github.com/megatherium/blunderbust
 
 go 1.25.6
 

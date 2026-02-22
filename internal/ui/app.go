@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/megatherium/blunderbuss/internal/config"
-	"github.com/megatherium/blunderbuss/internal/data"
-	"github.com/megatherium/blunderbuss/internal/data/dolt"
-	"github.com/megatherium/blunderbuss/internal/data/fake"
-	"github.com/megatherium/blunderbuss/internal/discovery"
-	"github.com/megatherium/blunderbuss/internal/exec"
-	"github.com/megatherium/blunderbuss/internal/exec/tmux"
+	"github.com/megatherium/blunderbust/internal/config"
+	"github.com/megatherium/blunderbust/internal/data"
+	"github.com/megatherium/blunderbust/internal/data/dolt"
+	"github.com/megatherium/blunderbust/internal/data/fake"
+	"github.com/megatherium/blunderbust/internal/discovery"
+	"github.com/megatherium/blunderbust/internal/exec"
+	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
 
 // AppOptions configure the TUI application.

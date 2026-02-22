@@ -8,7 +8,7 @@
 
 # Binary name
 BINARY_NAME := bdb
-BINARY_PATH := ./cmd/blunderbuss
+BINARY_PATH := ./cmd/blunderbust
 
 # Build variables
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")

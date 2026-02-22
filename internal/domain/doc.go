@@ -4,7 +4,7 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Package domain contains the core business types and logic for blunderbuss.
+// Package domain contains the core business types and logic for blunderbust.
 //
 // This package defines the fundamental entities that represent tickets,
 // harness configurations, launch specifications, and results. It is the

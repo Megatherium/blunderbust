@@ -48,14 +48,14 @@ type Registry struct {
 }
 
 // NewRegistry creates a new Registry with a default cache path.
-// If cacheDir is empty, it defaults to ~/.cache/blunderbuss.
+// If cacheDir is empty, it defaults to ~/.cache/blunderbust.
 func NewRegistry(cacheDir string) (*Registry, error) {
 	if cacheDir == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return nil, fmt.Errorf("could not determine user home directory: %w", err)
 		}
-		cacheDir = filepath.Join(home, ".cache", "blunderbuss")
+		cacheDir = filepath.Join(home, ".cache", "blunderbust")
 	}
 	return &Registry{
 		cachePath: filepath.Join(cacheDir, "models-api.json"),

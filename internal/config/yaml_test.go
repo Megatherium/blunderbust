@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 func TestYAMLLoader_Load_ValidConfig(t *testing.T) {
@@ -583,7 +583,7 @@ defaults:
   agent: coder
 `
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "blunderbuss.yaml")
+	configPath := filepath.Join(tmpDir, "blunderbust.yaml")
 	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}

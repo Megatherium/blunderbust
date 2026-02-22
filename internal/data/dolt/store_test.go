@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/megatherium/blunderbuss/internal/data"
+	"github.com/megatherium/blunderbust/internal/data"
 )
 
 func TestStore_ListTickets_NoFilter(t *testing.T) {

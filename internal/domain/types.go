@@ -58,7 +58,7 @@ type LaunchResult struct {
 	Error      error
 }
 
-// Config holds the top-level blunderbuss configuration.
+// Config holds the top-level blunderbust configuration.
 type Config struct {
 	Harnesses []Harness
 	Defaults  *Defaults

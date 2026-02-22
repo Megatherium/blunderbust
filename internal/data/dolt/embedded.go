@@ -41,7 +41,7 @@ func newEmbeddedStore(ctx context.Context, beadsDir string, metadata *Metadata) 
 	// Format: file://<path>?database=<name>&commitname=<name>&commitemail=<email>
 	// For read-only access, we still need committer info for the driver to accept the DSN
 	dsn := fmt.Sprintf(
-		"file://%s?database=%s&commitname=blunderbuss&commitemail=blunderbuss@local",
+		"file://%s?database=%s&commitname=blunderbust&commitemail=blunderbust@local",
 		absPath,
 		metadata.DoltDatabase,
 	)

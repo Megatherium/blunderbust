@@ -6,7 +6,7 @@
 
 package config
 
-import "github.com/megatherium/blunderbuss/internal/domain"
+import "github.com/megatherium/blunderbust/internal/domain"
 
 // Loader abstracts configuration file reading and validation.
 type Loader interface {

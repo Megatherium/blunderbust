@@ -9,7 +9,7 @@ package data
 import (
 	"context"
 
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 // TicketStore abstracts ticket retrieval from the underlying data source.

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/megatherium/blunderbuss/internal/data"
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/data"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 // TicketStore is an in-memory fake implementing data.TicketStore.

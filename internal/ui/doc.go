@@ -4,14 +4,13 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Package ui provides the terminal user interface components.
+// Package ui provides the terminal user interface for bdb.
 //
-// This package implements the Bubble Tea TUI for blunderbuss. It
-// contains views for ticket selection, harness/model/agent selection,
-// confirmation screens, and status displays.
+// This package implements the Bubble Tea TUI for blunderbust. It
+// handles user interactions for selecting tickets, harnesses, models,
+// and agents, as well as confirming and launching development sessions.
 //
-// The UI depends only on domain types and interfaces defined in
-// data, config, and exec packages, never on concrete implementations.
-// This allows the UI to be developed and tested independently using
-// fake implementations of the underlying services.
+// The UI is built on the Bubble Tea framework (github.com/charmbracelet/bubbletea)
+// and uses the Bubbles component library (github.com/charmbracelet/bubbles)
+// for common UI elements like lists and tables.
 package ui

@@ -1,4 +1,4 @@
-# Blunderbuss Configuration File
+# Blunderbust Configuration File
 # This file defines harness configurations for launching development environments
 # in tmux windows. Each harness specifies how to invoke a tool with the right
 # context for a given ticket.

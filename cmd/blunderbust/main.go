@@ -12,9 +12,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package main is the entrypoint for the blunderbuss CLI tool.
+// Package main is the entrypoint for the bdb CLI tool.
 //
-// Blunderbuss launches development harnesses (OpenCode, Claude, etc.) in tmux
+// Blunderbust launches development harnesses (OpenCode, Claude, etc.) in tmux
 // windows with context from Beads issues. It provides a TUI-driven workflow
 // for selecting tickets, choosing harness configurations, and launching
 // development sessions.
@@ -23,12 +23,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/megatherium/blunderbuss/internal/config"
-	"github.com/megatherium/blunderbuss/internal/discovery"
-	"github.com/megatherium/blunderbuss/internal/exec/tmux"
-	"github.com/megatherium/blunderbuss/internal/ui"
+	"github.com/megatherium/blunderbust/internal/config"
+	"github.com/megatherium/blunderbust/internal/discovery"
+	"github.com/megatherium/blunderbust/internal/exec/tmux"
+	"github.com/megatherium/blunderbust/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -48,11 +49,11 @@ var (
 	demo       bool
 )
 
-// rootCmd is the base command for the blunderbuss CLI.
+// rootCmd is the base command for the bdb CLI.
 var rootCmd = &cobra.Command{
-	Use:   "blunderbuss",
+	Use:   "bdb",
 	Short: "Launch dev harnesses from Beads issues",
-	Long: `Blunderbuss launches development harnesses (OpenCode, Claude, etc.)
+	Long: `Blunderbust launches development harnesses (OpenCode, Claude, etc.)
 in tmux windows with context from Beads issues.
 
 It provides a TUI-driven workflow for selecting tickets, choosing harness
@@ -65,7 +66,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version and exit",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Blunderbuss %s\nBuilt: %s\n", Version, BuildTime)
+		fmt.Printf("Blunderbust %s\nBuilt: %s\n", Version, BuildTime)
 	},
 }
 
@@ -90,20 +91,20 @@ var updateModelsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(updateModelsCmd)
-	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default: ./config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default: ~/.config/blunderbust/config.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Print commands without executing")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().StringVar(&beadsDir, "beads-dir", "", "Path to beads directory (default: ./.beads)")
 	rootCmd.PersistentFlags().StringVar(&dsn, "dsn", "", "DSN for Dolt server mode (optional, overrides metadata)")
 	rootCmd.PersistentFlags().BoolVar(&demo, "demo", false, "Use fake data instead of real beads database")
-	// --version flag for compatibility (also available as 'blunderbuss version' subcommand)
+	// --version flag for compatibility (also available as 'bdb version' subcommand)
 	rootCmd.PersistentFlags().Bool("version", false, "Print version and exit")
 }
 
 func main() {
 	// Handle --version flag early (before cobra processes arguments)
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
-		fmt.Printf("Blunderbuss %s\nBuilt: %s\n", Version, BuildTime)
+		fmt.Printf("Blunderbust %s\nBuilt: %s\n", Version, BuildTime)
 		os.Exit(0)
 	}
 
@@ -113,12 +114,12 @@ func main() {
 	}
 }
 
-// runRoot executes the main blunderbuss workflow.
+// runRoot executes the main bdb workflow.
 // For the bootstrap phase, this validates flags and prints configuration.
 func runRoot(cmd *cobra.Command, args []string) error {
 	// Check if running inside tmux before starting TUI
 	if os.Getenv("TMUX") == "" {
-		fmt.Fprintln(os.Stderr, "Error: blunderbuss must be run inside a tmux session")
+		fmt.Fprintln(os.Stderr, "Error: bdb must be run inside a tmux session")
 		fmt.Fprintln(os.Stderr, "Start tmux first: tmux")
 		os.Exit(3)
 	}
@@ -139,7 +140,18 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	// Validate and resolve configuration path.
 	cfgPath := configPath
 	if cfgPath == "" {
-		cfgPath = "./config.yaml"
+		// Check for config in XDG config directory first
+		home, err := os.UserHomeDir()
+		if err == nil {
+			xdgConfig := filepath.Join(home, ".config", "blunderbust", "config.yaml")
+			if _, err := os.Stat(xdgConfig); err == nil {
+				cfgPath = xdgConfig
+			}
+		}
+		// Fall back to local config.yaml
+		if cfgPath == "" {
+			cfgPath = "./config.yaml"
+		}
 	}
 
 	if debug {

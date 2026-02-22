@@ -9,7 +9,7 @@ package exec
 import (
 	"context"
 
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 // Launcher abstracts the execution of launch specifications.

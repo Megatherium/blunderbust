@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 // Renderer handles template rendering for harness configurations.

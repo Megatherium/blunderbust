@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/megatherium/blunderbuss/internal/config"
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/config"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 var (

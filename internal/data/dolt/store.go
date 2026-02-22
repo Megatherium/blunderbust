@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/megatherium/blunderbuss/internal/data"
-	"github.com/megatherium/blunderbuss/internal/domain"
+	"github.com/megatherium/blunderbust/internal/data"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 // Store implements data.TicketStore using Dolt.

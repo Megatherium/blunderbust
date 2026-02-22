@@ -1,5 +1,4 @@
 # Binaries
-/blunderbuss
 *.exe
 *.dll
 *.so
@@ -33,6 +32,7 @@ Thumbs.db
 # Local config that shouldn't be committed
 config.local.yaml
 *.local.json
+*.backup
 
 # Build artifacts
 dist/
@@ -40,4 +40,5 @@ build/
 tmp/
 error.log
 bdb
+/blunderbust
 config.yaml

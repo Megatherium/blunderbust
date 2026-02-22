@@ -1,10 +1,10 @@
-# Blunderbuss
+# Blunderbust
 
-Blunderbuss is a TUI-driven launcher for AI coding harnesses, integrated with Beads for issue tracking. Select tickets, configure harnesses, and launch development sessions in organized tmux windows.
+Blunderbust is a TUI-driven launcher for AI coding harnesses, integrated with Beads for issue tracking. Select tickets, configure harnesses, and launch development sessions in organized tmux windows.
 
 ## Overview
 
-Blunderbuss provides a streamlined workflow:
+Blunderbust provides a streamlined workflow:
 - Browse tickets from your Beads/Dolt issue database
 - Choose harness configurations (which tool, model, agent to use)
 - Launch development sessions in new tmux windows
@@ -22,16 +22,16 @@ Think of it as a mission control for AI-assisted development work.
 
 ```bash
 # Clone and build
-git clone https://github.com/megatherium/blunderbuss.git
-cd blunderbuss
+git clone https://github.com/megatherium/blunderbust.git
+cd blunderbust
 make build
 
 # Start a tmux session (required)
 tmux
 
-# Run blunderbuss in your beads project directory
+# Run blunderbust in your beads project directory
 cd /path/to/your/beads/project
-../blunderbuss/blunderbuss
+../blunderbust/blunderbust
 
 # Use the TUI to select a ticket and launch
 ```
@@ -47,38 +47,38 @@ The default mode connects to a local Dolt database stored in `.beads/dolt/`.
 make build
 ```
 
-This builds the binary as `blunderbuss` in the current directory.
+This builds the binary as `blunderbust` in the current directory.
 
 ### Server Mode (No CGO Required)
 
 If you only use server mode connections (remote Dolt sql-server), you can build without CGO:
 
 ```bash
-CGO_ENABLED=0 go build -o blunderbuss ./cmd/blunderbuss
+CGO_ENABLED=0 go build -o blunderbust ./cmd/blunderbust
 ```
 
 ## Running
 
-**Important**: Blunderbuss must run inside a tmux session.
+**Important**: Blunderbust must run inside a tmux session.
 
 ```bash
 # Start tmux if not already running
 tmux
 
-# Run with default config (looks for ./config.yaml)
-./blunderbuss
+# Run with default config (checks ~/.config/blunderbust/config.yaml, then ./config.yaml)
+./bdb
 
 # Run with custom config path
-./blunderbuss --config /path/to/config.yaml
+./blunderbust --config /path/to/config.yaml
 
 # Dry run mode (prints commands without executing)
-./blunderbuss --dry-run
+./blunderbust --dry-run
 
 # Debug mode (verbose logging to stderr)
-./blunderbuss --debug
+./blunderbust --debug
 
 # Demo mode (uses fake data instead of real beads database)
-./blunderbuss --demo
+./blunderbust --demo
 ```
 
 ## Usage Flow
@@ -92,15 +92,15 @@ tmux
 
 ## Configuration
 
-Blunderbuss uses a `config.yaml` file to define harnesses. See `config.example.yaml` for a template.
+Blunderbust uses a `config.yaml` file to define harnesses. See `config.example.yaml` for a template.
 
 ### Model Discovery
 
-Blunderbuss can automatically discover available models from [models.dev](https://models.dev).
+Blunderbust can automatically discover available models from [models.dev](https://models.dev).
 
 To update the local model cache:
 ```bash
-blunderbuss update-models
+blunderbust update-models
 ```
 
 In your `config.yaml`, you can use dynamic model lists:
@@ -113,7 +113,7 @@ harnesses:
       - gpt-4o           # Specific model
 ```
 
-Configuration is loaded from a YAML file. By default, blunderbuss looks for `./config.yaml`.
+Configuration is loaded from a YAML file. By default, blunderbust checks for `~/.config/blunderbust/config.yaml`, then falls back to `./config.yaml`.
 
 Use `--config` to specify a custom path. See `config.example.yaml` for a complete example.
 
@@ -163,7 +163,7 @@ prompt_template: "Work on {{.TicketID}}: {{.TicketTitle}}"
 
 ## Beads Database Connection
 
-Blunderbuss reads ticket data from a Beads/Dolt database. The connection mode is determined by `.beads/metadata.json`:
+Blunderbust reads ticket data from a Beads/Dolt database. The connection mode is determined by `.beads/metadata.json`:
 
 ### Embedded Mode (Local Database)
 
@@ -199,20 +199,20 @@ For server mode with authentication, set the password via environment variable:
 
 ```bash
 export BEADS_DOLT_PASSWORD="your-password"
-./blunderbuss
+./blunderbust
 ```
 
 You can also override the connection using the `--dsn` flag:
 
 ```bash
-./blunderbuss --dsn "user:password@tcp(host:port)/database"
+./blunderbust --dsn "user:password@tcp(host:port)/database"
 ```
 
 ## Command-Line Flags
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--config` | Path to config file | `./config.yaml` |
+| `--config` | Path to config file | `~/.config/blunderbust/config.yaml` or `./config.yaml` |
 | `--beads-dir` | Path to beads directory | `./.beads` |
 | `--dry-run` | Print commands without executing | `false` |
 | `--debug` | Enable debug logging | `false` |
@@ -249,10 +249,10 @@ sudo dnf install tmux
 
 ### "Not running inside tmux"
 
-Blunderbuss requires tmux to create new windows. Start a tmux session first:
+Blunderbust requires tmux to create new windows. Start a tmux session first:
 ```bash
 tmux
-./blunderbuss
+./blunderbust
 ```
 
 ### "failed to load config: file not found"
@@ -263,7 +263,7 @@ tmux
 cp config.example.yaml config.yaml
 
 # Or specify a custom path
-./blunderbuss --config /path/to/config.yaml
+./blunderbust --config /path/to/config.yaml
 ```
 
 ### "failed to load config: parse error"
@@ -279,7 +279,7 @@ python3 -c "import yaml; yaml.safe_load(open('config.yaml'))"
 
 ### "Is this a beads project?"
 
-Blunderbuss expects a `.beads/` directory with a Dolt database.
+Blunderbust expects a `.beads/` directory with a Dolt database.
 
 **Solution**: Initialize Beads in your project
 ```bash
@@ -317,7 +317,7 @@ make build
 
 Or build without CGO if using server mode only:
 ```bash
-CGO_ENABLED=0 go build -o blunderbuss ./cmd/blunderbuss
+CGO_ENABLED=0 go build -o blunderbust ./cmd/blunderbust
 ```
 
 ### TUI display issues
@@ -331,7 +331,7 @@ export TERM=xterm-256color
 
 # Run inside tmux
 tmux
-./blunderbuss
+./blunderbust
 ```
 
 ## Development

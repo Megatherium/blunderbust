@@ -11,10 +11,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/megatherium/blunderbuss/internal/data"
-	"github.com/megatherium/blunderbuss/internal/discovery"
-	"github.com/megatherium/blunderbuss/internal/domain"
-	"github.com/megatherium/blunderbuss/internal/exec/tmux"
+	"github.com/megatherium/blunderbust/internal/data"
+	"github.com/megatherium/blunderbust/internal/discovery"
+	"github.com/megatherium/blunderbust/internal/domain"
+	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
 
 var docStyle = lipgloss.NewStyle().Margin(1, 2)

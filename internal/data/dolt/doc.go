@@ -51,6 +51,6 @@
 // Both modes query the ready_issues view which filters for unblocked,
 // non-deferred, non-ephemeral issues.
 //
-// Note: This package provides read-only access. Blunderbuss never writes
+// Note: This package provides read-only access. Blunderbust never writes
 // to the beads database.
 package dolt

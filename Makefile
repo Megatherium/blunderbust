@@ -21,12 +21,12 @@ all: build
 
 ## debug: Build the binary with all symbols
 debug:
-	go build $(DEBUGLDFLAGS) -o $(BINARY_NAME)-debug $(BINARY_PATH)
+	GOFIPS140=off go build $(DEBUGLDFLAGS) -o $(BINARY_NAME)-debug $(BINARY_PATH)
 	@echo "Built: $(BINARY_NAME)-debug"
 
 ## build: Build the binary
 build:
-	go build $(LDFLAGS) -o $(BINARY_NAME) $(BINARY_PATH)
+	GOFIPS140=off go build $(LDFLAGS) -o $(BINARY_NAME) $(BINARY_PATH)
 	@echo "Built: $(BINARY_NAME)"
 
 ## run: Build and run the binary
@@ -86,7 +86,7 @@ deps:
 
 ## install: Install binary to GOPATH/bin
 install: build
-	go install $(LDFLAGS) $(BINARY_PATH)
+	GOFIPS140=off go install $(LDFLAGS) $(BINARY_PATH)
 
 ## help: Show this help message
 help:

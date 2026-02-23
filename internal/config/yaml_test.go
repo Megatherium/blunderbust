@@ -623,7 +623,7 @@ defaults:
 		Agent:   "coder",
 	}
 
-	spec, err := renderer.RenderSelection(selection)
+	spec, err := renderer.RenderSelection(selection, "")
 	if err != nil {
 		t.Fatalf("Failed to render selection: %v", err)
 	}

@@ -76,19 +76,16 @@ func (r *Renderer) renderTemplate(harnessName, templateName, templateStr string,
 // RenderSelection renders both command and prompt for a complete selection.
 // Returns a LaunchSpec with all fields populated.
 // Note: Prompt is rendered before command to allow {{.Prompt}} in command templates.
-func (r *Renderer) RenderSelection(selection domain.Selection) (*domain.LaunchSpec, error) {
-	ctx := BuildTemplateContext(selection)
+func (r *Renderer) RenderSelection(selection domain.Selection, workDir string) (*domain.LaunchSpec, error) {
+	ctx := BuildTemplateContext(selection, workDir)
 
-	// Render prompt first so it's available in the context for command rendering
 	renderedPrompt, err := r.RenderPrompt(selection.Harness, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render prompt: %w", err)
 	}
 
-	// Update context with rendered prompt for use in command template
 	ctx.Prompt = renderedPrompt
 
-	// Now render command with the updated context (which includes Prompt)
 	renderedCmd, err := r.RenderCommand(selection.Harness, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render command: %w", err)
@@ -99,14 +96,14 @@ func (r *Renderer) RenderSelection(selection domain.Selection) (*domain.LaunchSp
 		RenderedCommand: renderedCmd,
 		RenderedPrompt:  renderedPrompt,
 		WindowName:      selection.Ticket.ID,
+		WorkDir:         workDir,
 	}, nil
 }
 
 // BuildTemplateContext creates a TemplateContext from a Selection.
 // This is the single source of truth for mapping Selection to TemplateContext.
-func BuildTemplateContext(sel domain.Selection) domain.TemplateContext {
+func BuildTemplateContext(sel domain.Selection, workDir string) domain.TemplateContext {
 	return domain.TemplateContext{
-		// Ticket fields
 		TicketID:          sel.Ticket.ID,
 		TicketTitle:       sel.Ticket.Title,
 		TicketDescription: sel.Ticket.Description,
@@ -117,27 +114,21 @@ func BuildTemplateContext(sel domain.Selection) domain.TemplateContext {
 		TicketCreatedAt:   sel.Ticket.CreatedAt,
 		TicketUpdatedAt:   sel.Ticket.UpdatedAt,
 
-		// Harness fields
 		HarnessName: sel.Harness.Name,
 
-		// Selection fields
 		Model: sel.Model,
 		Agent: sel.Agent,
 
-		// Environment fields (populated by caller if needed)
 		RepoPath: "",
 		Branch:   "",
-		WorkDir:  "",
+		WorkDir:  workDir,
 		User:     "",
 		Hostname: "",
 
-		// Runtime fields (populated by caller if needed)
 		DryRun:    false,
 		Debug:     false,
 		Timestamp: sel.Ticket.UpdatedAt,
 
-		// Prompt field - will be populated during RenderSelection
-		// if a prompt_template is configured
 		Prompt: "",
 	}
 }

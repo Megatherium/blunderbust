@@ -48,6 +48,7 @@ type LaunchSpec struct {
 	RenderedCommand string
 	RenderedPrompt  string
 	WindowName      string
+	WorkDir         string
 }
 
 // LaunchResult captures the outcome of a launch attempt.

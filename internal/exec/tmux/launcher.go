@@ -82,16 +82,16 @@ func (l *Launcher) validateTmuxContext() error {
 
 // buildCommand constructs the full tmux command with environment variables.
 func (l *Launcher) buildCommand(spec domain.LaunchSpec) []string {
-	// Preallocate with a reasonable capacity
-	args := make([]string, 0, 10)
+	args := make([]string, 0, 12)
 
-	// Unset LINES and COLUMNS which are incorrectly set to 0 when
-	// running inside bubbletea's alternate screen mode.
 	args = append(args, "tmux", "new-window", "-e", "LINES=", "-e", "COLUMNS=")
 
-	// Set environment variables
 	for key, val := range spec.Selection.Harness.Env {
 		args = append(args, "-e", fmt.Sprintf("%s=%s", key, val))
+	}
+
+	if spec.WorkDir != "" {
+		args = append(args, "-c", spec.WorkDir)
 	}
 
 	args = append(args, "-n", spec.WindowName, spec.RenderedCommand)

@@ -205,7 +205,7 @@ func TestRenderer_RenderSelection_Complete(t *testing.T) {
 		Agent: "coder",
 	}
 
-	spec, err := renderer.RenderSelection(selection)
+	spec, err := renderer.RenderSelection(selection, "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestRenderer_RenderSelection_NoPrompt(t *testing.T) {
 		Agent: "test-agent",
 	}
 
-	spec, err := renderer.RenderSelection(selection)
+	spec, err := renderer.RenderSelection(selection, "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestRenderer_RenderSelection_CommandError(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.RenderSelection(selection)
+	_, err := renderer.RenderSelection(selection, "")
 	if err == nil {
 		t.Fatal("Expected error for invalid command template")
 	}
@@ -301,7 +301,7 @@ func TestRenderer_RenderSelection_PromptError(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.RenderSelection(selection)
+	_, err := renderer.RenderSelection(selection, "")
 	if err == nil {
 		t.Fatal("Expected error for invalid prompt template")
 	}
@@ -332,7 +332,7 @@ func TestBuildTemplateContext_Complete(t *testing.T) {
 		Agent: "coder",
 	}
 
-	ctx := BuildTemplateContext(selection)
+	ctx := BuildTemplateContext(selection, "")
 
 	// Verify ticket fields
 	if ctx.TicketID != "bb-abc" {
@@ -448,7 +448,7 @@ func TestRenderer_RenderCommand_WithPromptVariable(t *testing.T) {
 		Agent: "coder",
 	}
 
-	spec, err := renderer.RenderSelection(selection)
+	spec, err := renderer.RenderSelection(selection, "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -491,7 +491,7 @@ func TestRenderer_RenderCommand_PromptVariable_EmptyPrompt(t *testing.T) {
 		Agent: "coder",
 	}
 
-	spec, err := renderer.RenderSelection(selection)
+	spec, err := renderer.RenderSelection(selection, "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -533,7 +533,7 @@ func TestRenderer_RenderCommand_PromptVariable_Multiline(t *testing.T) {
 		Agent: "coder",
 	}
 
-	spec, err := renderer.RenderSelection(selection)
+	spec, err := renderer.RenderSelection(selection, "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

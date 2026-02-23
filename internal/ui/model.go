@@ -44,12 +44,13 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 	return UIModel{
 		app:         app,
 		state:       ViewStateMatrix,
-		focus:       FocusTickets,
+		focus:       FocusSidebar,
 		harnesses:   harnesses,
 		ticketList:  tl,
 		harnessList: hl,
 		modelList:   ml,
 		agentList:   al,
+		sidebar:     NewSidebarModel(),
 		help:        h,
 		keys:        keys,
 		loading:     true,
@@ -77,6 +78,7 @@ func (m UIModel) Init() tea.Cmd {
 			}
 			return ticketsLoadedMsg(tickets)
 		},
+		discoverWorktreesCmd(m.app.opts.BeadsDir),
 	)
 }
 
@@ -106,6 +108,12 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		return m.handleTickMsg(msg)
 
+	case worktreesDiscoveredMsg:
+		return m.handleWorktreesDiscovered(msg)
+
+	case WorktreeSelectedMsg:
+		return m.handleWorktreeSelected(msg)
+
 	case tea.WindowSizeMsg:
 		m, cmd = m.handleWindowSizeMsg(msg)
 		return m, cmd
@@ -118,6 +126,8 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.state == ViewStateMatrix {
 		switch m.focus {
+		case FocusSidebar:
+			m.sidebar, cmd = m.sidebar.Update(msg)
 		case FocusTickets:
 			m.ticketList, cmd = m.ticketList.Update(msg)
 		case FocusHarness:

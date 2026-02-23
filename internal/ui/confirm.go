@@ -20,7 +20,7 @@ var (
 				MarginBottom(1)
 )
 
-func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun bool) string {
+func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun bool, workDir string) string {
 	s := ""
 
 	if dryRun {
@@ -43,8 +43,12 @@ func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun b
 	}
 	s += fmt.Sprintf("Agent:   %s\n\n", itemStyle.Render(agentName))
 
+	if workDir != "" {
+		s += fmt.Sprintf("WorkDir: %s\n\n", itemStyle.Render(workDir))
+	}
+
 	if renderer != nil {
-		spec, err := renderer.RenderSelection(selection)
+		spec, err := renderer.RenderSelection(selection, workDir)
 		if err == nil && spec != nil {
 			s += titleStyle.Render("Rendered Command:") + "\n"
 			s += itemStyle.Render(fmt.Sprintf("```bash\n%s\n```", spec.RenderedCommand)) + "\n\n"

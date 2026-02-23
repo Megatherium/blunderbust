@@ -10,6 +10,16 @@ import (
 	"github.com/megatherium/blunderbust/internal/domain"
 )
 
+// Tree rendering constants
+// The prefix constants use 2 characters (symbol + space) to maintain consistent
+// 4-character indentation alignment with indentString ("  ").
+const (
+	prefixExpanded  = "▼ "
+	prefixCollapsed = "▶ "
+	prefixLeaf      = "  "
+	indentString    = "  "
+)
+
 // Style definitions for sidebar rendering.
 var (
 	sidebarStyle = lipgloss.NewStyle().
@@ -47,8 +57,6 @@ var (
 	branchStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "248", Dark: "248"}).
 			Faint(true)
-
-	indentString = "  "
 )
 
 // SidebarModel is a bubbletea model that renders a tree view of projects,
@@ -100,6 +108,13 @@ func (m SidebarModel) handleKey(msg tea.KeyMsg) (SidebarModel, tea.Cmd) {
 		m.state.ToggleExpand()
 	}
 	return m, nil
+}
+
+// shouldApplyStyle returns true if styling should be applied based on cursor and focus state.
+// When the cursor is on this item AND the sidebar is focused, we skip styling (the item
+// will be rendered with selection highlighting instead).
+func (m SidebarModel) shouldApplyStyle(isCursor bool) bool {
+	return !isCursor || !m.focused
 }
 
 // handleSelect processes selection of the current node.
@@ -159,12 +174,12 @@ func (m SidebarModel) renderNode(node *domain.SidebarNode, depth int, isCursor b
 	var prefix string
 	if len(node.Children) > 0 {
 		if node.IsExpanded {
-			prefix = "▼ "
+			prefix = prefixExpanded
 		} else {
-			prefix = "▶ "
+			prefix = prefixCollapsed
 		}
 	} else {
-		prefix = "  "
+		prefix = prefixLeaf
 	}
 
 	name := m.renderNodeName(node, isCursor)
@@ -202,7 +217,7 @@ func (m SidebarModel) renderNodeName(node *domain.SidebarNode, isCursor bool) st
 }
 
 func (m SidebarModel) renderProjectName(name string, isCursor bool) string {
-	if !isCursor || !m.focused {
+	if m.shouldApplyStyle(isCursor) {
 		return projectStyle.Render(name)
 	}
 	return name
@@ -215,12 +230,19 @@ func (m SidebarModel) renderWorktreeName(node *domain.SidebarNode, name string, 
 		return name
 	}
 
-	if !isCursor || !m.focused {
+	// Determine if we need a status indicator
+	hasIndicator := node.IsRunning || node.WorktreeInfo.IsDirty
+	if hasIndicator {
+		name = name + " ●"
+	}
+
+	// Apply styling if not currently selected
+	if m.shouldApplyStyle(isCursor) {
 		switch {
 		case node.IsRunning:
-			return worktreeRunningStyle.Render(name + " ●")
+			return worktreeRunningStyle.Render(name)
 		case node.WorktreeInfo.IsDirty:
-			return worktreeDirtyStyle.Render(name + " ●")
+			return worktreeDirtyStyle.Render(name)
 		case node.WorktreeInfo.IsMain:
 			return worktreeMainStyle.Render(name)
 		default:
@@ -228,12 +250,6 @@ func (m SidebarModel) renderWorktreeName(node *domain.SidebarNode, name string, 
 		}
 	}
 
-	if node.IsRunning {
-		return name + " ●"
-	}
-	if node.WorktreeInfo.IsDirty {
-		return name + " ●"
-	}
 	return name
 }
 
@@ -243,7 +259,7 @@ func (m SidebarModel) renderHarnessName(node *domain.SidebarNode, name string, i
 		return name
 	}
 
-	if !isCursor || !m.focused {
+	if m.shouldApplyStyle(isCursor) {
 		return harnessRunningStyle.Render("● " + name)
 	}
 	return name

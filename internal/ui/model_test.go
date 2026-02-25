@@ -272,7 +272,6 @@ func TestUIModel_HandleEnterKey_Sidebar(t *testing.T) {
 		},
 	}
 	m.sidebar, _ = m.sidebar.Update(SidebarNodesMsg{Nodes: nodes})
-	
 	// Move cursor down to select the worktree node (cursor 0 = project, cursor 1 = worktree)
 	m.sidebar.State().MoveDown()
 

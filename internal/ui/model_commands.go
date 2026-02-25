@@ -34,14 +34,21 @@ func loadModalCmd(ticketID string) tea.Cmd {
 	}
 }
 
+// extractRepoRoot extracts the repository root path from a beadsDir path.
+// It handles both "/path/to/.beads" and "/path/to/.beads/" patterns.
+func extractRepoRoot(beadsDir string) string {
+	repoRoot := beadsDir
+	if idx := strings.LastIndex(beadsDir, "/.beads"); idx > 0 {
+		repoRoot = beadsDir[:idx]
+	} else if strings.HasSuffix(beadsDir, ".beads") {
+		repoRoot = filepath.Dir(beadsDir)
+	}
+	return repoRoot
+}
+
 func discoverWorktreesCmd(beadsDir string) tea.Cmd {
 	return func() tea.Msg {
-		repoRoot := beadsDir
-		if idx := strings.LastIndex(beadsDir, "/.beads"); idx > 0 {
-			repoRoot = beadsDir[:idx]
-		} else if strings.HasSuffix(beadsDir, ".beads") {
-			repoRoot = filepath.Dir(beadsDir)
-		}
+		repoRoot := extractRepoRoot(beadsDir)
 
 		absRepoRoot, err := filepath.Abs(repoRoot)
 		if err != nil {
@@ -64,10 +71,7 @@ func (m UIModel) launchCmd() tea.Cmd {
 	return func() tea.Msg {
 		workDir := m.selectedWorktree
 		if workDir == "" {
-			workDir = m.app.opts.BeadsDir
-			if idx := strings.LastIndex(workDir, "/.beads"); idx > 0 {
-				workDir = workDir[:idx]
-			}
+			workDir = extractRepoRoot(m.app.opts.BeadsDir)
 		}
 
 		spec, err := m.app.Renderer.RenderSelection(m.selection, workDir)

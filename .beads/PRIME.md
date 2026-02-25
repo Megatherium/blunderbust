@@ -3,6 +3,20 @@
 > **Context Recovery**: Run `bd prime` after compaction, clear, or new session
 > Hooks auto-call this in Claude Code when .beads/ detected
 
+# 🚨 SESSION CLOSE PROTOCOL 🚨
+
+**CRITICAL**: Before saying "done" or "complete", you MUST run this checklist:
+
+```
+[ ] 0. RUN CODE REVIEW & REFINEMENT PROTOCOL
+[ ] 1. git status              (check what changed)
+[ ] 2. git add <files>         (stage code changes)
+[ ] 3. git commit -m "..."     (commit code)
+[ ] 4. git push                (push to remote)
+```
+
+**NEVER skip this.** Work is not done until pushed.
+
 ## 🕵️ CODE REVIEW & REFINEMENT PROTOCOL
 
 **1. Initiating Review**
@@ -21,19 +35,20 @@ When a task is functionally complete:
     - **Score < 8.5**: MANDATORY Refinement.
         - `bd create --title="Refinement: <Task Name>" --type=task` (or `bug` if purely defects)
         - Description MUST list *every* defect and *what* needs fixing.
-    - **Score >= 8.5**: Reviewer judgment. Pass or optional minor cleanup.
+    - **Score >= 9.0**: Reviewer judgment. Pass or optional minor cleanup.
 
 **3. Executing Refinement (The Implementer)**
 - Implement fixes specified in the Refinement ticket.
 - **Re-Review Decision**: Do I need a second review?
     - **NO**: If changes were small or structural refactors (e.g., renaming 1 variable in 20 files = 1 small change). -> Close Refinement & Original Task.
     - **YES**: If changes were "Too Much" (Lots of *different* small changes OR few large logic changes). -> Create new Review ticket (Type: Task).
+    - 
 ## Core Rules
 - **Default**: Use beads for ALL task tracking (`bd create`, `bd ready`, `bd close`)
 - **Prohibited**: Do NOT use TodoWrite, TaskCreate, or markdown files for task tracking
 - **Workflow**: Create beads issue BEFORE writing code, mark in_progress when starting
 - Persistence you don't need beats lost context
-- Git workflow: hooks auto-sync, run `bd sync` at session end
+- Git workflow: beads auto-commit to Dolt, run `git push` at session end
 - Session management: check `bd ready` for available work
 
 ### Workflow Pattern
@@ -46,7 +61,6 @@ When a task is functionally complete:
    - **If you implemented the work**: You CANNOT review it. Create a review ticket and STOP.
    - **If you are the reviewer**: Review the work and create a refinement ticket if score < 8.5
 6. **Complete**: Use `bd close <id>` - ONLY AFTER review is complete (score >= 8.5 OR refinement is implemented)
-7. **Sync**: Always run `bd sync` at session end
 
 ### Key Concepts
 
@@ -61,7 +75,6 @@ When a task is functionally complete:
 - Update status as you work (in_progress → closed)
 - Create new issues with `bd create` when you discover tasks
 - Use descriptive titles and set appropriate priority/type
-- Always `bd sync` before ending session
 
 ## Essential Commands
 
@@ -89,8 +102,9 @@ When a task is functionally complete:
 - `bd show <id>` - See what's blocking/blocked by this issue
 
 ### Sync & Collaboration
-- `bd sync` - Sync with git remote (run at session end)
-- `bd sync --status` - Check sync status without syncing
+- `bd dolt pull` - Pull beads updates from Dolt remote
+- `bd dolt push` - Push beads to Dolt remote
+- `bd search <query>` - Search issues by keyword
 
 ### Project Health
 - `bd stats` - Project statistics (open/closed/blocked counts)
@@ -103,6 +117,13 @@ When a task is functionally complete:
 bd ready           # Find available work
 bd show <id>       # Review issue details
 bd update <id> --status=in_progress  # Claim it
+```
+
+**Completing work:**
+```bash
+bd close <id1> <id2> ...    # Close all completed issues at once
+git add . && git commit -m "..."  # Commit code changes
+git push                    # Push to remote
 ```
 
 **Creating dependent work:**

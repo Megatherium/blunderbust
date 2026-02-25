@@ -85,16 +85,6 @@ func (m UIModel) launchCmd() tea.Cmd {
 		spec.WindowName = m.selection.Ticket.ID
 
 		res, err := m.app.launcher.Launch(context.Background(), *spec)
-		
-		// Start output capture if launch succeeded
-		if err == nil && res != nil && res.WindowID != "" {
-			m.outputCapture = tmux.NewOutputCapture(m.app.Runner(), res.WindowID)
-			path, captureErr := m.outputCapture.Start(context.Background())
-			if captureErr == nil {
-				m.outputPath = path
-			}
-		}
-		
 		return launchResultMsg{res: res, err: err}
 	}
 }

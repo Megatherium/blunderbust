@@ -86,3 +86,44 @@ func TestOutputCapture_ReadBeforeStart(t *testing.T) {
 		t.Error("ReadOutput() before Start() should error")
 	}
 }
+
+func TestOutputCapture_ReadOutputWithContent(t *testing.T) {
+	fake := NewFakeRunner()
+	fake.AlwaysReturn = []byte{}
+	capture := NewOutputCapture(fake, "@123")
+
+	ctx := context.Background()
+	path, err := capture.Start(ctx)
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	defer capture.Stop(ctx)
+
+	// Write test content to the temp file
+	testContent := []byte("Hello, World!\nTest output line 2")
+	err = os.WriteFile(path, testContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to write test content: %v", err)
+	}
+
+	content, err := capture.ReadOutput()
+	if err != nil {
+		t.Errorf("ReadOutput() error = %v", err)
+	}
+
+	if string(content) != string(testContent) {
+		t.Errorf("ReadOutput() = %q, want %q", string(content), string(testContent))
+	}
+}
+
+func TestOutputCapture_StopWithoutStart(t *testing.T) {
+	fake := NewFakeRunner()
+	capture := NewOutputCapture(fake, "@123")
+
+	ctx := context.Background()
+	err := capture.Stop(ctx)
+	// Should not error when stopping without starting
+	if err != nil {
+		t.Errorf("Stop() without Start() error = %v", err)
+	}
+}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
+	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
 
 func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) {
@@ -49,6 +50,16 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 
 	if msg.err == nil && msg.res != nil && msg.res.WindowName != "" {
 		m.monitoringWindow = msg.res.WindowName
+		
+		// Start output capture using WindowID from the launch result
+		if msg.res.WindowID != "" {
+			m.outputCapture = tmux.NewOutputCapture(m.app.Runner(), msg.res.WindowID)
+			path, captureErr := m.outputCapture.Start(context.Background())
+			if captureErr == nil {
+				m.outputPath = path
+			}
+		}
+		
 		return m, tea.Batch(
 			m.pollWindowStatusCmd(msg.res.WindowName),
 			m.startMonitoringCmd(msg.res.WindowName),
@@ -101,7 +112,8 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 
 	// Resize viewport if it exists
 	if m.width > 4 && m.height > 8 {
-		m.viewport = viewport.New(m.width-4, m.height-8)
+		m.viewport.Width = m.width - 4
+		m.viewport.Height = m.height - 8
 	}
 
 	m.updateSizes()

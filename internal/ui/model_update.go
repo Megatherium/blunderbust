@@ -1,10 +1,12 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/discovery"
@@ -39,11 +41,18 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 	m.err = msg.err
 	m.state = ViewStateResult
 
+	// Initialize viewport for output streaming
+	if m.width > 0 && m.height > 0 {
+		m.viewport = viewport.New(m.width-4, m.height-8)
+		m.viewport.SetContent("Waiting for output...")
+	}
+
 	if msg.err == nil && msg.res != nil && msg.res.WindowName != "" {
 		m.monitoringWindow = msg.res.WindowName
 		return m, tea.Batch(
 			m.pollWindowStatusCmd(msg.res.WindowName),
 			m.startMonitoringCmd(msg.res.WindowName),
+			m.readOutputCmd(),
 		)
 	}
 	return m, nil
@@ -52,6 +61,13 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 func (m UIModel) handleStatusUpdate(msg statusUpdateMsg) (tea.Model, tea.Cmd) {
 	m.windowStatus = msg.status
 	m.windowStatusEmoji = msg.emoji
+	
+	// Clean up output capture if window is dead
+	if msg.status == "Dead" && m.outputCapture != nil {
+		m.outputCapture.Stop(context.Background())
+		m.outputCapture = nil
+	}
+	
 	return m, nil
 }
 
@@ -60,8 +76,15 @@ func (m UIModel) handleTickMsg(msg tickMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(
 			m.pollWindowStatusCmd(msg.windowName),
 			m.startMonitoringCmd(msg.windowName),
+			m.readOutputCmd(),
 		)
 	}
+	return m, nil
+}
+
+func (m UIModel) handleOutputStream(msg outputStreamMsg) (tea.Model, tea.Cmd) {
+	m.viewport.SetContent(msg.content)
+	m.viewport.GotoBottom()
 	return m, nil
 }
 
@@ -74,6 +97,11 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	}
 	if m.height < minWindowHeight {
 		m.height = minWindowHeight
+	}
+
+	// Resize viewport if it exists
+	if m.width > 4 && m.height > 8 {
+		m.viewport = viewport.New(m.width-4, m.height-8)
 	}
 
 	m.updateSizes()
@@ -223,6 +251,11 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 		m.state = ViewStateResult
 		return m, m.launchCmd()
 	case ViewStateResult:
+		// Clean up output capture before quitting
+		if m.outputCapture != nil {
+			m.outputCapture.Stop(context.Background())
+			m.outputCapture = nil
+		}
 		return m, tea.Quit
 	}
 	return m, nil

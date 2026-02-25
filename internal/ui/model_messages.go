@@ -29,4 +29,8 @@ type worktreesDiscoveredMsg struct {
 	err   error
 }
 
+type outputStreamMsg struct {
+	content string
+}
+
 func (e errMsg) Error() string { return e.err.Error() }

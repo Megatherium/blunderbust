@@ -160,7 +160,7 @@ func (m UIModel) renderMainContent() string {
 		if m.launchResult == nil && m.err == nil {
 			s = "Launching...\n"
 		} else {
-			s = resultView(m.launchResult, m.err, m.windowStatusEmoji, m.windowStatus)
+			s = resultView(m, m.launchResult, m.err, m.windowStatusEmoji, m.windowStatus)
 		}
 	case ViewStateError:
 		s = errorView(m.err)

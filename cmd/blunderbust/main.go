@@ -178,17 +178,18 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	launcher := tmux.NewTmuxLauncher(runner, dryRun, false)
 	statusChecker := tmux.NewStatusChecker(runner)
 
-	appOpts := domain.AppOptions{
-		DryRun:     dryRun,
+	renderer := config.NewRenderer()
+
+	app, err := ui.NewApp(cfgLoader, launcher, statusChecker, runner, renderer, domain.AppOptions{
 		ConfigPath: cfgPath,
-		Debug:      debug,
 		BeadsDir:   beadsPath,
 		DSN:        dsn,
+		DryRun:     dryRun,
+		Debug:      debug,
 		Demo:       demo,
-	}
-	app, err := ui.NewApp(cfgLoader, launcher, statusChecker, config.NewRenderer(), appOpts)
+	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "App initialization error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 	defer app.Close() // Ensure store is closed on exit

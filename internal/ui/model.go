@@ -108,6 +108,9 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		return m.handleTickMsg(msg)
 
+	case outputStreamMsg:
+		return m.handleOutputStream(msg)
+
 	case worktreesDiscoveredMsg:
 		return m.handleWorktreesDiscovered(msg)
 

@@ -20,6 +20,7 @@ type App struct {
 	loader        config.Loader
 	launcher      exec.Launcher
 	statusChecker *tmux.StatusChecker
+	runner        tmux.CommandRunner
 	Renderer      *config.Renderer
 	Registry      *discovery.Registry
 	opts          domain.AppOptions
@@ -27,7 +28,7 @@ type App struct {
 
 // NewApp creates a new App instance with necessary dependencies.
 // Store is created lazily via CreateStore().
-func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, renderer *config.Renderer, opts domain.AppOptions) (*App, error) {
+func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, runner tmux.CommandRunner, renderer *config.Renderer, opts domain.AppOptions) (*App, error) {
 	registry, err := discovery.NewRegistry("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize discovery registry: %w", err)
@@ -37,6 +38,7 @@ func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.St
 		loader:        loader,
 		launcher:      launcher,
 		statusChecker: statusChecker,
+		runner:        runner,
 		Renderer:      renderer,
 		Registry:      registry,
 		opts:          opts,
@@ -46,6 +48,11 @@ func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.St
 // StatusChecker returns the status checker for monitoring tmux windows.
 func (a *App) StatusChecker() *tmux.StatusChecker {
 	return a.statusChecker
+}
+
+// Runner returns the command runner for creating output captures.
+func (a *App) Runner() tmux.CommandRunner {
+	return a.runner
 }
 
 // CreateStore initializes the TicketStore based on AppOptions.

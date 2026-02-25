@@ -7,7 +7,7 @@ import (
 	"github.com/megatherium/blunderbust/internal/domain"
 )
 
-func resultView(res *domain.LaunchResult, err error, statusEmoji, status string) string {
+func resultView(m UIModel, res *domain.LaunchResult, err error, statusEmoji, status string) string {
 	s := titleStyle.Render("Launch Result") + "\n\n"
 	switch {
 	case err != nil:
@@ -20,6 +20,9 @@ func resultView(res *domain.LaunchResult, err error, statusEmoji, status string)
 		if statusEmoji != "" && status != "" {
 			s += fmt.Sprintf("Status: %s %s\n", statusEmoji, status)
 		}
+		// Add viewport for output streaming
+		s += "\n" + lipgloss.NewStyle().Bold(true).Render("Output:") + "\n"
+		s += m.viewport.View()
 	}
 	s += "\n[Press q to quit]"
 	return s

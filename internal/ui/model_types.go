@@ -3,7 +3,10 @@ package ui
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/megatherium/blunderbust/internal/exec/tmux"
 
 	"github.com/megatherium/blunderbust/internal/domain"
 )
@@ -56,6 +59,7 @@ type UIModel struct {
 	harnessList list.Model
 	modelList   list.Model
 	agentList   list.Model
+	viewport    viewport.Model
 
 	help help.Model
 	keys KeyMap
@@ -84,4 +88,6 @@ type UIModel struct {
 	windowStatus      string
 	windowStatusEmoji string
 	monitoringWindow  string
+	outputCapture     *tmux.OutputCapture
+	outputPath        string
 }

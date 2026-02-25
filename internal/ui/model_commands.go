@@ -85,6 +85,16 @@ func (m UIModel) launchCmd() tea.Cmd {
 		spec.WindowName = m.selection.Ticket.ID
 
 		res, err := m.app.launcher.Launch(context.Background(), *spec)
+		
+		// Start output capture if launch succeeded
+		if err == nil && res != nil && res.WindowID != "" {
+			m.outputCapture = tmux.NewOutputCapture(m.app.Runner(), res.WindowID)
+			path, captureErr := m.outputCapture.Start(context.Background())
+			if captureErr == nil {
+				m.outputPath = path
+			}
+		}
+		
 		return launchResultMsg{res: res, err: err}
 	}
 }
@@ -114,4 +124,19 @@ func (m UIModel) startMonitoringCmd(windowName string) tea.Cmd {
 	return tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
 		return tickMsg{windowName: windowName}
 	})
+}
+
+func (m UIModel) readOutputCmd() tea.Cmd {
+	return func() tea.Msg {
+		if m.outputCapture == nil {
+			return nil
+		}
+
+		content, err := m.outputCapture.ReadOutput()
+		if err != nil {
+			return nil
+		}
+
+		return outputStreamMsg{content: string(content)}
+	}
 }

@@ -247,3 +247,174 @@ func TestDoltDir(t *testing.T) {
 		t.Errorf("DoltDir(%q) = %q, want %q", beadsDir, got, expected)
 	}
 }
+
+func TestMetadata_ResolveServerPort_AlreadySet(t *testing.T) {
+	m := &Metadata{
+		DoltDatabase: "test_db",
+		ServerPort:   12345,
+	}
+
+	port, err := m.ResolveServerPort("/tmp/test")
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if port != 12345 {
+		t.Errorf("Expected port 12345, got %d", port)
+	}
+
+	if m.ServerPort != 12345 {
+		t.Errorf("Expected metadata.ServerPort to remain 12345, got %d", m.ServerPort)
+	}
+}
+
+func TestMetadata_detectPortFromDoltStatus_RunningServer(t *testing.T) {
+	// Create a mock bd script that returns "Port: 56789" (running server format)
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0750); err != nil {
+		t.Fatalf("Failed to create beads dir: %v", err)
+	}
+
+	// Create mock bd script
+	mockBd := filepath.Join(tmpDir, "bd")
+	mockScript := `#!/bin/sh
+if [ "$1" = "dolt" ] && [ "$2" = "status" ]; then
+    echo "Dolt server: running"
+    echo "  Port: 56789"
+else
+    echo "Unknown command"
+    exit 1
+fi
+`
+	if err := os.WriteFile(mockBd, []byte(mockScript), 0755); err != nil {
+		t.Fatalf("Failed to create mock bd script: %v", err)
+	}
+
+	// Prepend our mock to PATH
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", tmpDir+":"+origPath)
+	defer os.Setenv("PATH", origPath)
+
+	m := &Metadata{DoltDatabase: "test_db"}
+	port, err := m.detectPortFromDoltStatus(beadsDir)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if port != 56789 {
+		t.Errorf("Expected port 56789, got %d", port)
+	}
+}
+
+func TestMetadata_detectPortFromDoltStatus_ExpectedPort(t *testing.T) {
+	// Create a mock bd script that returns "Expected port: 54321" (stopped server format)
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0750); err != nil {
+		t.Fatalf("Failed to create beads dir: %v", err)
+	}
+
+	// Create mock bd script
+	mockBd := filepath.Join(tmpDir, "bd")
+	mockScript := `#!/bin/sh
+if [ "$1" = "dolt" ] && [ "$2" = "status" ]; then
+    echo "Dolt server: not running"
+    echo "  Expected port: 54321"
+else
+    echo "Unknown command"
+    exit 1
+fi
+`
+	if err := os.WriteFile(mockBd, []byte(mockScript), 0755); err != nil {
+		t.Fatalf("Failed to create mock bd script: %v", err)
+	}
+
+	// Prepend our mock to PATH
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", tmpDir+":"+origPath)
+	defer os.Setenv("PATH", origPath)
+
+	m := &Metadata{DoltDatabase: "test_db"}
+	port, err := m.detectPortFromDoltStatus(beadsDir)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if port != 54321 {
+		t.Errorf("Expected port 54321, got %d", port)
+	}
+}
+
+func TestMetadata_detectPortFromDoltStatus_NoPortFound(t *testing.T) {
+	// Create a mock bd script that returns output without port info
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0750); err != nil {
+		t.Fatalf("Failed to create beads dir: %v", err)
+	}
+
+	// Create mock bd script
+	mockBd := filepath.Join(tmpDir, "bd")
+	mockScript := `#!/bin/sh
+if [ "$1" = "dolt" ] && [ "$2" = "status" ]; then
+    echo "Dolt server: not running"
+    echo "  No database initialized"
+else
+    echo "Unknown command"
+    exit 1
+fi
+`
+	if err := os.WriteFile(mockBd, []byte(mockScript), 0755); err != nil {
+		t.Fatalf("Failed to create mock bd script: %v", err)
+	}
+
+	// Prepend our mock to PATH
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", tmpDir+":"+origPath)
+	defer os.Setenv("PATH", origPath)
+
+	m := &Metadata{DoltDatabase: "test_db"}
+	port, err := m.detectPortFromDoltStatus(beadsDir)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if port != 0 {
+		t.Errorf("Expected port 0 (not found), got %d", port)
+	}
+}
+
+func TestMetadata_detectPortFromDoltStatus_CommandFails(t *testing.T) {
+	// Create a mock bd script that fails
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0750); err != nil {
+		t.Fatalf("Failed to create beads dir: %v", err)
+	}
+
+	// Create mock bd script that exits with error
+	mockBd := filepath.Join(tmpDir, "bd")
+	mockScript := `#!/bin/sh
+echo "Error: something went wrong" >&2
+exit 1
+`
+	if err := os.WriteFile(mockBd, []byte(mockScript), 0755); err != nil {
+		t.Fatalf("Failed to create mock bd script: %v", err)
+	}
+
+	// Prepend our mock to PATH
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", tmpDir+":"+origPath)
+	defer os.Setenv("PATH", origPath)
+
+	m := &Metadata{DoltDatabase: "test_db"}
+	port, err := m.detectPortFromDoltStatus(beadsDir)
+	if err != nil {
+		t.Fatalf("Expected no error when command fails (graceful fallback), got: %v", err)
+	}
+
+	if port != 0 {
+		t.Errorf("Expected port 0 when command fails, got %d", port)
+	}
+}

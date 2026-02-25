@@ -48,6 +48,16 @@ func NewStore(ctx context.Context, opts domain.AppOptions) (*Store, error) {
 		if opts.Debug {
 			fmt.Fprintf(os.Stderr, "Dolt server mode enabled\n")
 		}
+		// Resolve server port if not explicitly configured
+		if metadata.ServerPort == 0 {
+			resolvedPort, err := metadata.ResolveServerPort(beadsDir)
+			if err != nil && opts.Debug {
+				fmt.Fprintf(os.Stderr, "Warning: failed to auto-detect Dolt port: %v\n", err)
+			}
+			if resolvedPort > 0 && opts.Debug {
+				fmt.Fprintf(os.Stderr, "Auto-detected Dolt server port: %d\n", resolvedPort)
+			}
+		}
 		return newServerStore(ctx, beadsDir, metadata)
 	case EmbeddedMode:
 		if opts.Debug {

@@ -24,4 +24,9 @@ type tickMsg struct {
 	windowName string
 }
 
+type worktreesDiscoveredMsg struct {
+	nodes []domain.SidebarNode
+	err   error
+}
+
 func (e errMsg) Error() string { return e.err.Error() }

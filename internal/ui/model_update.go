@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/discovery"
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) {
@@ -120,15 +122,35 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 
+	// Handle manual left/right navigation outside of keys.go since it's intrinsic to the matrix
 	switch msg.String() {
 	case "left":
-		if m.state == ViewStateMatrix && m.focus > FocusTickets {
+		if m.state == ViewStateMatrix && m.focus > FocusSidebar {
+			if m.focus == FocusTickets {
+				m.sidebar.SetFocused(true)
+			}
 			m.focus--
 			return m, nil, true
 		}
 	case "right":
 		if m.state == ViewStateMatrix && m.focus < FocusAgent {
+			if m.focus == FocusSidebar {
+				m.sidebar.SetFocused(false)
+			}
 			m.focus++
+			return m, nil, true
+		}
+	case "tab":
+		if m.state == ViewStateMatrix {
+			if m.focus < FocusAgent {
+				if m.focus == FocusSidebar {
+					m.sidebar.SetFocused(false)
+				}
+				m.focus++
+			} else {
+				m.focus = FocusSidebar
+				m.sidebar.SetFocused(true)
+			}
 			return m, nil, true
 		}
 	}
@@ -145,6 +167,19 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 	switch m.state {
 	case ViewStateMatrix:
 		switch m.focus {
+		case FocusSidebar:
+			node := m.sidebar.State().CurrentNode()
+			if node != nil && node.Type == domain.NodeTypeWorktree {
+				m.selectedWorktree = node.Path
+				m.sidebar.SetSelectedPath(node.Path)
+				m.focus = FocusTickets
+				m.sidebar.SetFocused(false)
+				return m, nil
+			}
+			if node != nil && len(node.Children) > 0 {
+				m.sidebar.State().ToggleExpand()
+			}
+			return m, nil
 		case FocusTickets:
 			if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
 				m.selection.Ticket = i.ticket
@@ -243,17 +278,24 @@ func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 func (m *UIModel) updateKeyBindings() {
 	switch m.state {
 	case ViewStateMatrix:
-		if m.focus == FocusTickets {
+		switch m.focus {
+		case FocusSidebar:
+			m.keys.Back.SetEnabled(false)
+			m.keys.Refresh.SetEnabled(false)
+			m.keys.Info.SetEnabled(false)
+			m.keys.Enter.SetEnabled(true)
+		case FocusTickets:
 			m.keys.Back.SetEnabled(false)
 			m.keys.Refresh.SetEnabled(true)
 			m.keys.Info.SetEnabled(true)
-		} else {
+			m.keys.Enter.SetEnabled(true)
+		default:
 			m.keys.Back.SetEnabled(true)
 			m.keys.Refresh.SetEnabled(false)
 			m.keys.Info.SetEnabled(false)
+			m.keys.Enter.SetEnabled(true)
 		}
 		m.keys.ToggleSidebar.SetEnabled(true)
-		m.keys.Enter.SetEnabled(true)
 	case ViewStateResult, ViewStateError:
 		m.keys.Back.SetEnabled(false)
 		m.keys.Refresh.SetEnabled(false)
@@ -267,4 +309,29 @@ func (m *UIModel) updateKeyBindings() {
 		m.keys.Info.SetEnabled(false)
 		m.keys.ToggleSidebar.SetEnabled(false)
 	}
+}
+
+func (m UIModel) handleWorktreesDiscovered(msg worktreesDiscoveredMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.warnings = append(m.warnings, fmt.Sprintf("Worktree discovery: %v", msg.err))
+		return m, nil
+	}
+
+	m.sidebar, _ = m.sidebar.Update(SidebarNodesMsg{Nodes: msg.nodes})
+
+	if len(msg.nodes) > 0 && len(msg.nodes[0].Children) > 0 {
+		initialPath := msg.nodes[0].Children[0].Path
+		m.selectedWorktree = initialPath
+		m.sidebar.SetSelectedPath(initialPath)
+	}
+
+	return m, nil
+}
+
+func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea.Cmd) {
+	m.selectedWorktree = msg.Path
+	m.sidebar.SetSelectedPath(msg.Path)
+	m.focus = FocusTickets
+	m.sidebar.SetFocused(false)
+	return m, nil
 }

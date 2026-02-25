@@ -46,6 +46,7 @@ func (m *UIModel) updateSizes() {
 	m.harnessList.SetSize(safeW(m.hWidth), innerListHeight)
 	m.modelList.SetSize(safeW(m.mWidth), innerListHeight)
 	m.agentList.SetSize(safeW(m.aWidth), innerListHeight)
+	m.sidebar.SetSize(m.sidebarWidth, m.height)
 	m.help.Width = m.width
 }
 
@@ -133,12 +134,20 @@ func (m UIModel) renderMainContent() string {
 				if w < 2 {
 					w = 2
 				}
-				sidebarBox := lipgloss.NewStyle().
+
+				sidebarBorder := lipgloss.NewStyle().
 					Border(lipgloss.RoundedBorder()).
-					Width(w-2).
-					Height(m.height-2).
-					Padding(0, 1).
-					Render("Project Sidebar\n\n(Pending bb-lh7)")
+					Width(w - 2).
+					Height(m.height - 2)
+
+				if m.focus == FocusSidebar {
+					sidebarBorder = sidebarBorder.BorderForeground(ThemeActive)
+				} else {
+					sidebarBorder = sidebarBorder.BorderForeground(ThemeInactive)
+				}
+
+				sidebarContent := m.sidebar.View()
+				sidebarBox := sidebarBorder.Render(sidebarContent)
 
 				s = lipgloss.JoinHorizontal(lipgloss.Top, sidebarBox, lipgloss.NewStyle().Width(2).Render("  "), rightPanelBox)
 			} else {
@@ -146,7 +155,7 @@ func (m UIModel) renderMainContent() string {
 			}
 		}
 	case ViewStateConfirm:
-		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun)
+		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun, m.selectedWorktree)
 	case ViewStateResult:
 		if m.launchResult == nil && m.err == nil {
 			s = "Launching...\n"

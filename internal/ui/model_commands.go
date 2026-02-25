@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,11 +34,48 @@ func loadModalCmd(ticketID string) tea.Cmd {
 	}
 }
 
+func discoverWorktreesCmd(beadsDir string) tea.Cmd {
+	return func() tea.Msg {
+		repoRoot := beadsDir
+		if idx := strings.LastIndex(beadsDir, "/.beads"); idx > 0 {
+			repoRoot = beadsDir[:idx]
+		} else if strings.HasSuffix(beadsDir, ".beads") {
+			repoRoot = filepath.Dir(beadsDir)
+		}
+
+		absRepoRoot, err := filepath.Abs(repoRoot)
+		if err != nil {
+			return worktreesDiscoveredMsg{err: fmt.Errorf("failed to resolve repo root: %w", err)}
+		}
+
+		discoverer := data.NewWorktreeDiscoverer(absRepoRoot)
+		worktrees, err := discoverer.Discover(context.Background())
+		if err != nil {
+			return worktreesDiscoveredMsg{err: err}
+		}
+
+		projectName := data.GetProjectName(absRepoRoot)
+		nodes := discoverer.BuildSidebarTree(worktrees, projectName)
+		return worktreesDiscoveredMsg{nodes: nodes}
+	}
+}
+
 func (m UIModel) launchCmd() tea.Cmd {
 	return func() tea.Msg {
-		spec, err := m.app.Renderer.RenderSelection(m.selection)
+		workDir := m.selectedWorktree
+		if workDir == "" {
+			workDir = m.app.opts.BeadsDir
+			if idx := strings.LastIndex(workDir, "/.beads"); idx > 0 {
+				workDir = workDir[:idx]
+			}
+		}
+
+		spec, err := m.app.Renderer.RenderSelection(m.selection, workDir)
 		if err != nil {
-			return launchResultMsg{res: nil, err: fmt.Errorf("failed to render launch spec: %w", err)}
+			return launchResultMsg{
+				res: nil,
+				err: fmt.Errorf("failed to render launch spec: %w", err),
+			}
 		}
 
 		spec.WindowName = m.selection.Ticket.ID

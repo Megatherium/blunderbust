@@ -29,7 +29,8 @@ const (
 type FocusColumn int
 
 const (
-	FocusTickets FocusColumn = iota
+	FocusSidebar FocusColumn = iota
+	FocusTickets
 	FocusHarness
 	FocusModel
 	FocusAgent
@@ -50,6 +51,7 @@ type UIModel struct {
 	focus     FocusColumn
 	selection domain.Selection
 
+	sidebar     SidebarModel
 	ticketList  list.Model
 	harnessList list.Model
 	modelList   list.Model
@@ -71,12 +73,13 @@ type UIModel struct {
 	showModal    bool
 	modalContent string
 
-	showSidebar  bool
-	sidebarWidth int
-	tWidth       int
-	hWidth       int
-	mWidth       int
-	aWidth       int
+	showSidebar      bool
+	sidebarWidth     int
+	tWidth           int
+	hWidth           int
+	mWidth           int
+	aWidth           int
+	selectedWorktree string
 
 	windowStatus      string
 	windowStatusEmoji string

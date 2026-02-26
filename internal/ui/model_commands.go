@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/data"
+	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
 
@@ -89,44 +90,81 @@ func (m UIModel) launchCmd() tea.Cmd {
 	}
 }
 
-func (m UIModel) pollWindowStatusCmd(windowName string) tea.Cmd {
+// Agent monitoring commands
+
+func pollAgentStatusCmd(app *App, agentID string, windowName string) tea.Cmd {
 	return func() tea.Msg {
-		if m.app.StatusChecker() == nil {
-			return statusUpdateMsg{status: "Unknown", emoji: "⚪"}
+		if app.StatusChecker() == nil {
+			return AgentStatusMsg{AgentID: agentID, Status: domain.AgentRunning}
 		}
 
-		status := m.app.StatusChecker().CheckStatus(context.Background(), windowName)
-		var emoji string
+		status := app.StatusChecker().CheckStatus(context.Background(), windowName)
+		var agentStatus domain.AgentStatus
 		switch status {
 		case tmux.Running:
-			emoji = "🟢"
+			agentStatus = domain.AgentRunning
 		case tmux.Dead:
-			emoji = "🔴"
+			agentStatus = domain.AgentCompleted
 		default:
-			emoji = "⚪"
+			agentStatus = domain.AgentRunning
 		}
 
-		return statusUpdateMsg{status: status.String(), emoji: emoji}
+		return AgentStatusMsg{AgentID: agentID, Status: agentStatus}
 	}
 }
 
-func (m UIModel) startMonitoringCmd(windowName string) tea.Cmd {
+func startAgentMonitoringCmd(agentID string) tea.Cmd {
 	return tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
-		return tickMsg{windowName: windowName}
+		return agentTickMsg{agentID: agentID}
 	})
 }
 
-func (m UIModel) readOutputCmd() tea.Cmd {
+func readAgentOutputCmd(agentID string, capture *tmux.OutputCapture) tea.Cmd {
 	return func() tea.Msg {
-		if m.outputCapture == nil {
+		if capture == nil {
 			return nil
 		}
 
-		content, err := m.outputCapture.ReadOutput()
+		content, err := capture.ReadOutput()
 		if err != nil {
 			return nil
 		}
 
-		return outputStreamMsg{content: string(content)}
+		return agentOutputMsg{agentID: agentID, content: string(content)}
+	}
+}
+
+// Agent clearing commands
+
+func clearAgentCmd(agentID string, capture *tmux.OutputCapture) tea.Cmd {
+	return func() tea.Msg {
+		// Stop output capture if still running
+		if capture != nil {
+			capture.Stop(context.Background())
+		}
+
+		return AgentClearedMsg{AgentID: agentID}
+	}
+}
+
+type agentToClear struct {
+	id      string
+	capture *tmux.OutputCapture
+}
+
+func clearAllStoppedAgentsCmd(agents []agentToClear) tea.Cmd {
+	return func() tea.Msg {
+		var cleared []string
+		for _, a := range agents {
+			if a.capture != nil {
+				a.capture.Stop(context.Background())
+			}
+			cleared = append(cleared, a.id)
+		}
+
+		if len(cleared) > 0 {
+			return AllStoppedAgentsClearedMsg{ClearedIDs: cleared}
+		}
+		return nil
 	}
 }

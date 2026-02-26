@@ -56,6 +56,7 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		loading:     true,
 		showModal:   false,
 		showSidebar: true,
+		agents:      make(map[string]*RunningAgent),
 	}
 }
 
@@ -102,20 +103,29 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case launchResultMsg:
 		return m.handleLaunchResult(msg)
 
-	case statusUpdateMsg:
-		return m.handleStatusUpdate(msg)
-
-	case tickMsg:
-		return m.handleTickMsg(msg)
-
-	case outputStreamMsg:
-		return m.handleOutputStream(msg)
-
 	case worktreesDiscoveredMsg:
 		return m.handleWorktreesDiscovered(msg)
 
 	case WorktreeSelectedMsg:
 		return m.handleWorktreeSelected(msg)
+
+	case AgentSelectedMsg:
+		return m.handleAgentSelected(msg)
+
+	case AgentStatusMsg:
+		return m.handleAgentStatus(msg)
+
+	case agentTickMsg:
+		return m.handleAgentTick(msg)
+
+	case agentOutputMsg:
+		return m.handleAgentOutput(msg)
+
+	case AgentClearedMsg:
+		return m.handleAgentCleared(msg)
+
+	case AllStoppedAgentsClearedMsg:
+		return m.handleAllStoppedAgentsCleared(msg)
 
 	case tea.WindowSizeMsg:
 		m, cmd = m.handleWindowSizeMsg(msg)

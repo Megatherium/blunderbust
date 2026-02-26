@@ -16,6 +16,7 @@ const (
 	NodeTypeProject SidebarNodeType = iota
 	NodeTypeWorktree
 	NodeTypeHarness
+	NodeTypeAgent
 )
 
 // String returns the string representation of the node type.
@@ -27,13 +28,38 @@ func (t SidebarNodeType) String() string {
 		return "worktree"
 	case NodeTypeHarness:
 		return "harness"
+	case NodeTypeAgent:
+		return "agent"
+	default:
+		return "unknown"
+	}
+}
+
+// AgentStatus represents the current status of an agent.
+type AgentStatus int
+
+const (
+	AgentRunning AgentStatus = iota
+	AgentCompleted
+	AgentFailed
+)
+
+// String returns the string representation of the agent status.
+func (s AgentStatus) String() string {
+	switch s {
+	case AgentRunning:
+		return "running"
+	case AgentCompleted:
+		return "completed"
+	case AgentFailed:
+		return "failed"
 	default:
 		return "unknown"
 	}
 }
 
 // SidebarNode represents a node in the sidebar tree hierarchy.
-// Nodes can be projects (containing worktrees), worktrees, or harnesses.
+// Nodes can be projects (containing worktrees), worktrees, harnesses, or agents.
 type SidebarNode struct {
 	ID         string
 	Name       string
@@ -45,6 +71,7 @@ type SidebarNode struct {
 
 	WorktreeInfo *WorktreeInfo
 	HarnessInfo  *HarnessInfo
+	AgentInfo    *AgentInfo
 }
 
 // WorktreeInfo contains metadata about a git worktree.
@@ -64,6 +91,18 @@ type HarnessInfo struct {
 	TicketID   string
 	StartedAt  time.Time
 	Status     string
+}
+
+// AgentInfo contains metadata about a running agent session.
+type AgentInfo struct {
+	ID           string
+	Name         string
+	WindowName   string
+	WindowID     string
+	WorktreePath string
+	Status       AgentStatus
+	StartedAt    time.Time
+	TicketID     string
 }
 
 // SidebarState manages the state of the sidebar tree including
@@ -99,11 +138,18 @@ func (s *SidebarState) SetNodes(nodes []SidebarNode) {
 	s.rebuildFlatNodes()
 }
 
+// rebuildFlatNodes rebuilds the flattened node list from the tree.
 func (s *SidebarState) rebuildFlatNodes() {
 	s.FlatNodes = make([]FlatNodeInfo, 0)
 	for i := range s.Nodes {
 		s.flattenNode(&s.Nodes[i], 0)
 	}
+}
+
+// RebuildFlatNodes rebuilds the flattened node list from the tree.
+// This is a public version that can be called from external packages.
+func (s *SidebarState) RebuildFlatNodes() {
+	s.rebuildFlatNodes()
 }
 
 func (s *SidebarState) flattenNode(node *SidebarNode, depth int) {

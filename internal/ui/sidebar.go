@@ -57,6 +57,18 @@ var (
 	branchStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "248", Dark: "248"}).
 			Faint(true)
+
+	// agentRunningStyle is used for agents that are currently running.
+	agentRunningStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "34", Dark: "34"})
+
+	// agentFailedStyle is used for agents that have failed.
+	agentFailedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "9", Dark: "9"})
+
+	// agentCompletedStyle is used for agents that completed successfully.
+	agentCompletedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "245"})
 )
 
 // SidebarModel is a bubbletea model that renders a tree view of projects,
@@ -119,7 +131,7 @@ func (m SidebarModel) shouldApplyStyle(isCursor bool) bool {
 
 // handleSelect processes selection of the current node.
 // For projects, it toggles expansion. For worktrees, it emits SelectWorktreeCmd.
-// For harnesses, it returns nil (no action).
+// For harnesses, it returns nil (no action). For agents, it emits SelectAgentCmd.
 func (m SidebarModel) handleSelect() tea.Cmd {
 	node := m.state.CurrentNode()
 	if node == nil {
@@ -134,6 +146,11 @@ func (m SidebarModel) handleSelect() tea.Cmd {
 		m.selectedPath = node.Path
 		return SelectWorktreeCmd(node.Path)
 	case domain.NodeTypeHarness:
+		return nil
+	case domain.NodeTypeAgent:
+		if node.AgentInfo != nil {
+			return SelectAgentCmd(node.AgentInfo.ID)
+		}
 		return nil
 	}
 	return nil
@@ -212,6 +229,8 @@ func (m SidebarModel) renderNodeName(node *domain.SidebarNode, isCursor bool) st
 		return m.renderWorktreeName(node, name, isCursor)
 	case domain.NodeTypeHarness:
 		return m.renderHarnessName(node, name, isCursor)
+	case domain.NodeTypeAgent:
+		return m.renderAgentName(node, name, isCursor)
 	}
 	return name
 }
@@ -261,6 +280,28 @@ func (m SidebarModel) renderHarnessName(node *domain.SidebarNode, name string, i
 
 	if m.shouldApplyStyle(isCursor) {
 		return harnessRunningStyle.Render("● " + name)
+	}
+	return name
+}
+
+// renderAgentName renders the agent name with a colored dot indicator.
+// Green for running, red for failed, white/gray for completed.
+func (m SidebarModel) renderAgentName(node *domain.SidebarNode, name string, isCursor bool) string {
+	if node.AgentInfo == nil {
+		return name
+	}
+
+	if m.shouldApplyStyle(isCursor) {
+		switch node.AgentInfo.Status {
+		case domain.AgentRunning:
+			return agentRunningStyle.Render("● " + name)
+		case domain.AgentFailed:
+			return agentFailedStyle.Render("● " + name)
+		case domain.AgentCompleted:
+			return agentCompletedStyle.Render("● " + name)
+		default:
+			return agentRunningStyle.Render("● " + name)
+		}
 	}
 	return name
 }
@@ -322,6 +363,19 @@ func SelectWorktreeCmd(path string) tea.Cmd {
 // WorktreeSelectedMsg is emitted when a worktree is selected in the sidebar.
 type WorktreeSelectedMsg struct {
 	Path string
+}
+
+// SelectAgentCmd creates a command that emits AgentSelectedMsg
+// for the given agent ID.
+func SelectAgentCmd(agentID string) tea.Cmd {
+	return func() tea.Msg {
+		return AgentSelectedMsg{AgentID: agentID}
+	}
+}
+
+// AgentSelectedMsg is emitted when an agent is selected in the sidebar.
+type AgentSelectedMsg struct {
+	AgentID string
 }
 
 // sidebarKeys defines the keybindings for sidebar navigation.

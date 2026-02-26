@@ -1,7 +1,11 @@
 package ui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 func (m *UIModel) updateSizes() {
@@ -26,7 +30,11 @@ func (m *UIModel) updateSizes() {
 		m.tWidth = baseX
 		m.hWidth = baseX / 2
 		m.mWidth = baseX
-		m.aWidth = usableWidth - (m.sidebarWidth + m.tWidth + m.hWidth + m.mWidth)
+		aWidth := usableWidth - (m.sidebarWidth + m.tWidth + m.hWidth + m.mWidth)
+		if aWidth < 10 {
+			aWidth = 10
+		}
+		m.aWidth = aWidth
 	} else {
 		m.sidebarWidth = 0
 		m.tWidth = baseX
@@ -56,112 +64,15 @@ func (m UIModel) renderMainContent() string {
 	case ViewStateMatrix:
 		if m.loading {
 			s = "Loading tickets...\n"
+		} else if m.viewingAgentID != "" {
+			// Show agent output view
+			s = m.renderAgentOutputView()
 		} else {
-			listHeight := m.height - filterHeight
-
-			activeBorder := func(w int) lipgloss.Style {
-				if w < 2 {
-					w = 2
-				}
-				return lipgloss.NewStyle().
-					Border(lipgloss.RoundedBorder()).
-					BorderForeground(ThemeActive).
-					Width(w - 2).
-					Height(listHeight - 2)
-			}
-
-			inactiveBorder := func(w int) lipgloss.Style {
-				if w < 2 {
-					w = 2
-				}
-				return lipgloss.NewStyle().
-					Border(lipgloss.RoundedBorder()).
-					BorderForeground(ThemeInactive).
-					Faint(false).
-					Width(w - 2).
-					Height(listHeight - 2)
-			}
-
-			var tView, hView, mView, aView string
-
-			if m.focus == FocusTickets {
-				tView = activeBorder(m.tWidth).Render(m.ticketList.View())
-			} else {
-				tView = inactiveBorder(m.tWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.ticketList.View()))
-			}
-
-			if m.focus == FocusHarness {
-				hView = activeBorder(m.hWidth).Render(m.harnessList.View())
-			} else {
-				hView = inactiveBorder(m.hWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.harnessList.View()))
-			}
-
-			if m.focus == FocusModel {
-				mView = activeBorder(m.mWidth).Render(m.modelList.View())
-			} else {
-				mView = inactiveBorder(m.mWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.modelList.View()))
-			}
-
-			if m.focus == FocusAgent {
-				aView = activeBorder(m.aWidth).Render(m.agentList.View())
-			} else {
-				aView = inactiveBorder(m.aWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.agentList.View()))
-			}
-
-			matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6
-
-			filterBox := lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				Width(matrixWidth-2).
-				Height(1).
-				Padding(0, 1).
-				Render("Filters: [All] | (Press / to search - Reactive Filter bb-0vw pending)")
-
-			matrixBox := lipgloss.JoinHorizontal(lipgloss.Top,
-				tView,
-				lipgloss.NewStyle().Width(2).Render("  "),
-				hView,
-				lipgloss.NewStyle().Width(2).Render("  "),
-				mView,
-				lipgloss.NewStyle().Width(2).Render("  "),
-				aView,
-			)
-
-			rightPanelBox := lipgloss.JoinVertical(lipgloss.Top, filterBox, matrixBox)
-
-			if m.showSidebar {
-				w := m.sidebarWidth
-				if w < 2 {
-					w = 2
-				}
-
-				sidebarBorder := lipgloss.NewStyle().
-					Border(lipgloss.RoundedBorder()).
-					Width(w - 2).
-					Height(m.height - 2)
-
-				if m.focus == FocusSidebar {
-					sidebarBorder = sidebarBorder.BorderForeground(ThemeActive)
-				} else {
-					sidebarBorder = sidebarBorder.BorderForeground(ThemeInactive)
-				}
-
-				sidebarContent := m.sidebar.View()
-				sidebarBox := sidebarBorder.Render(sidebarContent)
-
-				s = lipgloss.JoinHorizontal(lipgloss.Top, sidebarBox, lipgloss.NewStyle().Width(2).Render("  "), rightPanelBox)
-			} else {
-				s = rightPanelBox
-			}
+			// Show the matrix view
+			s = m.renderMatrixView()
 		}
 	case ViewStateConfirm:
 		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun, m.selectedWorktree)
-	case ViewStateResult:
-		if m.launchResult == nil && m.err == nil {
-			s = "Launching...\n"
-		} else {
-			s = resultView(m, m.launchResult, m.err, m.windowStatusEmoji, m.windowStatus)
-		}
 	case ViewStateError:
 		s = errorView(m.err)
 	}
@@ -191,6 +102,166 @@ func (m UIModel) renderMainContent() string {
 		}
 	}
 	return s
+}
+
+func (m UIModel) renderMatrixView() string {
+	listHeight := m.height - filterHeight
+
+	activeBorder := func(w int) lipgloss.Style {
+		if w < 2 {
+			w = 2
+		}
+		return lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ThemeActive).
+			Width(w - 2).
+			Height(listHeight - 2)
+	}
+
+	inactiveBorder := func(w int) lipgloss.Style {
+		if w < 2 {
+			w = 2
+		}
+		return lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ThemeInactive).
+			Faint(false).
+			Width(w - 2).
+			Height(listHeight - 2)
+	}
+
+	var tView, hView, mView, aView string
+
+	if m.focus == FocusTickets {
+		tView = activeBorder(m.tWidth).Render(m.ticketList.View())
+	} else {
+		tView = inactiveBorder(m.tWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.ticketList.View()))
+	}
+
+	if m.focus == FocusHarness {
+		hView = activeBorder(m.hWidth).Render(m.harnessList.View())
+	} else {
+		hView = inactiveBorder(m.hWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.harnessList.View()))
+	}
+
+	if m.focus == FocusModel {
+		mView = activeBorder(m.mWidth).Render(m.modelList.View())
+	} else {
+		mView = inactiveBorder(m.mWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.modelList.View()))
+	}
+
+	if m.focus == FocusAgent {
+		aView = activeBorder(m.aWidth).Render(m.agentList.View())
+	} else {
+		aView = inactiveBorder(m.aWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.agentList.View()))
+	}
+
+	matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6
+
+	filterBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Width(matrixWidth-2).
+		Height(1).
+		Padding(0, 1).
+		Render("Filters: [All] | (Press / to search - Reactive Filter bb-0vw pending)")
+
+	matrixBox := lipgloss.JoinHorizontal(lipgloss.Top,
+		tView,
+		lipgloss.NewStyle().Width(2).Render("  "),
+		hView,
+		lipgloss.NewStyle().Width(2).Render("  "),
+		mView,
+		lipgloss.NewStyle().Width(2).Render("  "),
+		aView,
+	)
+
+	rightPanelBox := lipgloss.JoinVertical(lipgloss.Top, filterBox, matrixBox)
+
+	if m.showSidebar {
+		w := m.sidebarWidth
+		if w < 2 {
+			w = 2
+		}
+
+		sidebarBorder := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			Width(w - 2).
+			Height(m.height - 2)
+
+		if m.focus == FocusSidebar {
+			sidebarBorder = sidebarBorder.BorderForeground(ThemeActive)
+		} else {
+			sidebarBorder = sidebarBorder.BorderForeground(ThemeInactive)
+		}
+
+		sidebarContent := m.sidebar.View()
+		sidebarBox := sidebarBorder.Render(sidebarContent)
+
+		return lipgloss.JoinHorizontal(lipgloss.Top, sidebarBox, lipgloss.NewStyle().Width(2).Render("  "), rightPanelBox)
+	}
+
+	return rightPanelBox
+}
+
+func (m UIModel) renderAgentOutputView() string {
+	agent, ok := m.agents[m.viewingAgentID]
+	if !ok {
+		return "Agent not found\n\n[Press back to return]"
+	}
+
+	var statusStr string
+	var statusColor lipgloss.Color
+	switch agent.Info.Status {
+	case domain.AgentRunning:
+		statusStr = "Running"
+		statusColor = lipgloss.Color("34")
+	case domain.AgentCompleted:
+		statusStr = "Completed"
+		statusColor = lipgloss.Color("245")
+	case domain.AgentFailed:
+		statusStr = "Failed"
+		statusColor = lipgloss.Color("9")
+	default:
+		statusStr = "Unknown"
+		statusColor = lipgloss.Color("245")
+	}
+
+	statusStyle := lipgloss.NewStyle().Foreground(statusColor).Bold(true)
+	headerStyle := lipgloss.NewStyle().Bold(true).Underline(true)
+
+	header := headerStyle.Render(fmt.Sprintf("Agent: %s", agent.Info.Name))
+	statusLine := fmt.Sprintf("Status: %s", statusStyle.Render(statusStr))
+	windowLine := fmt.Sprintf("Window: %s", agent.Info.WindowName)
+
+	// Show output if we have it, otherwise show placeholder
+	var outputContent string
+	if agent.LastOutput != "" {
+		outputContent = agent.LastOutput
+	} else if agent.Info.Status == domain.AgentRunning {
+		outputContent = "Waiting for output..."
+	} else {
+		outputContent = "No output available"
+	}
+
+	outputStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ThemeInactive).
+		Width(m.width-4).
+		Height(m.height-10).
+		Padding(0, 1)
+
+	content := lipgloss.JoinVertical(lipgloss.Top,
+		header,
+		statusLine,
+		windowLine,
+		"",
+		"Output:",
+		outputStyle.Render(outputContent),
+		"",
+		"[Press back to return to matrix]",
+	)
+
+	return content
 }
 
 func (m UIModel) View() string {

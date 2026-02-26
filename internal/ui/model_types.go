@@ -3,7 +3,6 @@ package ui
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
@@ -44,7 +43,6 @@ type ViewState int
 const (
 	ViewStateMatrix ViewState = iota
 	ViewStateConfirm
-	ViewStateResult
 	ViewStateError
 )
 
@@ -59,7 +57,6 @@ type UIModel struct {
 	harnessList list.Model
 	modelList   list.Model
 	agentList   list.Model
-	viewport    viewport.Model
 
 	help help.Model
 	keys KeyMap
@@ -85,9 +82,14 @@ type UIModel struct {
 	aWidth           int
 	selectedWorktree string
 
-	windowStatus      string
-	windowStatusEmoji string
-	monitoringWindow  string
-	outputCapture     *tmux.OutputCapture
-	outputPath        string
+	// Agent tracking
+	agents         map[string]*RunningAgent // Keyed by agent ID
+	viewingAgentID string                   // Which agent output is displayed ("" = show matrix)
+}
+
+// RunningAgent tracks a launched agent session
+type RunningAgent struct {
+	Info       *domain.AgentInfo
+	Capture    *tmux.OutputCapture
+	LastOutput string
 }

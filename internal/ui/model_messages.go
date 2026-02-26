@@ -15,21 +15,32 @@ type launchResultMsg struct {
 
 type modalContentMsg string
 
-type statusUpdateMsg struct {
-	status string
-	emoji  string
-}
-
-type tickMsg struct {
-	windowName string
-}
-
 type worktreesDiscoveredMsg struct {
 	nodes []domain.SidebarNode
 	err   error
 }
 
-type outputStreamMsg struct {
+// Agent-related messages
+type AgentStatusMsg struct {
+	AgentID string
+	Status  domain.AgentStatus
+}
+
+type AgentClearedMsg struct {
+	AgentID string
+}
+
+type AllStoppedAgentsClearedMsg struct{
+	ClearedIDs []string
+}
+
+// Agent tick and output messages
+type agentTickMsg struct {
+	agentID string
+}
+
+type agentOutputMsg struct {
+	agentID string
 	content string
 }
 

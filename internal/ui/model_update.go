@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/discovery"
@@ -40,62 +40,55 @@ func (m UIModel) handleWarningMsg(msg warningMsg) (tea.Model, tea.Cmd) {
 func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 	m.launchResult = msg.res
 	m.err = msg.err
-	m.state = ViewStateResult
 
-	// Initialize viewport for output streaming
-	if m.width > 0 && m.height > 0 {
-		m.viewport = viewport.New(m.width-4, m.height-8)
-		m.viewport.SetContent("Waiting for output...")
+	if msg.err != nil {
+		m.state = ViewStateError
+		return m, nil
 	}
 
-	if msg.err == nil && msg.res != nil && msg.res.WindowName != "" {
-		m.monitoringWindow = msg.res.WindowName
-		
-		// Start output capture using WindowID from the launch result
-		if msg.res.WindowID != "" {
-			m.outputCapture = tmux.NewOutputCapture(m.app.Runner(), msg.res.WindowID)
-			path, captureErr := m.outputCapture.Start(context.Background())
-			if captureErr == nil {
-				m.outputPath = path
-			}
+	if msg.res != nil && msg.res.WindowName != "" {
+		// Create agent info
+		agentID := msg.res.WindowName
+		agentInfo := &domain.AgentInfo{
+			ID:           agentID,
+			Name:         m.selection.Ticket.ID,
+			WindowName:   msg.res.WindowName,
+			WindowID:     msg.res.WindowID,
+			WorktreePath: m.selectedWorktree,
+			Status:       domain.AgentRunning,
+			StartedAt:    time.Now(),
+			TicketID:     m.selection.Ticket.ID,
 		}
-		
+
+		// Start output capture
+		var capture *tmux.OutputCapture
+		if msg.res.WindowID != "" {
+			capture = tmux.NewOutputCapture(m.app.Runner(), msg.res.WindowID)
+			_, captureErr := capture.Start(context.Background())
+			_ = captureErr
+		}
+
+		// Register agent
+		m.agents[agentID] = &RunningAgent{
+			Info:    agentInfo,
+			Capture: capture,
+		}
+
+		// Add agent node to sidebar under the worktree
+		addAgentNodeToSidebar(&m, agentInfo)
+
+		// Return to matrix instead of result screen
+		m.state = ViewStateMatrix
+
+		// Start monitoring the agent
 		return m, tea.Batch(
-			m.pollWindowStatusCmd(msg.res.WindowName),
-			m.startMonitoringCmd(msg.res.WindowName),
-			m.readOutputCmd(),
+			pollAgentStatusCmd(m.app, agentID, msg.res.WindowName),
+			startAgentMonitoringCmd(agentID),
 		)
 	}
-	return m, nil
-}
 
-func (m UIModel) handleStatusUpdate(msg statusUpdateMsg) (tea.Model, tea.Cmd) {
-	m.windowStatus = msg.status
-	m.windowStatusEmoji = msg.emoji
-	
-	// Clean up output capture if window is dead
-	if msg.status == "Dead" && m.outputCapture != nil {
-		m.outputCapture.Stop(context.Background())
-		m.outputCapture = nil
-	}
-	
-	return m, nil
-}
-
-func (m UIModel) handleTickMsg(msg tickMsg) (tea.Model, tea.Cmd) {
-	if m.state == ViewStateResult && m.monitoringWindow == msg.windowName {
-		return m, tea.Batch(
-			m.pollWindowStatusCmd(msg.windowName),
-			m.startMonitoringCmd(msg.windowName),
-			m.readOutputCmd(),
-		)
-	}
-	return m, nil
-}
-
-func (m UIModel) handleOutputStream(msg outputStreamMsg) (tea.Model, tea.Cmd) {
-	m.viewport.SetContent(msg.content)
-	m.viewport.GotoBottom()
+	// Return to matrix even on error (user can see error in sidebar status)
+	m.state = ViewStateMatrix
 	return m, nil
 }
 
@@ -108,12 +101,6 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	}
 	if m.height < minWindowHeight {
 		m.height = minWindowHeight
-	}
-
-	// Resize viewport if it exists
-	if m.width > 4 && m.height > 8 {
-		m.viewport.Width = m.width - 4
-		m.viewport.Height = m.height - 8
 	}
 
 	m.updateSizes()
@@ -140,6 +127,11 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if key.Matches(msg, m.keys.Back) {
 		if m.state == ViewStateConfirm {
 			m.state = ViewStateMatrix
+			return m, nil, true
+		}
+		// Exit agent output view
+		if m.viewingAgentID != "" {
+			m.viewingAgentID = ""
 			return m, nil, true
 		}
 		if m.state == ViewStateMatrix && m.focus > FocusTickets {
@@ -198,6 +190,34 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if key.Matches(msg, m.keys.Enter) {
 		model, cmd := m.handleEnterKey()
 		return model, cmd, true
+	}
+
+	// Handle agent clearing keys
+	if m.focus == FocusSidebar {
+		switch msg.String() {
+		case "c":
+			// Clear selected agent (confirm if running)
+			node := m.sidebar.State().CurrentNode()
+			if node != nil && node.Type == domain.NodeTypeAgent && node.AgentInfo != nil {
+				var capture *tmux.OutputCapture
+				if agent, ok := m.agents[node.AgentInfo.ID]; ok {
+					capture = agent.Capture
+				}
+				return m, clearAgentCmd(node.AgentInfo.ID, capture), true
+			}
+		case "C":
+			// Clear all stopped agents
+			var toClear []agentToClear
+			for id, agent := range m.agents {
+				if agent.Info.Status != domain.AgentRunning {
+					toClear = append(toClear, agentToClear{id: id, capture: agent.Capture})
+				}
+			}
+			if len(toClear) > 0 {
+				return m, clearAllStoppedAgentsCmd(toClear), true
+			}
+			return m, nil, true
+		}
 	}
 
 	return m, nil, false
@@ -260,15 +280,8 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 			}
 		}
 	case ViewStateConfirm:
-		m.state = ViewStateResult
+		m.state = ViewStateMatrix
 		return m, m.launchCmd()
-	case ViewStateResult:
-		// Clean up output capture before quitting
-		if m.outputCapture != nil {
-			m.outputCapture.Stop(context.Background())
-			m.outputCapture = nil
-		}
-		return m, tea.Quit
 	}
 	return m, nil
 }
@@ -341,7 +354,7 @@ func (m *UIModel) updateKeyBindings() {
 			m.keys.Enter.SetEnabled(true)
 		}
 		m.keys.ToggleSidebar.SetEnabled(true)
-	case ViewStateResult, ViewStateError:
+	case ViewStateError:
 		m.keys.Back.SetEnabled(false)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(false)
@@ -379,4 +392,173 @@ func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea
 	m.focus = FocusTickets
 	m.sidebar.SetFocused(false)
 	return m, nil
+}
+
+// Agent management helpers
+
+func addAgentNodeToSidebar(m *UIModel, agentInfo *domain.AgentInfo) {
+	state := m.sidebar.State()
+	for i := range state.Nodes {
+		addAgentToProject(&state.Nodes[i], agentInfo)
+	}
+	state.RebuildFlatNodes()
+}
+
+func addAgentToProject(projectNode *domain.SidebarNode, agentInfo *domain.AgentInfo) {
+	for i := range projectNode.Children {
+		worktreeNode := &projectNode.Children[i]
+		if worktreeNode.Type == domain.NodeTypeWorktree && worktreeNode.Path == agentInfo.WorktreePath {
+			agentNode := domain.SidebarNode{
+				ID:         "agent-" + agentInfo.ID,
+				Name:       agentInfo.Name,
+				Path:       "agent:" + agentInfo.ID,
+				Type:       domain.NodeTypeAgent,
+				IsExpanded: false,
+				IsRunning:  true,
+				AgentInfo:  agentInfo,
+				Children:   make([]domain.SidebarNode, 0),
+			}
+			worktreeNode.Children = append(worktreeNode.Children, agentNode)
+			worktreeNode.IsExpanded = true
+			return
+		}
+	}
+}
+
+func updateAgentNodeStatus(m *UIModel, agentID string, status domain.AgentStatus) {
+	state := m.sidebar.State()
+	for i := range state.FlatNodes {
+		node := state.FlatNodes[i].Node
+		if node.Type == domain.NodeTypeAgent && node.AgentInfo != nil && node.AgentInfo.ID == agentID {
+			node.AgentInfo.Status = status
+			node.IsRunning = status == domain.AgentRunning
+			return
+		}
+	}
+}
+
+func (m UIModel) handleAgentSelected(msg AgentSelectedMsg) (tea.Model, tea.Cmd) {
+	m.viewingAgentID = msg.AgentID
+	return m, nil
+}
+
+func (m UIModel) handleAgentStatus(msg AgentStatusMsg) (tea.Model, tea.Cmd) {
+	if agent, ok := m.agents[msg.AgentID]; ok {
+		agent.Info.Status = msg.Status
+		updateAgentNodeStatus(&m, msg.AgentID, msg.Status)
+	}
+	return m, nil
+}
+
+func (m UIModel) handleAgentTick(msg agentTickMsg) (tea.Model, tea.Cmd) {
+	agentID := msg.agentID
+	agent, ok := m.agents[agentID]
+	if !ok {
+		return m, nil
+	}
+
+	// If viewing this agent, read output
+	var readOutputCmd tea.Cmd
+	if m.viewingAgentID == agentID {
+		readOutputCmd = readAgentOutputCmd(agentID, agent.Capture)
+	}
+
+	// Continue monitoring if still running
+	if agent.Info.Status == domain.AgentRunning {
+		return m, tea.Batch(
+			pollAgentStatusCmd(m.app, agentID, agent.Info.WindowName),
+			startAgentMonitoringCmd(agentID),
+			readOutputCmd,
+		)
+	}
+
+	return m, readOutputCmd
+}
+
+func (m UIModel) handleAgentOutput(msg agentOutputMsg) (tea.Model, tea.Cmd) {
+	if agent, ok := m.agents[msg.agentID]; ok {
+		agent.LastOutput = msg.content
+	}
+	return m, nil
+}
+
+func (m UIModel) handleAgentCleared(msg AgentClearedMsg) (tea.Model, tea.Cmd) {
+	// Remove from agents map
+	delete(m.agents, msg.AgentID)
+
+	// If we were viewing this agent, stop viewing
+	if m.viewingAgentID == msg.AgentID {
+		m.viewingAgentID = ""
+	}
+
+	// Remove agent node from sidebar
+	removeAgentNodeFromSidebar(&m, msg.AgentID)
+	return m, nil
+}
+
+func (m UIModel) handleAllStoppedAgentsCleared(msg AllStoppedAgentsClearedMsg) (tea.Model, tea.Cmd) {
+	// Remove from agents map and clear view if needed
+	for _, id := range msg.ClearedIDs {
+		delete(m.agents, id)
+		if m.viewingAgentID == id {
+			m.viewingAgentID = ""
+		}
+	}
+
+	// Rebuild sidebar to remove all cleared agents
+	rebuildAgentNodesInSidebar(&m)
+	return m, nil
+}
+
+func removeAgentNodeFromSidebar(m *UIModel, agentID string) {
+	state := m.sidebar.State()
+	for i := range state.Nodes {
+		removeAgentFromProject(&state.Nodes[i], agentID)
+	}
+	state.RebuildFlatNodes()
+}
+
+func removeAgentFromProject(projectNode *domain.SidebarNode, agentID string) {
+	for i := range projectNode.Children {
+		worktreeNode := &projectNode.Children[i]
+		if worktreeNode.Type == domain.NodeTypeWorktree {
+			// Filter out the agent with matching ID
+			newChildren := make([]domain.SidebarNode, 0, len(worktreeNode.Children))
+			for _, child := range worktreeNode.Children {
+				if child.Type != domain.NodeTypeAgent || child.AgentInfo == nil || child.AgentInfo.ID != agentID {
+					newChildren = append(newChildren, child)
+				}
+			}
+			worktreeNode.Children = newChildren
+		}
+	}
+}
+
+func rebuildAgentNodesInSidebar(m *UIModel) {
+	state := m.sidebar.State()
+	for i := range state.Nodes {
+		rebuildAgentsInProject(&state.Nodes[i], m.agents)
+	}
+	state.RebuildFlatNodes()
+}
+
+func rebuildAgentsInProject(projectNode *domain.SidebarNode, agents map[string]*RunningAgent) {
+	for i := range projectNode.Children {
+		worktreeNode := &projectNode.Children[i]
+		if worktreeNode.Type == domain.NodeTypeWorktree {
+			// Keep only non-agent children and agents that still exist
+			newChildren := make([]domain.SidebarNode, 0, len(worktreeNode.Children))
+			for _, child := range worktreeNode.Children {
+				if child.Type != domain.NodeTypeAgent {
+					newChildren = append(newChildren, child)
+				} else if child.AgentInfo != nil {
+					// Check if agent still exists
+					if _, ok := agents[child.AgentInfo.ID]; ok {
+						newChildren = append(newChildren, child)
+					}
+				}
+			}
+			worktreeNode.Children = newChildren
+		}
+	}
 }

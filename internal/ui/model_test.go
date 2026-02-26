@@ -121,8 +121,10 @@ func TestUIModel_Update_Messages(t *testing.T) {
 	launchMsg := launchResultMsg{res: res, err: nil}
 	newModel, _ = m.Update(launchMsg)
 	resM := newModel.(UIModel)
-	assert.Equal(t, ViewStateResult, resM.state)
-	assert.Equal(t, "test-window", resM.monitoringWindow)
+	// After launch, should return to matrix view
+	assert.Equal(t, ViewStateMatrix, resM.state)
+	// Agent should be registered
+	assert.Contains(t, resM.agents, "test-window")
 }
 
 func TestUIModel_HandleWorktreesDiscovered(t *testing.T) {
@@ -196,15 +198,6 @@ func TestUIModel_UpdateKeyBindings(t *testing.T) {
 	assert.False(t, m.keys.Refresh.Enabled())
 	assert.False(t, m.keys.Info.Enabled())
 	assert.True(t, m.keys.Enter.Enabled())
-
-	// Test ViewStateResult state
-	m.state = ViewStateResult
-	m.updateKeyBindings()
-	assert.False(t, m.keys.Back.Enabled())
-	assert.False(t, m.keys.Refresh.Enabled())
-	assert.False(t, m.keys.Enter.Enabled())
-	assert.False(t, m.keys.Info.Enabled())
-	assert.False(t, m.keys.ToggleSidebar.Enabled())
 }
 
 func TestUIModel_HandleKeyMsg_TabNavigation(t *testing.T) {

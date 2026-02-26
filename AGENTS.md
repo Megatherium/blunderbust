@@ -96,6 +96,7 @@ Ensure `vhs` and `ttyd` are installed. If missing, the target will output instru
 
 - Be aware of Go's pass-by semantics especially with closures.
 - Don't assume you know what a function does by its name alone. The devil is in the details.
+- In Bubble Tea, never mutate application state (like maps or UI models) inside a `tea.Cmd` background goroutine; always return a `tea.Msg` and mutate state safely within the main `Update()` thread.
 
 ## Modern tooling
 

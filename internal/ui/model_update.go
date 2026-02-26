@@ -62,10 +62,20 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 
 		// Start output capture
 		var capture *tmux.OutputCapture
-		if msg.res.WindowID != "" {
-			capture = tmux.NewOutputCapture(m.app.Runner(), msg.res.WindowID)
-			_, captureErr := capture.Start(context.Background())
-			_ = captureErr
+		windowID := msg.res.WindowID
+		if windowID == "" {
+			// Fallback to window name if ID is empty
+			windowID = msg.res.WindowName
+		}
+		if windowID != "" && m.app.Runner() != nil {
+			capture = tmux.NewOutputCapture(m.app.Runner(), windowID)
+			path, captureErr := capture.Start(context.Background())
+			if captureErr != nil {
+				// Log error but don't fail - agent still launched
+				m.warnings = append(m.warnings, fmt.Sprintf("Failed to capture output: %v", captureErr))
+				capture = nil
+			}
+			_ = path
 		}
 
 		// Register agent
@@ -188,6 +198,10 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	}
 
 	if key.Matches(msg, m.keys.Enter) {
+		// Don't handle Enter if sidebar has focus - let sidebar handle it
+		if m.focus == FocusSidebar {
+			return m, nil, false
+		}
 		model, cmd := m.handleEnterKey()
 		return model, cmd, true
 	}

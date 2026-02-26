@@ -82,9 +82,9 @@ func (l *Launcher) validateTmuxContext() error {
 
 // buildCommand constructs the full tmux command with environment variables.
 func (l *Launcher) buildCommand(spec domain.LaunchSpec) []string {
-	args := make([]string, 0, 12)
+	args := make([]string, 0, 14)
 
-	args = append(args, "tmux", "new-window", "-e", "LINES=", "-e", "COLUMNS=")
+	args = append(args, "tmux", "new-window", "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=")
 
 	for key, val := range spec.Selection.Harness.Env {
 		args = append(args, "-e", fmt.Sprintf("%s=%s", key, val))

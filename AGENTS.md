@@ -2,21 +2,11 @@
 ## Issue Tracking
 
 This project uses **bd (beads)** for issue tracking.
-Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.
+Run `bd prime` for workflow context (MANDATORY!), or install hooks (`bd hooks install`) for auto-injection.
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
-## Quick Reference
-
-```bash
-bd ready              # Find available work
-bd create "Title" --type task --priority 2` # Create issue
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
-```
-For full workflow details: `bd prime`
+If there's any contradiction: `bd prime` is right. AGENTS.md is not 100% up to date.
 
 ## Landing the Plane (Session Completion)
 
@@ -34,7 +24,6 @@ Phase 2 (after SOMEONE ELSE has reviewed it):
   5. **PUSH TO REMOTE** - This is MANDATORY:
     ```bash
     git pull --rebase
-    bd sync  # <-- RUN THIS BEFORE git add!
     git add (careful with using -A, the user sometimes leaves untracked crap lying around) && git commit ...
     git push
     git status  # MUST show "up to date with origin"
@@ -102,6 +91,11 @@ You can use the timeout command (and should) if you want to start the TUI but gu
 If you need to visually inspect the TUI to see how it looks, you can use the `make screenshot` target.
 This will use `vhs` (and `ttyd`) to run the TUI in demo mode and save a screenshot as `screenshot.png` in the root of the project.
 Ensure `vhs` and `ttyd` are installed. If missing, the target will output instructions on how to install them.
+
+## Lessons learned
+
+- Be aware of Go's pass-by semantics especially with closures.
+- Don't assume you know what a function does by its name alone. The devil is in the details.
 
 ## Modern tooling
 

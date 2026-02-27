@@ -135,30 +135,40 @@ func (m UIModel) renderMatrixView() string {
 			Height(listHeight - 2)
 	}
 
+	// Constrain list views to prevent overflow: lipgloss Height only pads,
+	// MaxHeight truncates. MaxWidth prevents wrapping in narrow columns where
+	// the bubbles list may render 1 char wider than SetSize.
+	capView := func(view string, w int) string {
+		return lipgloss.NewStyle().MaxHeight(listHeight - 2).MaxWidth(w - 2).Render(view)
+	}
+	faintCapView := func(view string, w int) string {
+		return lipgloss.NewStyle().Faint(true).MaxHeight(listHeight - 2).MaxWidth(w - 2).Render(view)
+	}
+
 	var tView, hView, mView, aView string
 
 	if m.focus == FocusTickets {
-		tView = activeBorder(m.tWidth).Render(m.ticketList.View())
+		tView = activeBorder(m.tWidth).Render(capView(m.ticketList.View(), m.tWidth))
 	} else {
-		tView = inactiveBorder(m.tWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.ticketList.View()))
+		tView = inactiveBorder(m.tWidth).Render(faintCapView(m.ticketList.View(), m.tWidth))
 	}
 
 	if m.focus == FocusHarness {
-		hView = activeBorder(m.hWidth).Render(m.harnessList.View())
+		hView = activeBorder(m.hWidth).Render(capView(m.harnessList.View(), m.hWidth))
 	} else {
-		hView = inactiveBorder(m.hWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.harnessList.View()))
+		hView = inactiveBorder(m.hWidth).Render(faintCapView(m.harnessList.View(), m.hWidth))
 	}
 
 	if m.focus == FocusModel {
-		mView = activeBorder(m.mWidth).Render(m.modelList.View())
+		mView = activeBorder(m.mWidth).Render(capView(m.modelList.View(), m.mWidth))
 	} else {
-		mView = inactiveBorder(m.mWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.modelList.View()))
+		mView = inactiveBorder(m.mWidth).Render(faintCapView(m.modelList.View(), m.mWidth))
 	}
 
 	if m.focus == FocusAgent {
-		aView = activeBorder(m.aWidth).Render(m.agentList.View())
+		aView = activeBorder(m.aWidth).Render(capView(m.agentList.View(), m.aWidth))
 	} else {
-		aView = inactiveBorder(m.aWidth).Render(lipgloss.NewStyle().Faint(true).Render(m.agentList.View()))
+		aView = inactiveBorder(m.aWidth).Render(faintCapView(m.agentList.View(), m.aWidth))
 	}
 
 	matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6
@@ -280,7 +290,7 @@ func (m UIModel) View() string {
 
 	helpView := footerStyle.Render(m.help.View(m.keys))
 
-	mainContentStyle := lipgloss.NewStyle().Height(m.height)
+	mainContentStyle := lipgloss.NewStyle().Height(m.height).MaxHeight(m.height)
 	mainContent := mainContentStyle.Render(s)
 
 	return docStyle.Render(lipgloss.JoinVertical(lipgloss.Top, mainContent, helpView))

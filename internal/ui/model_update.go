@@ -20,8 +20,9 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 	} else {
 		m.ticketList = newTicketList(msg)
 	}
-	initList(&m.ticketList, m.width, m.height, "Select a Ticket")
+	initList(&m.ticketList, 0, 0, "Select a Ticket")
 	m.loading = false
+	m.updateSizes()
 	return m, nil
 }
 

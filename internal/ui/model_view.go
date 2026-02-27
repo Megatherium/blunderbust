@@ -258,7 +258,7 @@ func (m UIModel) renderAgentOutputView() string {
 		"Output:",
 		outputStyle.Render(outputContent),
 		"",
-		"[Press back to return to matrix]",
+		"[Press Enter to return to matrix]",
 	)
 
 	return content

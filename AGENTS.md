@@ -84,13 +84,29 @@ tickets, err := store.ListTickets(ctx, data.TicketFilter{
 
 ## Execution hints
 
-You can use the timeout command (and should) if you want to start the TUI but guarantee a return to shell
+## 🤖 Interacting with this TUI (For AI Agents)
 
-### Taking Visual Screenshots
+This project features a Terminal User Interface (TUI). To programmatically drive, test, or interact with this application, you should use the **`agent-tui`** CLI tool.
 
-If you need to visually inspect the TUI to see how it looks, you can use the `make screenshot` target.
-This will use `vhs` (and `ttyd`) to run the TUI in demo mode and save a screenshot as `screenshot.png` in the root of the project.
-Ensure `vhs` and `ttyd` are installed. If missing, the target will output instructions on how to install them.
+`agent-tui` allows you to "see" the terminal screen and interact with specific UI elements reliably without guessing ANSI escape sequences.
+
+### Core Workflow
+Always follow this observe-act-verify loop:
+
+0. **Start the daemon** `agent-tui daemon start` - It's usually running but it doesn't hurt to do it once per session
+1. **Start the App:** `agent-tui run "<your-app-command>"`
+2. **Observe (Get Element Refs):** `agent-tui snap -e`
+   *(This outputs the screen state and assigns temporal references like `@e1`, `@e2` to interactive elements. Note: Refs reset on every snap).*
+3. **Act:**
+   - Type text: `agent-tui fill @e1 "my input"`
+   - Select/Click: `agent-tui click @e2`
+   - Send Keystrokes: `agent-tui key Enter` or `agent-tui key F10`
+4. **Verify/Wait:** `agent-tui wait "Success Message"`
+5. **Cleanup:** `agent-tui kill`
+
+### Concrete Usage
+1. `agent-tui run -- sh -c "bd dolt start ; cd  /home/sloth/Documents/projects/blunderbust/ ; ./bdb"` -- Chain multiple command via `sh -c`
+2. `agent-tui snap` The previous commands takes a few seconds to start up (but so does talking to you via API, so no extra pausing need). The `--format json` only gives you the session_id in addition (useful when handling multiple runs)
 
 ## Lessons learned
 

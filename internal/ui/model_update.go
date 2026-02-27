@@ -238,6 +238,12 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 }
 
 func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
+	// Exit agent output view when Enter is pressed
+	if m.viewingAgentID != "" {
+		m.viewingAgentID = ""
+		return m, nil
+	}
+
 	switch m.state {
 	case ViewStateMatrix:
 		switch m.focus {

@@ -26,6 +26,7 @@ const (
 	minWindowWidth   = 60
 	minWindowHeight  = 10
 	sidebarBaseWidth = 25
+	verticalMargins  = 2 // docStyle has Margin(1, 2) - 1 top + 1 bottom
 )
 
 type FocusColumn int

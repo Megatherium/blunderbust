@@ -104,7 +104,8 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 
 func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	h, v := docStyle.GetFrameSize()
-	m.width, m.height = msg.Width-h, msg.Height-v-footerHeight
+	// Account for: frame borders (v) + margins (verticalMargins) + footer
+	m.width, m.height = msg.Width-h, msg.Height-v-verticalMargins-footerHeight
 
 	if m.width < minWindowWidth {
 		m.width = minWindowWidth

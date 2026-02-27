@@ -105,6 +105,11 @@ func (m UIModel) renderMainContent() string {
 }
 
 func (m UIModel) renderMatrixView() string {
+	// Guard against uninitialized dimensions
+	if m.height < filterHeight+2 {
+		return "Initializing..."
+	}
+
 	listHeight := m.height - filterHeight
 
 	activeBorder := func(w int) lipgloss.Style {

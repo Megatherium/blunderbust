@@ -103,7 +103,9 @@ func TestLauncher_validateTmuxContext_SkipCheck(t *testing.T) {
 
 func TestLauncher_Launch_DryRun(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, true, false)
+	// Justification: When testing Launch in a dry run outside of tmux, we must skip the tmux context check
+	// because the CI pipeline or local test environment might not be running within a tmux session.
+	launcher := NewTmuxLauncher(fake, true, true)
 
 	spec := domain.LaunchSpec{
 		Selection: domain.Selection{

@@ -8,7 +8,6 @@ package tmux
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 )
@@ -17,113 +16,52 @@ func TestOutputCapture_StartStop(t *testing.T) {
 	fake := NewFakeRunner()
 	capture := NewOutputCapture(fake, "@123")
 
-	// Configure fake to accept any pipe-pane command
-	fake.AlwaysReturn = []byte{}
-
 	ctx := context.Background()
 	path, err := capture.Start(ctx)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	if path == "" {
-		t.Error("Start() returned empty path")
-	}
-
-	if capture.tempFile == nil {
-		t.Error("tempFile not set after Start()")
-	}
-
-	commands := fake.Commands
-	if len(commands) == 0 {
-		t.Fatal("No commands captured")
-	}
-
-	foundPipePane := false
-	for _, cmd := range commands {
-		if strings.Contains(cmd, "pipe-pane") && strings.Contains(cmd, "-t @123") {
-			foundPipePane = true
-			break
-		}
-	}
-	if !foundPipePane {
-		t.Error("pipe-pane command not found")
+	if path != "" {
+		t.Errorf("Start() returned path %s, expected empty string", path)
 	}
 
 	err = capture.Stop(ctx)
 	if err != nil {
 		t.Errorf("Stop() error = %v", err)
 	}
-
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Error("temp file should be removed after Stop()")
-	}
 }
 
-func TestOutputCapture_DoubleStart(t *testing.T) {
-	fake := NewFakeRunner()
-	fake.AlwaysReturn = []byte{}
-	capture := NewOutputCapture(fake, "@123")
-
-	ctx := context.Background()
-	_, err := capture.Start(ctx)
-	if err != nil {
-		t.Fatalf("First Start() error = %v", err)
-	}
-
-	_, err = capture.Start(ctx)
-	if err == nil {
-		t.Error("Second Start() should error")
-	}
-}
-
-func TestOutputCapture_ReadBeforeStart(t *testing.T) {
+func TestOutputCapture_ReadOutput(t *testing.T) {
 	fake := NewFakeRunner()
 	capture := NewOutputCapture(fake, "@123")
 
-	_, err := capture.ReadOutput()
-	if err == nil {
-		t.Error("ReadOutput() before Start() should error")
-	}
-}
-
-func TestOutputCapture_ReadOutputWithContent(t *testing.T) {
-	fake := NewFakeRunner()
-	fake.AlwaysReturn = []byte{}
-	capture := NewOutputCapture(fake, "@123")
-
-	ctx := context.Background()
-	path, err := capture.Start(ctx)
-	if err != nil {
-		t.Fatalf("Start() error = %v", err)
-	}
-	defer capture.Stop(ctx)
-
-	// Write test content to the temp file
-	testContent := []byte("Hello, World!\nTest output line 2")
-	err = os.WriteFile(path, testContent, 0644)
-	if err != nil {
-		t.Fatalf("Failed to write test content: %v", err)
-	}
+	// The fake runner returns this when ANY command is run.
+	testOutput := []byte("Hello from capture-pane")
+	fake.AlwaysReturn = testOutput
 
 	content, err := capture.ReadOutput()
 	if err != nil {
-		t.Errorf("ReadOutput() error = %v", err)
+		t.Fatalf("ReadOutput() error = %v", err)
 	}
 
-	if string(content) != string(testContent) {
-		t.Errorf("ReadOutput() = %q, want %q", string(content), string(testContent))
+	if string(content) != string(testOutput) {
+		t.Errorf("ReadOutput() = %q, want %q", string(content), string(testOutput))
 	}
-}
 
-func TestOutputCapture_StopWithoutStart(t *testing.T) {
-	fake := NewFakeRunner()
-	capture := NewOutputCapture(fake, "@123")
+	// Verify the right command was executed
+	if len(fake.Commands) == 0 {
+		t.Fatal("No commands captured")
+	}
 
-	ctx := context.Background()
-	err := capture.Stop(ctx)
-	// Should not error when stopping without starting
-	if err != nil {
-		t.Errorf("Stop() without Start() error = %v", err)
+	foundCapturePane := false
+	for _, cmd := range fake.Commands {
+		if strings.Contains(cmd, "capture-pane") && strings.Contains(cmd, "-t @123") && strings.Contains(cmd, "-p") {
+			foundCapturePane = true
+			break
+		}
+	}
+	if !foundCapturePane {
+		t.Error("capture-pane command not found in executed commands")
 	}
 }

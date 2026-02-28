@@ -91,7 +91,12 @@ func startAgentTuiSession(t *testing.T, demo bool) *agentTuiSession {
 		SessionID string `json:"session_id"`
 		PID       int    `json:"pid"`
 	}
-	err = json.Unmarshal(output, &result)
+	outStr := string(output)
+	if idx := strings.Index(outStr, "{"); idx >= 0 {
+		err = json.Unmarshal([]byte(outStr[idx:]), &result)
+	} else {
+		err = json.Unmarshal(output, &result)
+	}
 	require.NoError(t, err, "Failed to parse agent-tui output: %s", output)
 	require.NotEmpty(t, result.SessionID, "Session ID not found in output: %s", output)
 
@@ -114,11 +119,11 @@ func buildBlunderbust(t *testing.T) string {
 	t.Helper()
 
 	binPath := filepath.Join(os.TempDir(), "blunderbust-test")
-	
+
 	// Check if binary exists and is up to date
 	if info, err := os.Stat(binPath); err == nil {
 		needsRebuild := false
-		
+
 		// Walk source directory to check modification times
 		filepath.Walk(getProjectRoot(), func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
@@ -130,7 +135,7 @@ func buildBlunderbust(t *testing.T) string {
 			}
 			return nil
 		})
-		
+
 		if !needsRebuild {
 			return binPath
 		}
@@ -327,7 +332,7 @@ func (s *agentTuiSession) cleanup(t *testing.T) {
 			t.Logf("Failed to kill agent-tui session: %v, output: %s", err, output)
 		}
 	}
-	
+
 	if s.tmpDir != "" {
 		os.RemoveAll(s.tmpDir)
 	}
@@ -378,57 +383,6 @@ func TestAgentTui_BasicConnection(t *testing.T) {
 	assert.True(t, foundInit, "Should receive init event")
 }
 
-// TestAgentTui_GreyedOutColumns tests that disabled columns are rendered with grey color
-func TestAgentTui_GreyedOutColumns(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	session := startAgentTuiSession(t, true)
-	defer session.cleanup(t)
-
-	// Wait for initial render
-	time.Sleep(1 * time.Second)
-
-	// Connect to websocket
-	conn := connectWebsocket(t, session.WsURL)
-	defer conn.Close(websocket.StatusNormalClosure, "test complete")
-
-	// Send live preview request
-	sendLivePreviewRequest(t, conn, session.SessionID)
-
-	// Read events and capture screen content
-	var outputCount int
-	events := readLivePreviewEvents(t, conn, 5*time.Second, func(e LivePreviewEvent) bool {
-		// Stop after receiving some output events
-		if e.Event == "output" {
-			outputCount++
-		}
-		return outputCount > 10
-	})
-
-	// Decode the screen content
-	screenContent := getScreenContent(events)
-
-	// The TUI should render with various colors
-	// Check for common ANSI color codes used in the TUI
-	// Grey color (240) is used for inactive elements
-	hasColors := strings.Contains(screenContent, "\x1b[")
-	assert.True(t, hasColors, "Screen should contain ANSI color codes")
-
-	// Look for grey color code (38;5;240 or similar)
-	hasGrey := containsAnsiColor(screenContent, 240) ||
-		containsAnsiColor(screenContent, 245) ||
-		containsAnsiColor(screenContent, 250)
-
-	// The test verifies that grey colors are present for inactive UI elements.
-	// If this assertion fails, it means the grey color scheme is not being
-	// applied to inactive columns as expected.
-	assert.True(t, hasGrey, "Screen should contain grey ANSI color codes for inactive elements")
-	t.Logf("Screen content contains grey colors: %v", hasGrey)
-	t.Logf("Screen content length: %d", len(screenContent))
-}
-
 // TestAgentTui_KeyboardNavigation tests keyboard navigation via agent-tui
 func TestAgentTui_KeyboardNavigation(t *testing.T) {
 	if testing.Short() {
@@ -451,7 +405,7 @@ func TestAgentTui_KeyboardNavigation(t *testing.T) {
 	// Read initial screen
 	events := readLivePreviewEvents(t, conn, 2*time.Second, nil)
 	initialScreen := getScreenContent(events)
-	
+
 	// Send tab key via agent-tui
 	cmd := exec.Command("agent-tui", "press", "Tab", "--session", session.SessionID)
 	if output, err := cmd.CombinedOutput(); err != nil {

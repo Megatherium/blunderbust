@@ -9,13 +9,11 @@ package tmux
 import (
 	"context"
 	"fmt"
-	"os"
 )
 
-// OutputCapture manages tmux pipe-pane output streaming.
+// OutputCapture manages tmux pane output capture using capture-pane.
 type OutputCapture struct {
 	runner   CommandRunner
-	tempFile *os.File
 	windowID string
 }
 
@@ -27,62 +25,36 @@ func NewOutputCapture(runner CommandRunner, windowID string) *OutputCapture {
 	}
 }
 
-// Start begins capturing output from the tmux window to a temporary file.
-// Uses tmux pipe-pane to redirect all output to the file.
+// Start begins capturing output from the tmux window (no-op since we use capture-pane directly on read)
 func (c *OutputCapture) Start(ctx context.Context) (string, error) {
-	if c.tempFile != nil {
-		return "", fmt.Errorf("output capture already started")
-	}
-
-	tempDir := os.TempDir()
-	tempFile, err := os.CreateTemp(tempDir, fmt.Sprintf("tmux-output-%s-*.log", c.windowID))
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
-	}
-	c.tempFile = tempFile
-
-	pipeCmd := fmt.Sprintf("cat >> %s", tempFile.Name())
-	_, err = c.runner.Run(ctx, "tmux", "pipe-pane", "-t", c.windowID, pipeCmd)
-	if err != nil {
-		c.cleanup()
-		return "", fmt.Errorf("failed to start pipe-pane: %w", err)
-	}
-
-	return tempFile.Name(), nil
+	return "", nil
 }
 
-// Stop ends the output capture and cleans up resources.
+// Stop ends the output capture (no-op)
 func (c *OutputCapture) Stop(ctx context.Context) error {
-	if c.windowID != "" {
-		_, _ = c.runner.Run(ctx, "tmux", "pipe-pane", "-t", c.windowID)
-	}
-	return c.cleanup()
+	return nil
 }
 
-// cleanup closes and removes the temp file.
+// cleanup removes any remaining resources (no-op)
 func (c *OutputCapture) cleanup() error {
-	var err error
-	if c.tempFile != nil {
-		err = c.tempFile.Close()
-		os.Remove(c.tempFile.Name())
-		c.tempFile = nil
-	}
-	return err
+	return nil
 }
 
-// ReadOutput reads the current content of the capture file.
+// ReadOutput captures the current content of the tmux pane.
 func (c *OutputCapture) ReadOutput() ([]byte, error) {
-	if c.tempFile == nil {
-		return nil, fmt.Errorf("output capture not started")
+	if c.windowID == "" {
+		return nil, fmt.Errorf("window string is empty")
 	}
 
-	return os.ReadFile(c.tempFile.Name())
+	out, err := c.runner.Run(context.Background(), "tmux", "capture-pane", "-p", "-t", c.windowID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to capture pane: %w", err)
+	}
+
+	return []byte(out), nil
 }
 
-// FilePath returns the path to the capture file.
+// FilePath returns an empty string since we no longer use a temporary file.
 func (c *OutputCapture) FilePath() string {
-	if c.tempFile == nil {
-		return ""
-	}
-	return c.tempFile.Name()
+	return ""
 }

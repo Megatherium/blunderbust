@@ -3,11 +3,13 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
@@ -128,6 +130,10 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	}
 
 	if key.Matches(msg, m.keys.Quit) {
+		if m.viewingAgentID != "" {
+			m.viewingAgentID = ""
+			return m, nil, true
+		}
 		return m, tea.Quit, true
 	}
 	if key.Matches(msg, m.keys.Refresh) {
@@ -426,6 +432,17 @@ func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea
 // Agent management helpers
 
 func addAgentNodeToSidebar(m *UIModel, agentInfo *domain.AgentInfo) {
+	f, _ := os.OpenFile("/tmp/bdb_agent.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if f != nil {
+		f.WriteString(fmt.Sprintf("addAgentNodeToSidebar called for %s\n", agentInfo.WorktreePath))
+		state := m.sidebar.State()
+		for _, p := range state.Nodes {
+			for _, w := range p.Children {
+				f.WriteString(fmt.Sprintf("  Checking against %s\n", w.Path))
+			}
+		}
+		f.Close()
+	}
 	state := m.sidebar.State()
 	for i := range state.Nodes {
 		addAgentToProject(&state.Nodes[i], agentInfo)
@@ -468,7 +485,13 @@ func updateAgentNodeStatus(m *UIModel, agentID string, status domain.AgentStatus
 
 func (m UIModel) handleAgentSelected(msg AgentSelectedMsg) (tea.Model, tea.Cmd) {
 	m.viewingAgentID = msg.AgentID
-	return m, nil
+
+	var readOutputCmd tea.Cmd
+	if agent, ok := m.agents[msg.AgentID]; ok {
+		readOutputCmd = readAgentOutputCmd(msg.AgentID, agent.Capture)
+	}
+
+	return m, readOutputCmd
 }
 
 func (m UIModel) handleAgentStatus(msg AgentStatusMsg) (tea.Model, tea.Cmd) {
@@ -506,7 +529,10 @@ func (m UIModel) handleAgentTick(msg agentTickMsg) (tea.Model, tea.Cmd) {
 
 func (m UIModel) handleAgentOutput(msg agentOutputMsg) (tea.Model, tea.Cmd) {
 	if agent, ok := m.agents[msg.agentID]; ok {
-		agent.LastOutput = msg.content
+		clean := ansi.Strip(msg.content)
+		clean = strings.ReplaceAll(clean, "\r\n", "\n")
+		clean = strings.ReplaceAll(clean, "\r", "\n")
+		agent.LastOutput = clean
 	}
 	return m, nil
 }

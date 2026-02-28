@@ -10,7 +10,7 @@ If there's any contradiction: `bd prime` is right. AGENTS.md is not 100% up to d
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session** before sayind "done" or "complete", you MUST complete ALL steps below. 
+**When ending a work session** before sayind "done" or "complete", you MUST complete ALL steps below.
 Work is NOT complete until `git push` succeeds.
 Push is not allowed until the work is REVIEWED
 
@@ -39,157 +39,7 @@ Phase 2 (after SOMEONE ELSE has reviewed it):
 - If push fails, resolve and retry until it succeeds
 - **ALL bd operations BEFORE any git operations** - bd sync first, then git add/commit/push
 - Failure to follow this order creates double commits (one for code, one for .beads/issues.jsonl)
-- MODIFY ticket, bd SYNC, git STAGE/PUSH - else you will be creating extra commits 
-
-## Project Structure
-
-### internal/data/dolt/ - Beads Database Access
-
-The `dolt` package implements `data.TicketStore` for reading tickets from Beads/Dolt databases.
-
-**Key files:**
-- `metadata.go` - Parses `.beads/metadata.json` to determine connection mode
-- `store_embedded.go` - Embedded Dolt driver (build tag: `embedded`, requires CGO, single-connection)
-- `server.go` - MySQL driver for Dolt server connections
-- `store.go` - Main `Store` type implementing `TicketStore` (build tag: `!embedded`)
-- `schema.go` - Schema verification utilities
-
-**Connection modes:**
-- **Embedded**: Requires `-tags=embedded` build, uses `github.com/dolthub/driver`, local `.beads/dolt/` directory
-- **Server**: Available in all builds, activated by `dolt_mode: server` in metadata.json, uses MySQL protocol
-
-**Build modes:**
-- **Default** (no tags): Server-only build (~20-30MB)
-- **Full** (`-tags=embedded`): Server + Embedded modes (~93MB)
-
-**Usage:**
-```go
-store, err := dolt.NewStore(ctx, domain.AppOptions{BeadsDir: ".beads"})
-if err != nil {
-    // Handle with actionable error message
-}
-defer store.Close()
-
-tickets, err := store.ListTickets(ctx, data.TicketFilter{
-    Status: "open",
-    Limit: 10,
-})
-```
-
-**Error handling:** All errors include context. Common patterns:
-- Missing metadata.json → "Is this a beads project? Run 'bd init'"
-- Missing dolt directory → "The beads database may not be initialized"
-- Connection failures → Check server running / database corrupted
-- Schema failures → "Try running 'bd init' to repair"
-
-## Execution hints
-
-## 🤖 Interacting with this TUI (For AI Agents)
-
-This project features a Terminal User Interface (TUI). To programmatically drive, test, or interact with this application, you should use the **`agent-tui`** CLI tool.
-
-`agent-tui` allows you to "see" the terminal screen and interact with specific UI elements reliably without guessing ANSI escape sequences.
-
-### Core Workflow
-Always follow this observe-act-verify loop:
-
-0. **Start the daemon** `agent-tui daemon start` - It's usually running but it doesn't hurt to do it once per session
-1. **Start the App:** `agent-tui run --json "<your-app-command>"` (use `--json` flag for structured output)
-2. **Observe**
-   - static: `agent-tui screenshot`
-   - live: `agent-tui live` (gives websocket address, use `live_preview_stream` method for real-time stream)
-3. **Act:**
-   - Type text: `agent-tui type "my input"`
-   - Send Keystrokes: `agent-tui press Enter` or `agent-tui press ArrowRight`
-4. **Verify/Wait:** `agent-tui wait "Success Message"`
-5. **Cleanup:** `agent-tui kill`
-
-### Screenshot vs Live (Websocket) - Critical Difference
-
-**`agent-tui screenshot`**: Returns plain text only (no color/ANSI codes)
-- Good for: Checking text content, verifying UI state by string matching
-- Bad for: Testing visual attributes like greyed-out columns, colors, styles
-
-**`agent-tui live` (websocket)**: Returns base64-encoded ANSI escape sequences
-- Good for: Testing colors, styles, greyed-out states, visual attributes
-- Use method: `live_preview_stream` via websocket connection
-- Decoded data contains full ANSI color codes (e.g., `\x1b[38;5;240m` for grey)
-
-**When to use each:**
-- Simple state checks → screenshot
-- Color/style verification → live/websocket
-- Performance testing → screenshot (faster)
-- Full visual regression → live/websocket
-
-### Concrete Usage
-1. `agent-tui run -- sh -c "bd dolt start ; cd /home/sloth/Documents/projects/blunderbust/ ; ./bdb"` -- Chain multiple commands via `sh -c`
-2. `agent-tui screenshot --format json` -- Get session_id + screenshot text
-
-### TUI Automated Testing
-
-This project has two layers of TUI tests:
-
-**1. Unit Tests with teatest** (`internal/ui/*_test.go`)
-- Uses `github.com/charmbracelet/x/exp/teatest`
-- Tests keyboard navigation, state transitions, focus management
-- Runs in-process without external dependencies
-- Fast and reliable for regression testing
-
-**Example teatest pattern:**
-```go
-func TestKeyboardNavigation(t *testing.T) {
-    m := NewUIModel(app, harnesses)
-    tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-    
-    // Send key
-    tm.Send(tea.KeyMsg{Type: tea.KeyTab})
-    
-    // Verify state
-    teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
-        return strings.Contains(string(bts), "expected")
-    })
-}
-```
-
-**2. Integration Tests with agent-tui** (`internal/ui/agent_tui_test.go`)
-- Uses real `agent-tui` + websocket streaming
-- Captures ANSI color codes for visual state testing
-- Tests actual binary with real PTY
-- Slower but tests real rendering
-
-**Example agent-tui pattern:**
-```go
-func TestVisualState(t *testing.T) {
-    // Start app via agent-tui
-    session := startAgentTuiSession(t, true)
-    
-    // Connect websocket for live preview
-    conn := connectWebsocket(t, session.WsURL)
-    sendLivePreviewRequest(t, conn, session.SessionID)
-    
-    // Capture screen with ANSI codes
-    events := readLivePreviewEvents(t, conn, 5*time.Second, nil)
-    screen := getScreenContent(events)
-    
-    // Verify colors (e.g., grey = 240)
-    assert.True(t, containsAnsiColor(screen, 240))
-}
-```
-
-**Running tests:**
-```bash
-# All UI tests (both teatest and agent-tui)
-go test -v ./internal/ui/...
-
-# Only fast unit tests (teatest)
-go test -v ./internal/ui/... -run TestTeatest
-
-# Only integration tests (agent-tui)
-go test -v ./internal/ui/... -run TestAgentTui
-
-# Skip slow integration tests
-go test -v ./internal/ui/... -short
-```
+- MODIFY ticket, bd SYNC, git STAGE/PUSH - else you will be creating extra commits
 
 ## Lessons learned
 
@@ -224,129 +74,6 @@ The interface is nicer for humans. You pick whatever feels right for you.
 - **Beads extra**: Add a line like "Affected ticket(s): bb-foo", can be multiple with e.g. review tickets
 - **WARNING**: Forgetting the ticket reference line is a commit message format violation. Double-check before committing.
 
-## Blunderbust-Specific Instructions
-
-### Building Blunderbust
-
-Blunderbust supports two build configurations:
-
-**Server-only build (default, ~20-30MB)**:
-```bash
-make build
-```
-
-**Full build with embedded support (~93MB)**:
-```bash
-make build-full
-```
-
-**Development builds with debug symbols**:
-```bash
-make debug          # Server-only
-make debug-full     # Full build
-```
-
-**Installation**:
-```bash
-make install        # Server-only to GOPATH/bin
-make install-full   # Full build to GOPATH/bin
-```
-
-**Which build to use**:
-- Default build: Always use when testing or developing (faster builds)
-- Full build: Only when testing embedded mode functionality
-- CI/CD: Default build unless embedded mode is explicitly tested
-```
-
-### Running Blunderbust
-
-**Critical**: Blunderbust must run inside tmux to create new windows.
-
-```bash
-# Start tmux if not already running
-tmux
-
-# Run with default config
-bdb
-
-# Run with custom config
-bdb --config /path/to/config.yaml
-
-# Dry run mode (useful for testing without launching)
-bdb --dry-run
-
-# Debug mode (verbose logging)
-bdb --debug
-
-# Demo mode (uses fake data)
-bdb --demo
-```
-
-### Testing
-
-```bash
-# Run all tests with coverage
-make test
-
-# Run tests without coverage
-go test -v ./...
-
-# Run tests for a specific package
-go test -v ./internal/config
-
-# Run with race detector
-go test -race ./...
-```
-
-### Common Development Tasks
-
-**Testing config rendering**:
-```bash
-# Use dry-run to see rendered commands without launching
-bdb --dry-run --debug
-```
-
-**Testing TUI with fake data**:
-```bash
-# Use demo mode to test UI without database
-bdb --demo
-```
-
-**Debugging connection issues**:
-```bash
-# Enable debug logging to see database connection details
-bdb --debug --beads-dir ./.beads
-```
-
-### Exit Codes
-
-When implementing CLI behavior:
-- `0` - Success
-- `1` - General error
-- `2` - Config error (file not found, parse error, validation error)
-- `3` - No tmux (running outside tmux)
-
-### Key Files to Understand
-
-- `cmd/blunderbust/main.go` - CLI entrypoint, flag parsing, composition root
-- `internal/config/yaml.go` - YAML config loading
-- `internal/config/render.go` - Template rendering for commands/prompts
-- `internal/domain/template_context.go` - Available fields for templates
-- `internal/discovery/models.go` - Model discovery from models.dev
-- `internal/ui/` - TUI implementation with Bubbletea
-- `internal/data/dolt/` - Beads/Dolt database access
-
-### Model Discovery
-
-Blunderbust supports dynamic model discovery from `models.dev/api.json`.
-
-**Commands**:
-- `blunderbust update-models`: Manually refresh the local model cache.
-
-**Config Patterns**:
-- `provider:<id>`: Expands to all active models for that provider.
-- `discover:active`: Expands to all models from all providers that have their required environment variables set.
-
 ## Documentation
 
 - **New Features**: When implementing new features, **must** update documentation:
@@ -354,3 +81,22 @@ Blunderbust supports dynamic model discovery from `models.dev/api.json`.
   - Behavioral changes: Update AGENTS.md to inform agents
   - Always keep both files in sync
 
+## Reference Material (Mandatory When Relevant)
+
+Before working in these areas, you MUST read the corresponding reference file:
+
+- **TUI Testing** → `agent-docs/tui_testing_guide.md`
+  - Modifying or testing TUI components (`internal/ui/`)
+  - Writing or debugging `agent-tui` tests
+  - Making visual changes that require color/focus state verification
+
+- **Build & Run** → `agent-docs/build_and_run.md`
+  - Building the project (make/build commands)
+  - Running bdb locally
+  - Configuring CI/CD pipelines
+  - Adding new CLI flags or exit codes
+
+- **Dolt Internals** → `agent-docs/dolt_internals.md`
+  - Modifying `internal/data/dolt/`
+  - Working on ticket store implementations
+  - Debugging database connection issues

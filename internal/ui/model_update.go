@@ -269,8 +269,20 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 			}
 		case FocusHarness:
 			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+				// State transition: harness selection changed
+				// When user selects a different harness, we need to re-evaluate which columns
+				// should be disabled based on the new harness's SupportedModels and SupportedAgents.
+				// This is done by calling handleModelSkip() and handleAgentSkip() which:
+				// 1. Expand provider: and discover:active keywords to actual model/agent lists
+				// 2. Set modelColumnDisabled/agentColumnDisabled flags based on list emptiness
+				// 3. Clear any previously selected model/agent values when columns become disabled
+				// 4. Update the UI lists to reflect the new available options
+				//
+				// Navigation automatically adapts: advanceFocus() and retreatFocus() check the
+				// disabled flags and skip columns that have no selectable items.
 				m.selection.Harness = i.harness
 				m, _ = m.handleModelSkip()
+				m, _ = m.handleAgentSkip()
 				if m.focus < FocusAgent {
 					m.advanceFocus()
 				}

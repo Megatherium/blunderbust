@@ -320,30 +320,25 @@ func TestUIModel_DisabledColumnNavigation(t *testing.T) {
 	m.modelColumnDisabled = true
 	m.agentColumnDisabled = true
 
-	// Tab from sidebar should skip to Harness (skipping disabled columns)
+	// Tab from sidebar advances to Tickets (first enabled column)
 	tabMsg := tea.KeyMsg{Type: tea.KeyTab}
 	newModel, _, handled := m.handleKeyMsg(tabMsg)
 	assert.True(t, handled)
 	updatedM := newModel.(UIModel)
-	// Should land on FocusHarness, skipping Tickets (which would normally be next)
-	// Actually, Tickets is never disabled, so it should go there first
 	assert.Equal(t, FocusTickets, updatedM.focus)
 
-	// Now from Tickets, tab should go to Harness (skipping disabled Model)
+	// Now from Tickets, tab should go to Harness (skipping disabled Model and Agent)
 	updatedM.focus = FocusTickets
 	newModel, _, handled = updatedM.handleKeyMsg(tabMsg)
 	assert.True(t, handled)
 	updatedM = newModel.(UIModel)
-	// From Tickets, advanceFocus should skip Model and Agent (both disabled)
-	// So it should go to Harness
 	assert.Equal(t, FocusHarness, updatedM.focus)
 
-	// From Harness, right arrow should skip disabled columns
+	// From Harness, right arrow should stay at Harness since Model and Agent are disabled
 	rightMsg := tea.KeyMsg{Type: tea.KeyRight}
 	newModel, _, handled = updatedM.handleKeyMsg(rightMsg)
 	assert.True(t, handled)
 	finalM := newModel.(UIModel)
-	// Since Model and Agent are disabled, it should stay at Harness
 	assert.Equal(t, FocusHarness, finalM.focus)
 }
 
@@ -393,4 +388,44 @@ func TestUIModel_RetreatFocusSkipsDisabled(t *testing.T) {
 	m.focus = FocusAgent
 	m.retreatFocus()
 	assert.Equal(t, FocusHarness, m.focus) // Should skip both Model and Agent
+}
+
+func TestUIModel_BothColumnsDisabled_Navigation(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.state = ViewStateMatrix
+
+	// Disable both Model and Agent columns
+	m.modelColumnDisabled = true
+	m.agentColumnDisabled = true
+
+	// Test from Sidebar: should go to Tickets (never disabled)
+	m.focus = FocusSidebar
+	m.advanceFocus()
+	assert.Equal(t, FocusTickets, m.focus)
+
+	// Test from Tickets: should go to Harness (Model and Agent disabled)
+	m.focus = FocusTickets
+	m.advanceFocus()
+	assert.Equal(t, FocusHarness, m.focus)
+
+	// Test from Harness: should stay at Harness (nothing to advance to)
+	m.focus = FocusHarness
+	m.advanceFocus()
+	assert.Equal(t, FocusHarness, m.focus)
+
+	// Test retreat from Harness: should go to Tickets
+	m.focus = FocusHarness
+	m.retreatFocus()
+	assert.Equal(t, FocusTickets, m.focus)
+
+	// Test retreat from Tickets: should go to Sidebar
+	m.focus = FocusTickets
+	m.retreatFocus()
+	assert.Equal(t, FocusSidebar, m.focus)
+
+	// Test retreat from Sidebar: should stay at Sidebar
+	m.focus = FocusSidebar
+	m.retreatFocus()
+	assert.Equal(t, FocusSidebar, m.focus)
 }

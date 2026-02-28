@@ -8,6 +8,8 @@ type errMsg struct{ err error }
 
 type warningMsg struct{ err error }
 
+type registryLoadedMsg struct{}
+
 type launchResultMsg struct {
 	res *domain.LaunchResult
 	err error

@@ -66,7 +66,7 @@ func (m UIModel) Init() tea.Cmd {
 			if err := m.app.Registry.Load(context.Background()); err != nil {
 				return warningMsg{err: fmt.Errorf("model discovery load failed: %w", err)}
 			}
-			return nil
+			return registryLoadedMsg{}
 		},
 		func() tea.Msg {
 			store, err := m.app.CreateStore(context.Background())
@@ -87,6 +87,16 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case registryLoadedMsg:
+		if len(m.harnesses) > 0 {
+			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+				m.selection.Harness = i.harness
+				m, _ = m.handleModelSkip()
+				m, _ = m.handleAgentSkip()
+			}
+		}
+		return m, nil
+
 	case ticketsLoadedMsg:
 		return m.handleTicketsLoaded(msg)
 
@@ -144,7 +154,21 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case FocusTickets:
 			m.ticketList, cmd = m.ticketList.Update(msg)
 		case FocusHarness:
+			var prevHarness string
+			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+				prevHarness = i.harness.Name
+			}
+			
 			m.harnessList, cmd = m.harnessList.Update(msg)
+			
+			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+				if prevHarness != i.harness.Name {
+					// Harness selection changed, update downstream
+					m.selection.Harness = i.harness
+					m, _ = m.handleModelSkip()
+					m, _ = m.handleAgentSkip()
+				}
+			}
 		case FocusModel:
 			m.modelList, cmd = m.modelList.Update(msg)
 		case FocusAgent:

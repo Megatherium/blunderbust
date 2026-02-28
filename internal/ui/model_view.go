@@ -186,7 +186,7 @@ func (m UIModel) renderMatrixView() string {
 			Width(m.mWidth - 2).
 			Height(listHeight - 2).
 			Align(lipgloss.Center, lipgloss.Center)
-		mView = disabledStyle.Render("N/A\n\nNot configured")
+		mView = disabledStyle.Render("N/A\n\nNo models available\nfor this harness")
 	} else if m.focus == FocusModel {
 		mView = activeBorder(m.mWidth).Render(capView(m.modelList.View(), m.mWidth))
 		m.modelList.Title = modelTitle // Restore original title
@@ -205,7 +205,7 @@ func (m UIModel) renderMatrixView() string {
 			Width(m.aWidth - 2).
 			Height(listHeight - 2).
 			Align(lipgloss.Center, lipgloss.Center)
-		aView = disabledStyle.Render("N/A\n\nNot configured")
+		aView = disabledStyle.Render("N/A\n\nNo agents available\nfor this harness")
 	} else if m.focus == FocusAgent {
 		aView = activeBorder(m.aWidth).Render(capView(m.agentList.View(), m.aWidth))
 		m.agentList.Title = agentTitle // Restore original title

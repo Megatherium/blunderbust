@@ -3,7 +3,6 @@ package ui
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -432,17 +431,6 @@ func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea
 // Agent management helpers
 
 func addAgentNodeToSidebar(m *UIModel, agentInfo *domain.AgentInfo) {
-	f, _ := os.OpenFile("/tmp/bdb_agent.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if f != nil {
-		f.WriteString(fmt.Sprintf("addAgentNodeToSidebar called for %s\n", agentInfo.WorktreePath))
-		state := m.sidebar.State()
-		for _, p := range state.Nodes {
-			for _, w := range p.Children {
-				f.WriteString(fmt.Sprintf("  Checking against %s\n", w.Path))
-			}
-		}
-		f.Close()
-	}
 	state := m.sidebar.State()
 	for i := range state.Nodes {
 		addAgentToProject(&state.Nodes[i], agentInfo)

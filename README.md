@@ -420,6 +420,40 @@ make clean
 make install
 ```
 
+### Testing the TUI
+
+Blunderbust uses two complementary testing strategies for the Terminal User Interface:
+
+**1. Unit Tests with teatest**
+
+Fast, in-process tests that verify keyboard navigation, state transitions, and focus management. Run with:
+```bash
+go test -v ./internal/ui/... -run TestTeatest
+```
+
+These tests use the demo mode (`--demo`) to avoid database dependencies.
+
+**2. Integration Tests with agent-tui**
+
+Real integration tests that launch the actual TUI binary via agent-tui and capture ANSI color codes for visual state verification (e.g., greyed-out columns). Run with:
+```bash
+go test -v ./internal/ui/... -run TestAgentTui
+```
+
+These tests require the agent-tui daemon to be running (`agent-tui daemon start`).
+
+**Skipping slow tests:**
+```bash
+go test ./internal/ui/... -short  # Skips agent-tui integration tests
+```
+
+### For AI Agents
+
+See `AGENTS.md` for detailed guidance on:
+- Interacting with the TUI programmatically using agent-tui
+- Screenshot vs Live preview (websocket) approaches
+- Testing patterns and best practices
+
 ## Future
 
 Planned features:

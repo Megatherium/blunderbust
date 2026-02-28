@@ -183,16 +183,24 @@ func getWebsocketURL(t *testing.T) string {
 }
 
 // connectWebsocket connects to the agent-tui websocket and returns the connection
+// IMPORTANT: The context used for dialing must not be cancelled when this function returns,
+// as the returned connection will use that context for ongoing operations.
 func connectWebsocket(t *testing.T, wsURL string) *websocket.Conn {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), wsTimeout)
-	defer cancel()
+	// Use a background context for the ongoing connection lifetime
+	ctx := context.Background()
+
+	// Create a separate dial context with timeout - this is only for the initial dial
+	dialCtx, dialCancel := context.WithTimeout(ctx, wsTimeout)
+	defer dialCancel()
 
 	u, err := url.Parse(wsURL)
 	require.NoError(t, err)
 
-	conn, _, err := websocket.Dial(ctx, u.String(), nil)
+	// Dial uses dialCtx which is cancelled after dial completes, but the connection
+	// continues using the parent ctx (Background) which never expires
+	conn, _, err := websocket.Dial(dialCtx, u.String(), nil)
 	require.NoError(t, err)
 
 	return conn

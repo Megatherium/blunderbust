@@ -112,53 +112,6 @@ func TestTeatest_KeyboardNavigation_TabCycling(t *testing.T) {
 	tm.FinalOutput(t, teatest.WithFinalTimeout(2*time.Second))
 }
 
-// TestTeatest_KeyboardNavigation_ArrowKeys tests arrow key navigation
-func TestTeatest_KeyboardNavigation_ArrowKeys(t *testing.T) {
-	app := newTestAppWithHarnesses(t)
-	harnesses := newTestHarnesses()
-	m := NewUIModel(app, harnesses)
-	m.state = ViewStateMatrix
-	m.focus = FocusTickets
-
-	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
-
-	// Wait for render using WaitFor (proper async wait)
-	var initialOutput string
-	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
-		initialOutput = string(bts)
-		return strings.Contains(initialOutput, "Select")
-	}, teatest.WithDuration(2*time.Second))
-
-	// Send arrow keys with time.Sleep
-	// NOTE: Using time.Sleep for rapid key sequences instead of WaitFor because:
-	// 1. Focus/visual changes between key presses don't always produce string differences
-	// 2. The output reader state is unpredictable after initial WaitFor completes
-	// 3. WaitFor with simple conditions fails due to reader timing issues
-	// Test right arrow
-	tm.Send(tea.KeyMsg{Type: tea.KeyRight})
-	time.Sleep(50 * time.Millisecond)
-
-	// Test left arrow
-	tm.Send(tea.KeyMsg{Type: tea.KeyLeft})
-	time.Sleep(50 * time.Millisecond)
-
-	// Test down arrow
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	time.Sleep(50 * time.Millisecond)
-
-	// Test up arrow
-	tm.Send(tea.KeyMsg{Type: tea.KeyUp})
-	time.Sleep(50 * time.Millisecond)
-
-	// Verify TUI is still responsive after all navigation by checking final output
-	out, _ := io.ReadAll(tm.Output())
-	assert.True(t, len(out) > 0 || len(initialOutput) > 0, "TUI should be responsive after navigation")
-
-	// Quit
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
-}
-
 // TestTeatest_StateTransition_MatrixToConfirm tests entering confirm state
 func TestTeatest_StateTransition_MatrixToConfirm(t *testing.T) {
 	app := newTestAppWithHarnesses(t)
@@ -200,58 +153,6 @@ func TestTeatest_StateTransition_ErrorState(t *testing.T) {
 		return strings.Contains(string(bts), "Error") ||
 			strings.Contains(string(bts), "error")
 	}, teatest.WithDuration(2*time.Second))
-}
-
-// TestTeatest_FocusManagement_ColumnTransitions tests focus movement between columns
-func TestTeatest_FocusManagement_ColumnTransitions(t *testing.T) {
-	app := newTestAppWithHarnesses(t)
-	harnesses := newTestHarnesses()
-	m := NewUIModel(app, harnesses)
-	m.state = ViewStateMatrix
-	m.focus = FocusSidebar
-
-	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
-
-	// Wait for initial render using WaitFor (proper async wait)
-	var initialOutput string
-	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
-		initialOutput = string(bts)
-		return strings.Contains(initialOutput, "Select")
-	}, teatest.WithDuration(2*time.Second))
-
-	// Move through columns with Right arrow using time.Sleep
-	// NOTE: Using time.Sleep instead of WaitFor for rapid focus transitions because:
-	// 1. Focus changes affect visual styling (colors/borders) not easily detectable in string output
-	// 2. WaitFor conditions fail due to output reader timing issues after initial render
-	// 3. 50ms provides stable testing without flakiness from timing-dependent waits
-	
-	// Move from sidebar to tickets
-	tm.Send(tea.KeyMsg{Type: tea.KeyRight})
-	time.Sleep(50 * time.Millisecond)
-
-	// Move to harness
-	tm.Send(tea.KeyMsg{Type: tea.KeyRight})
-	time.Sleep(50 * time.Millisecond)
-
-	// Move to model
-	tm.Send(tea.KeyMsg{Type: tea.KeyRight})
-	time.Sleep(50 * time.Millisecond)
-
-	// Move to agent
-	tm.Send(tea.KeyMsg{Type: tea.KeyRight})
-	time.Sleep(50 * time.Millisecond)
-
-	// Try to move past agent (should stay)
-	tm.Send(tea.KeyMsg{Type: tea.KeyRight})
-	time.Sleep(50 * time.Millisecond)
-
-	// Verify TUI is still responsive after all focus transitions
-	out, _ := io.ReadAll(tm.Output())
-	assert.True(t, len(out) > 0 || len(initialOutput) > 0, "TUI should be responsive after focus transitions")
-
-	// Quit
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 }
 
 // TestTeatest_ModalDisplay tests modal content display

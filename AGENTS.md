@@ -94,25 +94,115 @@ This project features a Terminal User Interface (TUI). To programmatically drive
 Always follow this observe-act-verify loop:
 
 0. **Start the daemon** `agent-tui daemon start` - It's usually running but it doesn't hurt to do it once per session
-1. **Start the App:** `agent-tui run "<your-app-command>"`
-2. **Observe (Get Element Refs):** `agent-tui snap -e`
-   *(This outputs the screen state and assigns temporal references like `@e1`, `@e2` to interactive elements. Note: Refs reset on every snap).*
+1. **Start the App:** `agent-tui run --json "<your-app-command>"` (use `--json` flag for structured output)
+2. **Observe**
+   - static: `agent-tui screenshot`
+   - live: `agent-tui live` (gives websocket address, use `live_preview_stream` method for real-time stream)
 3. **Act:**
-   - Type text: `agent-tui fill @e1 "my input"`
-   - Select/Click: `agent-tui click @e2`
-   - Send Keystrokes: `agent-tui key Enter` or `agent-tui key F10`
+   - Type text: `agent-tui type "my input"`
+   - Send Keystrokes: `agent-tui press Enter` or `agent-tui press ArrowRight`
 4. **Verify/Wait:** `agent-tui wait "Success Message"`
 5. **Cleanup:** `agent-tui kill`
 
+### Screenshot vs Live (Websocket) - Critical Difference
+
+**`agent-tui screenshot`**: Returns plain text only (no color/ANSI codes)
+- Good for: Checking text content, verifying UI state by string matching
+- Bad for: Testing visual attributes like greyed-out columns, colors, styles
+
+**`agent-tui live` (websocket)**: Returns base64-encoded ANSI escape sequences
+- Good for: Testing colors, styles, greyed-out states, visual attributes
+- Use method: `live_preview_stream` via websocket connection
+- Decoded data contains full ANSI color codes (e.g., `\x1b[38;5;240m` for grey)
+
+**When to use each:**
+- Simple state checks → screenshot
+- Color/style verification → live/websocket
+- Performance testing → screenshot (faster)
+- Full visual regression → live/websocket
+
 ### Concrete Usage
-1. `agent-tui run -- sh -c "bd dolt start ; cd  /home/sloth/Documents/projects/blunderbust/ ; ./bdb"` -- Chain multiple command via `sh -c`
-2. `agent-tui snap` The previous commands takes a few seconds to start up (but so does talking to you via API, so no extra pausing need). The `--format json` only gives you the session_id in addition (useful when handling multiple runs)
+1. `agent-tui run -- sh -c "bd dolt start ; cd /home/sloth/Documents/projects/blunderbust/ ; ./bdb"` -- Chain multiple commands via `sh -c`
+2. `agent-tui screenshot --format json` -- Get session_id + screenshot text
+
+### TUI Automated Testing
+
+This project has two layers of TUI tests:
+
+**1. Unit Tests with teatest** (`internal/ui/*_test.go`)
+- Uses `github.com/charmbracelet/x/exp/teatest`
+- Tests keyboard navigation, state transitions, focus management
+- Runs in-process without external dependencies
+- Fast and reliable for regression testing
+
+**Example teatest pattern:**
+```go
+func TestKeyboardNavigation(t *testing.T) {
+    m := NewUIModel(app, harnesses)
+    tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
+    
+    // Send key
+    tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+    
+    // Verify state
+    teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+        return strings.Contains(string(bts), "expected")
+    })
+}
+```
+
+**2. Integration Tests with agent-tui** (`internal/ui/agent_tui_test.go`)
+- Uses real `agent-tui` + websocket streaming
+- Captures ANSI color codes for visual state testing
+- Tests actual binary with real PTY
+- Slower but tests real rendering
+
+**Example agent-tui pattern:**
+```go
+func TestVisualState(t *testing.T) {
+    // Start app via agent-tui
+    session := startAgentTuiSession(t, true)
+    
+    // Connect websocket for live preview
+    conn := connectWebsocket(t, session.WsURL)
+    sendLivePreviewRequest(t, conn, session.SessionID)
+    
+    // Capture screen with ANSI codes
+    events := readLivePreviewEvents(t, conn, 5*time.Second, nil)
+    screen := getScreenContent(events)
+    
+    // Verify colors (e.g., grey = 240)
+    assert.True(t, containsAnsiColor(screen, 240))
+}
+```
+
+**Running tests:**
+```bash
+# All UI tests (both teatest and agent-tui)
+go test -v ./internal/ui/...
+
+# Only fast unit tests (teatest)
+go test -v ./internal/ui/... -run TestTeatest
+
+# Only integration tests (agent-tui)
+go test -v ./internal/ui/... -run TestAgentTui
+
+# Skip slow integration tests
+go test -v ./internal/ui/... -short
+```
 
 ## Lessons learned
 
 - Be aware of Go's pass-by semantics especially with closures.
 - Don't assume you know what a function does by its name alone. The devil is in the details.
 - In Bubble Tea, never mutate application state (like maps or UI models) inside a `tea.Cmd` background goroutine; always return a `tea.Msg` and mutate state safely within the main `Update()` thread.
+- Never use defer cancel() on a context passed to Dial if the returned connection will use that context after the function returns - always use a separate dial context with its own timeout.
+- teatest strips ANSI color codes, making it fundamentally incapable of testing visual focus states - navigation tests belong in agent_tui_test.go where websocket streaming preserves ANSI codes.
+- Delete tests that simulate actions but only verify trivial assertions - vacuous tests like assert.True(t, len(out) > 0) provide false confidence and should be removed entirely.
+- WaitFor is for observable state changes, not for timing delays - use time.Sleep for rapid key sequences where intermediate states don't produce detectable output differences.
+- When the reviewer says "this is completely untouched," stop and actually look at the exact line they're pointing to
+- Adding visible text indicators to UI (like ▶ for focus) is valuable for users even when your testing framework can't leverage them - don't conflate UI improvements with testability.
+- A 3.0/10 review score means you fundamentally misunderstood the requirements - don't try to justify partial fixes, just implement exactly what the reviewer specified.
 
 ## Modern tooling
 

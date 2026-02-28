@@ -147,28 +147,54 @@ func (m UIModel) renderMatrixView() string {
 
 	var tView, hView, mView, aView string
 
+	// Add visible focus indicator (▶) to the title of the focused column
+	// This allows teatest to detect focus changes via text output
+	const focusIndicator = "▶ "
+	const noIndicator = "  "
+
+	ticketTitle := m.ticketList.Title
+	harnessTitle := m.harnessList.Title
+	modelTitle := m.modelList.Title
+	agentTitle := m.agentList.Title
+
 	if m.focus == FocusTickets {
+		m.ticketList.Title = focusIndicator + ticketTitle
 		tView = activeBorder(m.tWidth).Render(capView(m.ticketList.View(), m.tWidth))
+		m.ticketList.Title = ticketTitle // Restore original title
 	} else {
+		m.ticketList.Title = noIndicator + ticketTitle
 		tView = inactiveBorder(m.tWidth).Render(faintCapView(m.ticketList.View(), m.tWidth))
+		m.ticketList.Title = ticketTitle // Restore original title
 	}
 
 	if m.focus == FocusHarness {
+		m.harnessList.Title = focusIndicator + harnessTitle
 		hView = activeBorder(m.hWidth).Render(capView(m.harnessList.View(), m.hWidth))
+		m.harnessList.Title = harnessTitle // Restore original title
 	} else {
+		m.harnessList.Title = noIndicator + harnessTitle
 		hView = inactiveBorder(m.hWidth).Render(faintCapView(m.harnessList.View(), m.hWidth))
+		m.harnessList.Title = harnessTitle // Restore original title
 	}
 
 	if m.focus == FocusModel {
+		m.modelList.Title = focusIndicator + modelTitle
 		mView = activeBorder(m.mWidth).Render(capView(m.modelList.View(), m.mWidth))
+		m.modelList.Title = modelTitle // Restore original title
 	} else {
+		m.modelList.Title = noIndicator + modelTitle
 		mView = inactiveBorder(m.mWidth).Render(faintCapView(m.modelList.View(), m.mWidth))
+		m.modelList.Title = modelTitle // Restore original title
 	}
 
 	if m.focus == FocusAgent {
+		m.agentList.Title = focusIndicator + agentTitle
 		aView = activeBorder(m.aWidth).Render(capView(m.agentList.View(), m.aWidth))
+		m.agentList.Title = agentTitle // Restore original title
 	} else {
+		m.agentList.Title = noIndicator + agentTitle
 		aView = inactiveBorder(m.aWidth).Render(faintCapView(m.agentList.View(), m.aWidth))
+		m.agentList.Title = agentTitle // Restore original title
 	}
 
 	matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6

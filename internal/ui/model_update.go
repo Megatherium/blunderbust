@@ -170,27 +170,18 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	switch msg.String() {
 	case "left":
 		if m.state == ViewStateMatrix && m.focus > FocusSidebar {
-			if m.focus == FocusTickets {
-				m.sidebar.SetFocused(true)
-			}
-			m.focus--
+			m.retreatFocus()
 			return m, nil, true
 		}
 	case "right":
 		if m.state == ViewStateMatrix && m.focus < FocusAgent {
-			if m.focus == FocusSidebar {
-				m.sidebar.SetFocused(false)
-			}
-			m.focus++
+			m.advanceFocus()
 			return m, nil, true
 		}
 	case "tab":
 		if m.state == ViewStateMatrix {
 			if m.focus < FocusAgent {
-				if m.focus == FocusSidebar {
-					m.sidebar.SetFocused(false)
-				}
-				m.focus++
+				m.advanceFocus()
 			} else {
 				m.focus = FocusSidebar
 				m.sidebar.SetFocused(true)
@@ -272,7 +263,7 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 				}
 
 				if m.focus < FocusAgent {
-					m.focus++
+					m.advanceFocus()
 				}
 				return m, nil
 			}
@@ -281,7 +272,7 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 				m.selection.Harness = i.harness
 				m, _ = m.handleModelSkip()
 				if m.focus < FocusAgent {
-					m.focus++
+					m.advanceFocus()
 				}
 				return m, nil
 			}
@@ -290,7 +281,7 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 				m.selection.Model = i.name
 				m, _ = m.handleAgentSkip()
 				if m.focus < FocusAgent {
-					m.focus++
+					m.advanceFocus()
 				}
 				return m, nil
 			}
@@ -336,7 +327,9 @@ func (m UIModel) handleModelSkip() (UIModel, tea.Cmd) {
 	}
 	models = uniqueModels
 
-	if len(models) == 0 {
+	// Set disabled flag based on whether there are any models
+	m.modelColumnDisabled = len(models) == 0
+	if m.modelColumnDisabled {
 		m.selection.Model = ""
 	}
 	m.modelList = newModelList(models)
@@ -346,7 +339,9 @@ func (m UIModel) handleModelSkip() (UIModel, tea.Cmd) {
 
 func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 	agents := m.selection.Harness.SupportedAgents
-	if len(agents) == 0 {
+	// Set disabled flag based on whether there are any agents
+	m.agentColumnDisabled = len(agents) == 0
+	if m.agentColumnDisabled {
 		m.selection.Agent = ""
 	}
 
@@ -583,4 +578,56 @@ func rebuildAgentsInProject(projectNode *domain.SidebarNode, agents map[string]*
 			worktreeNode.Children = newChildren
 		}
 	}
+}
+
+// advanceFocus moves focus right, skipping disabled columns
+func (m *UIModel) advanceFocus() {
+	// Check if we can actually advance
+	if m.focus >= FocusAgent {
+		return
+	}
+
+	// Find the next enabled column
+	for nextFocus := m.focus + 1; nextFocus <= FocusAgent; nextFocus++ {
+		// Skip disabled columns
+		if nextFocus == FocusModel && m.modelColumnDisabled {
+			continue
+		}
+		if nextFocus == FocusAgent && m.agentColumnDisabled {
+			continue
+		}
+		// Found an enabled column, move to it
+		if m.focus == FocusSidebar {
+			m.sidebar.SetFocused(false)
+		}
+		m.focus = nextFocus
+		return
+	}
+	// No enabled column found, stay at current position
+}
+
+// retreatFocus moves focus left, skipping disabled columns
+func (m *UIModel) retreatFocus() {
+	// Check if we can actually retreat
+	if m.focus <= FocusSidebar {
+		return
+	}
+
+	// Find the previous enabled column
+	for nextFocus := m.focus - 1; nextFocus >= FocusSidebar; nextFocus-- {
+		// Skip disabled columns
+		if nextFocus == FocusModel && m.modelColumnDisabled {
+			continue
+		}
+		if nextFocus == FocusAgent && m.agentColumnDisabled {
+			continue
+		}
+		// Found an enabled column, move to it
+		if nextFocus == FocusSidebar {
+			m.sidebar.SetFocused(true)
+		}
+		m.focus = nextFocus
+		return
+	}
+	// No enabled column found, stay at current position
 }

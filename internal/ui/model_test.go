@@ -286,3 +286,111 @@ func TestUIModel_HandleWorktreesDiscovered_EmptyNodes(t *testing.T) {
 	assert.Len(t, mWithNodes.warnings, 0)
 	assert.Equal(t, "", mWithNodes.selectedWorktree)
 }
+
+func TestUIModel_DisabledColumns(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.state = ViewStateMatrix
+
+	// Initially, columns should not be disabled
+	assert.False(t, m.modelColumnDisabled)
+	assert.False(t, m.agentColumnDisabled)
+
+	// Test with harness that has no models or agents
+	m.selection.Harness = domain.Harness{
+		Name:            "amp",
+		SupportedModels: []string{},
+		SupportedAgents: []string{},
+	}
+	m, _ = m.handleModelSkip()
+	m, _ = m.handleAgentSkip()
+
+	// Both columns should be disabled
+	assert.True(t, m.modelColumnDisabled)
+	assert.True(t, m.agentColumnDisabled)
+}
+
+func TestUIModel_DisabledColumnNavigation(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.state = ViewStateMatrix
+	m.focus = FocusSidebar
+
+	// Disable model and agent columns
+	m.modelColumnDisabled = true
+	m.agentColumnDisabled = true
+
+	// Tab from sidebar should skip to Harness (skipping disabled columns)
+	tabMsg := tea.KeyMsg{Type: tea.KeyTab}
+	newModel, _, handled := m.handleKeyMsg(tabMsg)
+	assert.True(t, handled)
+	updatedM := newModel.(UIModel)
+	// Should land on FocusHarness, skipping Tickets (which would normally be next)
+	// Actually, Tickets is never disabled, so it should go there first
+	assert.Equal(t, FocusTickets, updatedM.focus)
+
+	// Now from Tickets, tab should go to Harness (skipping disabled Model)
+	updatedM.focus = FocusTickets
+	newModel, _, handled = updatedM.handleKeyMsg(tabMsg)
+	assert.True(t, handled)
+	updatedM = newModel.(UIModel)
+	// From Tickets, advanceFocus should skip Model and Agent (both disabled)
+	// So it should go to Harness
+	assert.Equal(t, FocusHarness, updatedM.focus)
+
+	// From Harness, right arrow should skip disabled columns
+	rightMsg := tea.KeyMsg{Type: tea.KeyRight}
+	newModel, _, handled = updatedM.handleKeyMsg(rightMsg)
+	assert.True(t, handled)
+	finalM := newModel.(UIModel)
+	// Since Model and Agent are disabled, it should stay at Harness
+	assert.Equal(t, FocusHarness, finalM.focus)
+}
+
+func TestUIModel_AdvanceFocusSkipsDisabled(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.state = ViewStateMatrix
+
+	// Test with only Model disabled
+	m.modelColumnDisabled = true
+	m.agentColumnDisabled = false
+	m.focus = FocusHarness
+	m.advanceFocus()
+	assert.Equal(t, FocusAgent, m.focus) // Should skip Model and go to Agent
+
+	// Test with only Agent disabled
+	m.modelColumnDisabled = false
+	m.agentColumnDisabled = true
+	m.focus = FocusModel
+	m.advanceFocus()
+	// Agent is disabled, so should stay at Model
+	assert.Equal(t, FocusModel, m.focus)
+
+	// Test with both disabled
+	m.modelColumnDisabled = true
+	m.agentColumnDisabled = true
+	m.focus = FocusHarness
+	m.advanceFocus()
+	assert.Equal(t, FocusHarness, m.focus) // Can't advance past disabled columns
+}
+
+func TestUIModel_RetreatFocusSkipsDisabled(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.state = ViewStateMatrix
+
+	// Test with only Model disabled
+	m.modelColumnDisabled = true
+	m.agentColumnDisabled = false
+	m.focus = FocusAgent
+	m.retreatFocus()
+	assert.Equal(t, FocusHarness, m.focus) // Should skip Model
+
+	// Test with both disabled
+	m.modelColumnDisabled = true
+	m.agentColumnDisabled = true
+	m.focus = FocusAgent
+	m.retreatFocus()
+	assert.Equal(t, FocusHarness, m.focus) // Should skip both Model and Agent
+}

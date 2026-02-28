@@ -177,8 +177,17 @@ func (m UIModel) renderMatrixView() string {
 		m.harnessList.Title = harnessTitle // Restore original title
 	}
 
-	if m.focus == FocusModel {
-		m.modelList.Title = focusIndicator + modelTitle
+	// Model column - greyed out if disabled
+	if m.modelColumnDisabled {
+		disabledStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ThemeInactive).
+			Faint(true).
+			Width(m.mWidth - 2).
+			Height(listHeight - 2).
+			Align(lipgloss.Center, lipgloss.Center)
+		mView = disabledStyle.Render("N/A\n\nNot configured")
+	} else if m.focus == FocusModel {
 		mView = activeBorder(m.mWidth).Render(capView(m.modelList.View(), m.mWidth))
 		m.modelList.Title = modelTitle // Restore original title
 	} else {
@@ -187,8 +196,17 @@ func (m UIModel) renderMatrixView() string {
 		m.modelList.Title = modelTitle // Restore original title
 	}
 
-	if m.focus == FocusAgent {
-		m.agentList.Title = focusIndicator + agentTitle
+	// Agent column - greyed out if disabled
+	if m.agentColumnDisabled {
+		disabledStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ThemeInactive).
+			Faint(true).
+			Width(m.aWidth - 2).
+			Height(listHeight - 2).
+			Align(lipgloss.Center, lipgloss.Center)
+		aView = disabledStyle.Render("N/A\n\nNot configured")
+	} else if m.focus == FocusAgent {
 		aView = activeBorder(m.aWidth).Render(capView(m.agentList.View(), m.aWidth))
 		m.agentList.Title = agentTitle // Restore original title
 	} else {
@@ -204,7 +222,7 @@ func (m UIModel) renderMatrixView() string {
 		Width(matrixWidth-2).
 		Height(1).
 		Padding(0, 1).
-		Render("Filters: [All] | (Press / to search - Reactive Filter bb-0vw pending)")
+		Render("Filters: [All] | (Press / to search)")
 
 	matrixBox := lipgloss.JoinHorizontal(lipgloss.Top,
 		tView,

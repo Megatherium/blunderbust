@@ -86,6 +86,10 @@ type UIModel struct {
 	// Agent tracking
 	agents         map[string]*RunningAgent // Keyed by agent ID
 	viewingAgentID string                   // Which agent output is displayed ("" = show matrix)
+
+	// Column disable state - set based on harness configuration
+	modelColumnDisabled bool // true when harness has no models
+	agentColumnDisabled bool // true when harness has no agents
 }
 
 // RunningAgent tracks a launched agent session

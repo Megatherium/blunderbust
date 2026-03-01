@@ -31,7 +31,15 @@ func (i harnessItem) FilterValue() string { return i.harness.Name }
 // getModelCount returns the actual number of resolved models.
 // It expands provider wildcards (e.g., "provider:openai") and "discover:active"
 // into actual model counts using the discovery registry.
+//
+// Note: "discover:active" expansion depends on environment variables being set
+// for each provider (e.g., OPENAI_API_KEY, ANTHROPIC_API_KEY). The Registry
+// checks these env vars to determine which providers are active.
 func (i harnessItem) getModelCount() int {
+	if i.harness.SupportedModels == nil {
+		return 0
+	}
+
 	if i.registry == nil {
 		// Fallback: just count raw entries if registry unavailable
 		return len(i.harness.SupportedModels)

@@ -102,17 +102,74 @@ func TestHarnessItem_getModelCount(t *testing.T) {
 }
 
 func TestHarnessItem_Description(t *testing.T) {
-	item := harnessItem{
-		harness: domain.Harness{
-			Name:            "test-harness",
-			SupportedModels: []string{"provider:openai"},
-			SupportedAgents: []string{"agent1", "agent2"},
+	tests := []struct {
+		name     string
+		harness  domain.Harness
+		registry *discovery.Registry
+		want     string
+	}{
+		{
+			name: "normal case with provider wildcard",
+			harness: domain.Harness{
+				Name:            "test-harness",
+				SupportedModels: []string{"provider:openai"},
+				SupportedAgents: []string{"agent1", "agent2"},
+			},
+			registry: setupMockRegistry(),
+			want:     "Models: 2\nAgents: 2",
 		},
-		registry: setupMockRegistry(),
+		{
+			name: "zero models",
+			harness: domain.Harness{
+				Name:            "test-harness",
+				SupportedModels: []string{},
+				SupportedAgents: []string{"agent1"},
+			},
+			registry: setupMockRegistry(),
+			want:     "Models: 0\nAgents: 1",
+		},
+		{
+			name: "zero agents",
+			harness: domain.Harness{
+				Name:            "test-harness",
+				SupportedModels: []string{"openai/gpt-4"},
+				SupportedAgents: []string{},
+			},
+			registry: setupMockRegistry(),
+			want:     "Models: 1\nAgents: 0",
+		},
+		{
+			name: "nil registry fallback",
+			harness: domain.Harness{
+				Name:            "test-harness",
+				SupportedModels: []string{"model1", "model2", "model3"},
+				SupportedAgents: []string{"agent1"},
+			},
+			registry: nil,
+			want:     "Models: 3\nAgents: 1",
+		},
+		{
+			name: "both zero with nil registry",
+			harness: domain.Harness{
+				Name:            "test-harness",
+				SupportedModels: []string{},
+				SupportedAgents: []string{},
+			},
+			registry: nil,
+			want:     "Models: 0\nAgents: 0",
+		},
 	}
 
-	desc := item.Description()
-	assert.Equal(t, "Models: 2\nAgents: 2", desc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			item := harnessItem{
+				harness:  tt.harness,
+				registry: tt.registry,
+			}
+			desc := item.Description()
+			assert.Equal(t, tt.want, desc)
+		})
+	}
 }
 
 func setupMockRegistry() *discovery.Registry {

@@ -102,8 +102,6 @@ When a task is functionally complete:
 - `bd show <id>` - See what's blocking/blocked by this issue
 
 ### Sync & Collaboration
-- `bd dolt pull` - Pull beads updates from Dolt remote
-- `bd dolt push` - Push beads to Dolt remote
 - `bd search <query>` - Search issues by keyword
 
 ### Project Health

@@ -98,7 +98,7 @@ func buildServerDSN(metadata *Metadata) string {
 }
 
 // StartServer attempts to start the Dolt server by running 'bd dolt start'.
-// It waits for the server to be ready by polling with exponential backoff.
+// It waits for the server to be ready by polling at fixed 500ms intervals.
 // Returns an error if the server fails to start or doesn't become ready within the timeout.
 func StartServer(beadsDir string, timeout time.Duration) error {
 	projectDir := filepath.Dir(beadsDir)

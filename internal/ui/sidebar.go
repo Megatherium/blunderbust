@@ -60,16 +60,27 @@ var (
 
 	// agentRunningStyle is used for agents that are currently running.
 	agentRunningStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "34", Dark: "34"})
+				Foreground(lipgloss.AdaptiveColor{Light: "34", Dark: "34"}).
+				Bold(true)
 
 	// agentFailedStyle is used for agents that have failed.
 	agentFailedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "9", Dark: "9"})
+				Foreground(lipgloss.AdaptiveColor{Light: "160", Dark: "160"}).
+				Bold(true)
+
+	// agentFailedGlitchStyle is alternate style for glitch effect
+	agentFailedGlitchStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "88", Dark: "88"}).
+				Bold(true)
 
 	// agentCompletedStyle is used for agents that completed successfully.
 	agentCompletedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "245"})
+				Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "245"}).
+				Italic(true)
 )
+
+// sidebarAnimFrame is a package-level frame counter for consistent animation timing
+var sidebarAnimFrame int
 
 // SidebarModel is a bubbletea model that renders a tree view of projects,
 // worktrees, and harnesses for navigation.
@@ -303,7 +314,7 @@ func (m SidebarModel) renderHarnessName(node *domain.SidebarNode, name string, i
 }
 
 // renderAgentName renders the agent name with a colored dot indicator.
-// Green for running, red for failed, white/gray for completed.
+// Green for running, red for failed (with glitch effect), white/gray for completed.
 func (m SidebarModel) renderAgentName(node *domain.SidebarNode, name string, isCursor bool) string {
 	if node.AgentInfo == nil {
 		return name
@@ -312,10 +323,18 @@ func (m SidebarModel) renderAgentName(node *domain.SidebarNode, name string, isC
 	if m.shouldApplyStyle(isCursor) {
 		switch node.AgentInfo.Status {
 		case domain.AgentRunning:
+			// Bold green dot for running agents
 			return agentRunningStyle.Render("● " + name)
 		case domain.AgentFailed:
-			return agentFailedStyle.Render("● " + name)
+			// Glitch effect: alternate between bright red and dark red
+			// Use package-level frame counter for consistent, predictable timing
+			sidebarAnimFrame++
+			if sidebarAnimFrame%4 < 2 {
+				return agentFailedStyle.Render("● " + name)
+			}
+			return agentFailedGlitchStyle.Render("● " + name)
 		case domain.AgentCompleted:
+			// Italic gray for completed
 			return agentCompletedStyle.Render("● " + name)
 		default:
 			return agentRunningStyle.Render("● " + name)

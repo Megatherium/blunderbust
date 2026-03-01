@@ -101,6 +101,9 @@ type UIModel struct {
 	// Animation state
 	animState AnimationState
 
+	// Current theme for visual styling
+	currentTheme *ThemePalette
+
 	// Ticket auto-refresh tracking
 	lastTicketUpdate      time.Time
 	refreshedRecently     bool

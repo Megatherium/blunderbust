@@ -18,8 +18,8 @@ func TestKeyMapFullHelp(t *testing.T) {
 	if len(help) != 2 {
 		t.Errorf("FullHelp() returned %d rows, want 2", len(help))
 	}
-	if len(help[0]) != 5 || len(help[1]) != 3 {
-		t.Errorf("FullHelp() rows have wrong length: got %d, %d, want 5, 3", len(help[0]), len(help[1]))
+	if len(help[0]) != 6 || len(help[1]) != 3 {
+		t.Errorf("FullHelp() rows have wrong length: got %d, %d, want 6, 3", len(help[0]), len(help[1]))
 	}
 }
 

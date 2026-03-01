@@ -181,6 +181,17 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		m.updateSizes()
 		return m, nil, true
 	}
+	if key.Matches(msg, m.keys.ToggleTheme) {
+		// Cycle to next theme
+		m.animState.nextTheme()
+		m.currentTheme = m.animState.getCurrentTheme()
+		// Update list delegates to use new theme colors
+		m.ticketList.SetDelegate(newGradientDelegate(m.currentTheme))
+		m.harnessList.SetDelegate(newGradientDelegate(m.currentTheme))
+		m.modelList.SetDelegate(newGradientDelegate(m.currentTheme))
+		m.agentList.SetDelegate(newGradientDelegate(m.currentTheme))
+		return m, nil, true
+	}
 
 	// Handle manual left/right navigation outside of keys.go since it's intrinsic to the matrix
 	switch msg.String() {
@@ -404,18 +415,21 @@ func (m *UIModel) updateKeyBindings() {
 			m.keys.Enter.SetEnabled(true)
 		}
 		m.keys.ToggleSidebar.SetEnabled(true)
+		m.keys.ToggleTheme.SetEnabled(true)
 	case ViewStateError:
 		m.keys.Back.SetEnabled(false)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(false)
 		m.keys.Info.SetEnabled(false)
 		m.keys.ToggleSidebar.SetEnabled(false)
+		m.keys.ToggleTheme.SetEnabled(false)
 	default:
 		m.keys.Back.SetEnabled(true)
 		m.keys.Refresh.SetEnabled(false)
 		m.keys.Enter.SetEnabled(true)
 		m.keys.Info.SetEnabled(false)
 		m.keys.ToggleSidebar.SetEnabled(false)
+		m.keys.ToggleTheme.SetEnabled(true)
 	}
 }
 
@@ -683,6 +697,19 @@ func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) 
 	phase := (math.Sin(2*math.Pi*elapsed/period) + 1) / 2 // Normalize to 0-1
 
 	m.animState.PulsePhase = phase
+
+	// Handle color cycling - change palette every ColorCycleInterval
+	cycleElapsed := msg.Time.Sub(m.animState.ColorCycleStart).Seconds()
+	if cycleElapsed >= ColorCycleInterval.Seconds() {
+		var cycleCount int
+		if m.currentTheme == &CyberpunkTheme {
+			cycleCount = len(CyberpunkThemeColorCycles)
+		} else {
+			cycleCount = len(MatrixThemeColorCycles)
+		}
+		m.animState.ColorCycleIndex = (m.animState.ColorCycleIndex + 1) % cycleCount
+		m.animState.ColorCycleStart = msg.Time
+	}
 
 	// Decay lock-in flash intensity
 	if m.animState.LockInActive {

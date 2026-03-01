@@ -10,8 +10,9 @@ import (
 
 // Animation timing constants - tweak these to adjust feel
 const (
-	AnimationTickRate  = 16 * time.Millisecond // ~60fps
-	PulsePeriodSeconds = 2.5                   // Full breathing cycle
+	AnimationTickRate     = 16 * time.Millisecond // ~60fps
+	PulsePeriodSeconds    = 2.5                   // Full breathing cycle
+	ColorCycleInterval    = 8 * time.Second       // Time between color palette switches
 )
 
 // Lock-in flash timing
@@ -21,6 +22,7 @@ const (
 )
 
 // GradientColors is the signature palette: light green → dark blue
+// DEPRECATED: Use theme.Gradient instead. Kept for backward compatibility.
 var GradientColors = []string{
 	"#90EE90", "#8BE88C", "#86E288", "#81DC88", "#7CD688",
 	"#77D088", "#72CA88", "#6DC488", "#68BE88", "#63B888",
@@ -49,6 +51,11 @@ type AnimationState struct {
 	LockInIntensity float64     // 1.0 (full bright) → 0.0 (normal), decays linearly
 	LockInStartTime time.Time   // When flash started, used to calculate decay
 	LockInTarget    FocusColumn // Which column triggered the flash
+
+	// Color cycling state
+	ColorCycleIndex int       // Current position in color palette
+	ColorCycleStart time.Time // When current cycle started
+	CurrentThemeIdx int       // Index into AvailableThemes
 }
 
 // animationTickMsg is sent periodically to update animations
@@ -94,6 +101,7 @@ func (a AnimationState) shouldShowFlash(column FocusColumn) bool {
 
 // getPulsingColor returns a color from the gradient based on pulse phase
 // phase: 0.0 = darkest (valley), 0.5 = base, 1.0 = brightest (peak)
+// DEPRECATED: Use getPulsingColorWithTheme instead
 func getPulsingColor(phase float64) lipgloss.Color {
 	// Map phase 0-1 to gradient index range
 	// GradientDarkestIdx (27) is darkest, GradientBrightestIdx (3) is brightest
@@ -111,12 +119,39 @@ func getPulsingColor(phase float64) lipgloss.Color {
 	return lipgloss.Color(GradientColors[idx])
 }
 
+// getCurrentTheme returns the currently active theme
+func (a AnimationState) getCurrentTheme() *ThemePalette {
+	if a.CurrentThemeIdx < 0 || a.CurrentThemeIdx >= len(AvailableThemes) {
+		return &MatrixTheme // Default to Matrix
+	}
+	return AvailableThemes[a.CurrentThemeIdx]
+}
+
+// nextTheme cycles to the next theme
+func (a *AnimationState) nextTheme() {
+	a.CurrentThemeIdx = (a.CurrentThemeIdx + 1) % len(AvailableThemes)
+}
+
 // newGradientDelegate creates a list delegate with gradient-colored selected items
-func newGradientDelegate() list.DefaultDelegate {
+// If no theme is provided, defaults to Matrix theme
+func newGradientDelegate(theme ...*ThemePalette) list.DefaultDelegate {
 	delegate := list.NewDefaultDelegate()
 
+	// Use provided theme or default to Matrix
+	var t *ThemePalette
+	if len(theme) > 0 && theme[0] != nil {
+		t = theme[0]
+	} else {
+		t = &MatrixTheme
+	}
+
 	// Use a mid-range gradient color for selected items (base state)
-	selectedColor := lipgloss.Color(GradientColors[12]) // Mid green-blue
+	var selectedColor lipgloss.Color
+	if t != nil && len(t.Gradient) > 12 {
+		selectedColor = lipgloss.Color(t.Gradient[12]) // Mid color
+	} else {
+		selectedColor = lipgloss.Color(GradientColors[12]) // Fallback
+	}
 
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
 		Foreground(selectedColor).

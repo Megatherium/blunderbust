@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -63,7 +64,7 @@ func (m UIModel) renderMainContent() string {
 	switch m.state {
 	case ViewStateMatrix:
 		if m.loading {
-			s = "Loading tickets...\n"
+			s = m.renderLoadingView()
 		} else if m.viewingAgentID != "" {
 			// Show agent output view
 			s = m.renderAgentOutputView()
@@ -72,7 +73,7 @@ func (m UIModel) renderMainContent() string {
 			s = m.renderMatrixView()
 		}
 	case ViewStateConfirm:
-		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun, m.selectedWorktree)
+		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun, m.selectedWorktree, m.currentTheme)
 	case ViewStateError:
 		s = errorView(m.err)
 	}
@@ -104,6 +105,26 @@ func (m UIModel) renderMainContent() string {
 	return s
 }
 
+// renderLoadingView displays an arcade-style loading screen
+func (m UIModel) renderLoadingView() string {
+	// Animated spinner frames
+	frames := []string{"◜", "◝", "◞", "◟"}
+	frameIndex := int(time.Since(m.animState.StartTime).Seconds()*4) % 4
+	frame := frames[frameIndex]
+
+	// Use theme colors for loading
+	spinnerColor := m.currentTheme.TitleColor
+	arcadeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(m.currentTheme.ArcadeGold)
+
+	s := "\n\n"
+	s += lipgloss.NewStyle().Foreground(spinnerColor).Render(frame+" Initializing...") + "\n\n"
+	s += arcadeStyle.Render("INSERT COIN TO START") + "\n"
+	s += lipgloss.NewStyle().Faint(true).Render("(Loading tickets...)")
+	return s
+}
+
 func (m UIModel) renderMatrixView() string {
 	// Guard against uninitialized dimensions
 	if m.height < filterHeight+2 {
@@ -112,15 +133,24 @@ func (m UIModel) renderMatrixView() string {
 
 	listHeight := m.height - filterHeight
 
+	// Get the current theme
+	theme := m.currentTheme
+	if theme == nil {
+		theme = &MatrixTheme
+	}
+
 	// Determine the active border color - use flash color if lock-in is active for focused column
 	var activeColor lipgloss.Color
 	if m.animState.shouldShowFlash(m.focus) {
 		// Flash takes priority during the bright phase of the animation
 		activeColor = FlashColor
 	} else {
-		// Normal pulsing color for breathing effect
-		activeColor = getPulsingColor(m.animState.PulsePhase)
+		// Use cycling color for more dynamic effect
+		activeColor = getCyclingColor(m.animState.PulsePhase, m.animState.ColorCycleIndex, theme)
 	}
+
+	// Get glow color based on current pulse phase
+	glowColor := getGlowColor(m.animState.PulsePhase, theme)
 
 	activeBorder := func(w int) lipgloss.Style {
 		if w < 2 {
@@ -129,6 +159,7 @@ func (m UIModel) renderMatrixView() string {
 		return lipgloss.NewStyle().
 			Border(lipgloss.ThickBorder()).
 			BorderForeground(activeColor).
+			Background(glowColor).
 			Width(w - 2).
 			Height(listHeight - 2)
 	}
@@ -162,13 +193,18 @@ func (m UIModel) renderMatrixView() string {
 	const focusIndicator = "▶ "
 	const noIndicator = "  "
 
+	// Style for focused column titles - golden arcade style
+	focusedTitleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(theme.FocusIndicator)
+
 	ticketTitle := m.ticketList.Title
 	harnessTitle := m.harnessList.Title
 	modelTitle := m.modelList.Title
 	agentTitle := m.agentList.Title
 
 	if m.focus == FocusTickets {
-		m.ticketList.Title = focusIndicator + ticketTitle
+		m.ticketList.Title = focusedTitleStyle.Render(focusIndicator) + ticketTitle
 		tView = activeBorder(m.tWidth).Render(capView(m.ticketList.View(), m.tWidth))
 		m.ticketList.Title = ticketTitle // Restore original title
 	} else {
@@ -178,7 +214,7 @@ func (m UIModel) renderMatrixView() string {
 	}
 
 	if m.focus == FocusHarness {
-		m.harnessList.Title = focusIndicator + harnessTitle
+		m.harnessList.Title = focusedTitleStyle.Render(focusIndicator) + harnessTitle
 		hView = activeBorder(m.hWidth).Render(capView(m.harnessList.View(), m.hWidth))
 		m.harnessList.Title = harnessTitle // Restore original title
 	} else {

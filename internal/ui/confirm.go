@@ -20,14 +20,40 @@ var (
 				MarginBottom(1)
 )
 
-func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun bool, workDir string) string {
+func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun bool, workDir string, theme *ThemePalette) string {
+	// Use Matrix theme as default if nil
+	if theme == nil {
+		theme = &MatrixTheme
+	}
+
+	// Arcade-style styles using theme colors
+	readyTextStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(theme.ReadyColor).
+		MarginTop(1).
+		MarginBottom(1)
+
+	launchButtonStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(theme.LaunchFg).
+		Background(theme.LaunchBg).
+		Padding(0, 4).
+		Width(20).
+		Align(lipgloss.Center)
+
+	// Update title style with theme color
+	themeTitleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(theme.TitleColor).
+		MarginBottom(1)
+
 	s := ""
 
 	if dryRun {
 		s += dryRunBadgeStyle.Render("[DRY RUN]") + "\n"
 	}
 
-	s += titleStyle.Render("Confirm Launch Spec") + "\n"
+	s += themeTitleStyle.Render("Confirm Launch Spec") + "\n"
 	s += fmt.Sprintf("Ticket:  %s (%s)\n", itemStyle.Render(selection.Ticket.ID), selection.Ticket.Title)
 	s += fmt.Sprintf("Harness: %s\n", itemStyle.Render(selection.Harness.Name))
 
@@ -50,10 +76,10 @@ func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun b
 	if renderer != nil {
 		spec, err := renderer.RenderSelection(selection, workDir)
 		if err == nil && spec != nil {
-			s += titleStyle.Render("Rendered Command:") + "\n"
+			s += themeTitleStyle.Render("Rendered Command:") + "\n"
 			s += itemStyle.Render(fmt.Sprintf("```bash\n%s\n```", spec.RenderedCommand)) + "\n\n"
 			if spec.RenderedPrompt != "" {
-				s += titleStyle.Render("Rendered Prompt:") + "\n"
+				s += themeTitleStyle.Render("Rendered Prompt:") + "\n"
 				promptLines := strings.Split(spec.RenderedPrompt, "\n")
 				for _, line := range promptLines {
 					s += itemStyle.Render(line) + "\n"
@@ -64,6 +90,12 @@ func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun b
 			s += itemStyle.Render(fmt.Sprintf("Error rendering: %v", err)) + "\n\n"
 		}
 	}
+
+	// Arcade-style ready indicator
+	s += readyTextStyle.Render("READY?") + "\n"
+
+	// Big launch button
+	s += launchButtonStyle.Render("LAUNCH") + "\n\n"
 
 	s += "[Press Enter to launch, esc to go back]"
 	return s

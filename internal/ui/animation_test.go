@@ -195,3 +195,213 @@ func TestAnimationIntegrationInUIModel(t *testing.T) {
 		t.Errorf("Failed to set PulsePhase, expected 0.75, got %f", m.animState.PulsePhase)
 	}
 }
+
+func TestLockInFlashConstants(t *testing.T) {
+	// Verify lock-in flash timing constant is reasonable
+	if LockInFlashDuration <= 0 {
+		t.Error("LockInFlashDuration should be positive")
+	}
+
+	// Flash should be very brief (less than 100ms for snappy feedback)
+	if LockInFlashDuration > 100*time.Millisecond {
+		t.Errorf("LockInFlashDuration (%v) should be <= 100ms for snappy feedback", LockInFlashDuration)
+	}
+
+	// Flash should be noticeable (at least 16ms = 1 frame at 60fps)
+	if LockInFlashDuration < 16*time.Millisecond {
+		t.Errorf("LockInFlashDuration (%v) should be >= 16ms to be visible", LockInFlashDuration)
+	}
+}
+
+func TestLockInFlashState(t *testing.T) {
+	state := AnimationState{
+		StartTime:       time.Now(),
+		LockInActive:    true,
+		LockInIntensity: 1.0,
+		LockInStartTime: time.Now(),
+		LockInTarget:    FocusTickets,
+	}
+
+	// Verify initial state
+	if !state.LockInActive {
+		t.Error("LockInActive should be true")
+	}
+
+	if state.LockInIntensity != 1.0 {
+		t.Errorf("LockInIntensity should start at 1.0, got %f", state.LockInIntensity)
+	}
+
+	if state.LockInTarget != FocusTickets {
+		t.Errorf("LockInTarget should be FocusTickets, got %v", state.LockInTarget)
+	}
+}
+
+func TestGetFlashIntensity(t *testing.T) {
+	// Test when flash is inactive
+	inactiveState := AnimationState{
+		LockInActive:    false,
+		LockInIntensity: 0.0,
+	}
+
+	if inactiveState.getFlashIntensity() != 0 {
+		t.Error("getFlashIntensity() should return 0 when flash is inactive")
+	}
+
+	// Test when flash is active
+	activeState := AnimationState{
+		LockInActive:    true,
+		LockInIntensity: 0.75,
+	}
+
+	if activeState.getFlashIntensity() != 0.75 {
+		t.Errorf("getFlashIntensity() should return %f, got %f", 0.75, activeState.getFlashIntensity())
+	}
+}
+
+func TestShouldShowFlash(t *testing.T) {
+	// Test when flash should be shown (active, correct column, high intensity)
+	state := AnimationState{
+		LockInActive:    true,
+		LockInIntensity: 0.5,
+		LockInTarget:    FocusTickets,
+	}
+
+	if !state.shouldShowFlash(FocusTickets) {
+		t.Error("shouldShowFlash should return true for matching column with intensity > 0.3")
+	}
+
+	// Test wrong column
+	if state.shouldShowFlash(FocusHarness) {
+		t.Error("shouldShowFlash should return false for non-matching column")
+	}
+
+	// Test low intensity (below threshold)
+	state.LockInIntensity = 0.2
+	if state.shouldShowFlash(FocusTickets) {
+		t.Error("shouldShowFlash should return false when intensity is below 0.3")
+	}
+
+	// Test inactive flash
+	state.LockInActive = false
+	state.LockInIntensity = 1.0
+	if state.shouldShowFlash(FocusTickets) {
+		t.Error("shouldShowFlash should return false when flash is inactive")
+	}
+}
+
+func TestLockInCmd(t *testing.T) {
+	cmd := lockInCmd(FocusTickets)
+	if cmd == nil {
+		t.Error("lockInCmd() should return a non-nil command")
+	}
+
+	// Execute the command and verify it returns the correct message
+	msg := cmd()
+	lockIn, ok := msg.(lockInMsg)
+	if !ok {
+		t.Errorf("lockInCmd() should return a lockInMsg, got %T", msg)
+	}
+
+	if lockIn.Column != FocusTickets {
+		t.Errorf("lockInMsg.Column should be FocusTickets, got %v", lockIn.Column)
+	}
+}
+
+func TestHandleAnimationTickWithLockInFlash(t *testing.T) {
+	startTime := time.Now()
+
+	// Create a model with active lock-in flash
+	m := UIModel{
+		animState: AnimationState{
+			StartTime:       startTime,
+			PulsePhase:      0.5,
+			LockInActive:    true,
+			LockInIntensity: 1.0,
+			LockInStartTime: startTime,
+			LockInTarget:    FocusTickets,
+		},
+	}
+
+	// Test immediately after flash starts (intensity should still be high)
+	msg := animationTickMsg{Time: startTime.Add(10 * time.Millisecond)}
+	newModel, _ := m.handleAnimationTick(msg)
+	newM := newModel.(UIModel)
+
+	if !newM.animState.LockInActive {
+		t.Error("LockInActive should still be true shortly after flash starts")
+	}
+
+	if newM.animState.LockInIntensity >= 1.0 || newM.animState.LockInIntensity <= 0 {
+		t.Errorf("LockInIntensity should have decayed from 1.0, got %f", newM.animState.LockInIntensity)
+	}
+
+	// Test after flash duration (should be complete)
+	msg2 := animationTickMsg{Time: startTime.Add(LockInFlashDuration + 10*time.Millisecond)}
+	finalModel, _ := newM.handleAnimationTick(msg2)
+	finalM := finalModel.(UIModel)
+
+	if finalM.animState.LockInActive {
+		t.Error("LockInActive should be false after flash duration")
+	}
+
+	if finalM.animState.LockInIntensity != 0.0 {
+		t.Errorf("LockInIntensity should be 0.0 after flash complete, got %f", finalM.animState.LockInIntensity)
+	}
+}
+
+func TestLockInFlashDecayCalculation(t *testing.T) {
+	startTime := time.Now()
+
+	testCases := []struct {
+		elapsedMs      int64
+		expectedActive bool
+		minIntensity   float64
+		maxIntensity   float64
+	}{
+		{0, true, 0.99, 1.0},   // Start: full intensity
+		{24, true, 0.4, 0.6},   // Halfway: ~50% intensity
+		{47, true, 0.0, 0.1},   // Near end: very low intensity
+		{48, false, 0.0, 0.0},  // Exactly at duration: should be complete
+		{100, false, 0.0, 0.0}, // After duration: definitely complete
+	}
+
+	for _, tc := range testCases {
+		m := UIModel{
+			animState: AnimationState{
+				StartTime:       startTime,
+				LockInActive:    true,
+				LockInIntensity: 1.0,
+				LockInStartTime: startTime,
+				LockInTarget:    FocusTickets,
+			},
+		}
+
+		msg := animationTickMsg{Time: startTime.Add(time.Duration(tc.elapsedMs) * time.Millisecond)}
+		newModel, _ := m.handleAnimationTick(msg)
+		newM := newModel.(UIModel)
+
+		if newM.animState.LockInActive != tc.expectedActive {
+			t.Errorf("At %dms: expected LockInActive=%v, got %v", tc.elapsedMs, tc.expectedActive, newM.animState.LockInActive)
+		}
+
+		if newM.animState.LockInIntensity < tc.minIntensity || newM.animState.LockInIntensity > tc.maxIntensity {
+			t.Errorf("At %dms: expected intensity in [%f, %f], got %f", tc.elapsedMs, tc.minIntensity, tc.maxIntensity, newM.animState.LockInIntensity)
+		}
+	}
+}
+
+func TestLockInMsgHandler(t *testing.T) {
+	// This tests the message structure that's handled in model.go
+	// Verify the message can be created with the correct column
+	msg := lockInMsg{Column: FocusHarness}
+
+	if msg.Column != FocusHarness {
+		t.Errorf("lockInMsg.Column should be FocusHarness, got %v", msg.Column)
+	}
+
+	// Verify other focus columns work too
+	msg2 := lockInMsg{Column: FocusTickets}
+	if msg2.Column != FocusTickets {
+		t.Errorf("lockInMsg.Column should be FocusTickets, got %v", msg2.Column)
+	}
+}

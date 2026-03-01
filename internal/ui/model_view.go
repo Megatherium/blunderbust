@@ -112,8 +112,15 @@ func (m UIModel) renderMatrixView() string {
 
 	listHeight := m.height - filterHeight
 
-	// Get pulsing color based on animation phase
-	pulsingColor := getPulsingColor(m.animState.PulsePhase)
+	// Determine the active border color - use flash color if lock-in is active for focused column
+	var activeColor lipgloss.Color
+	if m.animState.LockInActive && m.animState.LockInTarget == m.focus && m.animState.LockInIntensity > 0.3 {
+		// Flash takes priority during the bright phase of the animation
+		activeColor = FlashColor
+	} else {
+		// Normal pulsing color for breathing effect
+		activeColor = getPulsingColor(m.animState.PulsePhase)
+	}
 
 	activeBorder := func(w int) lipgloss.Style {
 		if w < 2 {
@@ -121,7 +128,7 @@ func (m UIModel) renderMatrixView() string {
 		}
 		return lipgloss.NewStyle().
 			Border(lipgloss.ThickBorder()).
-			BorderForeground(pulsingColor).
+			BorderForeground(activeColor).
 			Width(w - 2).
 			Height(listHeight - 2)
 	}
@@ -251,7 +258,7 @@ func (m UIModel) renderMatrixView() string {
 			Height(m.height - 2)
 
 		if m.focus == FocusSidebar {
-			sidebarBorder = sidebarBorder.BorderForeground(pulsingColor)
+			sidebarBorder = sidebarBorder.BorderForeground(activeColor)
 		} else {
 			sidebarBorder = sidebarBorder.BorderForeground(ThemeInactive)
 		}

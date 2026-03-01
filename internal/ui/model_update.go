@@ -211,8 +211,13 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		if m.focus == FocusSidebar {
 			return m, nil, false
 		}
+
+		// Trigger lock-in flash before handling the selection
+		// This provides immediate visual feedback that the button press was registered
+		flashCmd := lockInCmd(m.focus)
+
 		model, cmd := m.handleEnterKey()
-		return model, cmd, true
+		return model, tea.Batch(flashCmd, cmd), true
 	}
 
 	// Handle agent clearing keys
@@ -678,6 +683,21 @@ func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) 
 	phase := (math.Sin(2*math.Pi*elapsed/period) + 1) / 2 // Normalize to 0-1
 
 	m.animState.PulsePhase = phase
+
+	// Decay lock-in flash intensity
+	if m.animState.LockInActive {
+		flashElapsed := msg.Time.Sub(m.animState.LockInStartTime).Milliseconds()
+		flashDuration := int64(LockInFlashDuration / time.Millisecond)
+
+		if flashElapsed >= flashDuration {
+			// Flash complete - reset to inactive state
+			m.animState.LockInActive = false
+			m.animState.LockInIntensity = 0.0
+		} else {
+			// Linear decay: 1.0 → 0.0 over the flash duration
+			m.animState.LockInIntensity = 1.0 - float64(flashElapsed)/float64(flashDuration)
+		}
+	}
 
 	// Continue animation loop
 	return m, animationTickCmd()

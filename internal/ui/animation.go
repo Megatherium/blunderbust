@@ -14,6 +14,11 @@ const (
 	PulsePeriodSeconds = 2.5                   // Full breathing cycle
 )
 
+// Lock-in flash timing
+const (
+	LockInFlashDuration = 48 * time.Millisecond // 3 frames at 60fps for snappy feedback
+)
+
 // GradientColors is the signature palette: light green → dark blue
 var GradientColors = []string{
 	"#90EE90", "#8BE88C", "#86E288", "#81DC88", "#7CD688",
@@ -37,6 +42,12 @@ const (
 type AnimationState struct {
 	PulsePhase float64   // 0-1, sine wave phase (0=darkest valley, 1=brightest peak)
 	StartTime  time.Time // When animation started, used to calculate elapsed time
+
+	// Lock-in flash state - provides satisfying "button press" feedback on selection
+	LockInActive    bool        // True when flash is currently visible
+	LockInIntensity float64     // 1.0 (full bright) → 0.0 (normal), decays linearly
+	LockInStartTime time.Time   // When flash started, used to calculate decay
+	LockInTarget    FocusColumn // Which column triggered the flash
 }
 
 // animationTickMsg is sent periodically to update animations
@@ -49,6 +60,35 @@ func animationTickCmd() tea.Cmd {
 	return tea.Tick(AnimationTickRate, func(t time.Time) tea.Msg {
 		return animationTickMsg{Time: t}
 	})
+}
+
+// lockInMsg is sent when a selection is locked in (Enter pressed)
+type lockInMsg struct {
+	Column FocusColumn
+}
+
+// lockInCmd creates a command that triggers a lock-in flash effect for the given column
+func lockInCmd(column FocusColumn) tea.Cmd {
+	return func() tea.Msg {
+		return lockInMsg{Column: column}
+	}
+}
+
+// FlashColor is the bright color used for lock-in feedback (vibrant cyan for contrast with gradient)
+var FlashColor = lipgloss.Color("51") // Bright cyan
+
+// getFlashIntensity returns the current flash intensity (0.0-1.0) for rendering
+// Returns 0 if no flash is active
+func (a AnimationState) getFlashIntensity() float64 {
+	if !a.LockInActive {
+		return 0
+	}
+	return a.LockInIntensity
+}
+
+// shouldShowFlash returns true if flash should be rendered for the given column
+func (a AnimationState) shouldShowFlash(column FocusColumn) bool {
+	return a.LockInActive && a.LockInTarget == column && a.LockInIntensity > 0.3
 }
 
 // getPulsingColor returns a color from the gradient based on pulse phase

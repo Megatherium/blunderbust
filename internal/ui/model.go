@@ -153,6 +153,14 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case animationTickMsg:
 		return m.handleAnimationTick(msg)
 
+	case lockInMsg:
+		// Trigger lock-in flash effect
+		m.animState.LockInActive = true
+		m.animState.LockInIntensity = 1.0
+		m.animState.LockInStartTime = time.Now()
+		m.animState.LockInTarget = msg.Column
+		return m, nil
+
 	case AgentClearedMsg:
 		return m.handleAgentCleared(msg)
 

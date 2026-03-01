@@ -9,6 +9,13 @@
 #   Paths are relative to the config file location
 #   Example: command_template: "@./templates/opencode_command.txt"
 
+# Launcher configuration controls how new tmux windows are created
+launcher:
+  # target: Controls whether bdb switches focus to the new window
+  #   foreground: Switch to the new window (default)
+  #   background:  Create window in background without switching
+  target: foreground
+
 harnesses:
   # Opencode harness - launches opencode CLI with ticket context
   - name: opencode

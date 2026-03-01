@@ -547,8 +547,174 @@ harnesses:
 }
 
 func TestYAMLLoader_InterfaceCompliance(t *testing.T) {
-	// This test ensures YAMLLoader implements the Loader interface
+	// This test ensures YAMLLoader implements Loader interface
 	var _ Loader = (*YAMLLoader)(nil)
+}
+
+func TestYAMLLoader_Load_LauncherConfig_Foreground(t *testing.T) {
+	yamlContent := `
+harnesses:
+  - name: opencode
+    command_template: "opencode"
+launcher:
+  target: foreground
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	config, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if config.Launcher == nil {
+		t.Fatal("Expected launcher config to be set")
+	}
+	if config.Launcher.Target != "foreground" {
+		t.Errorf("Expected target 'foreground', got %q", config.Launcher.Target)
+	}
+}
+
+func TestYAMLLoader_Load_LauncherConfig_Background(t *testing.T) {
+	yamlContent := `
+harnesses:
+  - name: opencode
+    command_template: "opencode"
+launcher:
+  target: background
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	config, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if config.Launcher == nil {
+		t.Fatal("Expected launcher config to be set")
+	}
+	if config.Launcher.Target != "background" {
+		t.Errorf("Expected target 'background', got %q", config.Launcher.Target)
+	}
+}
+
+func TestYAMLLoader_Load_LauncherConfig_CaseInsensitive(t *testing.T) {
+	yamlContent := `
+harnesses:
+  - name: opencode
+    command_template: "opencode"
+launcher:
+  target: BACKGROUND
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	config, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if config.Launcher == nil {
+		t.Fatal("Expected launcher config to be set")
+	}
+	if config.Launcher.Target != "background" {
+		t.Errorf("Expected target 'background' (normalized), got %q", config.Launcher.Target)
+	}
+}
+
+func TestYAMLLoader_Load_LauncherConfig_InvalidTarget(t *testing.T) {
+	yamlContent := `
+harnesses:
+  - name: opencode
+    command_template: "opencode"
+launcher:
+  target: invalid
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	_, err := loader.Load(configPath)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid target value")
+	}
+
+	if !strings.Contains(err.Error(), "invalid launcher.target value") {
+		t.Errorf("Error should mention invalid target, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "invalid") {
+		t.Errorf("Error should include the invalid value, got: %v", err)
+	}
+}
+
+func TestYAMLLoader_Load_LauncherConfig_Missing(t *testing.T) {
+	yamlContent := `
+harnesses:
+  - name: opencode
+    command_template: "opencode"
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	config, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if config.Launcher == nil {
+		t.Fatal("Expected launcher config to be set with default values")
+	}
+	if config.Launcher.Target != "foreground" {
+		t.Errorf("Expected default target 'foreground', got %q", config.Launcher.Target)
+	}
+}
+
+func TestYAMLLoader_Load_LauncherConfig_EmptyTarget(t *testing.T) {
+	yamlContent := `
+harnesses:
+  - name: opencode
+    command_template: "opencode"
+launcher:
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	config, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if config.Launcher == nil {
+		t.Fatal("Expected launcher config to be set")
+	}
+	if config.Launcher.Target != "foreground" {
+		t.Errorf("Expected default target 'foreground', got %q", config.Launcher.Target)
+	}
 }
 
 func TestYAMLLoader_Load_CompleteConfig(t *testing.T) {

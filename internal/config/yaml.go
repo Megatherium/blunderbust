@@ -18,8 +18,14 @@ import (
 
 // yamlConfig is the raw YAML structure for unmarshaling.
 type yamlConfig struct {
-	Harnesses []yamlHarness `yaml:"harnesses"`
-	Defaults  *yamlDefaults `yaml:"defaults,omitempty"`
+	Harnesses []yamlHarness       `yaml:"harnesses"`
+	Launcher  *yamlLauncherConfig `yaml:"launcher,omitempty"`
+	Defaults  *yamlDefaults       `yaml:"defaults,omitempty"`
+}
+
+// yamlLauncherConfig is the raw YAML structure for launcher configuration.
+type yamlLauncherConfig struct {
+	Target string `yaml:"target,omitempty"`
 }
 
 // yamlHarness is the raw YAML structure for a harness definition.
@@ -127,6 +133,19 @@ func (l *YAMLLoader) convertAndValidate(raw *yamlConfig, configDir string) (*dom
 		config.Harnesses = append(config.Harnesses, *harness)
 	}
 
+	if raw.Launcher != nil {
+		launcherConfig, err := l.convertLauncherConfig(raw.Launcher)
+		if err != nil {
+			return nil, err
+		}
+		config.Launcher = launcherConfig
+	} else {
+		// Default to foreground mode if not specified
+		config.Launcher = &domain.LauncherConfig{
+			Target: "foreground",
+		}
+	}
+
 	if raw.Defaults != nil {
 		config.Defaults = &domain.Defaults{
 			Harness: raw.Defaults.Harness,
@@ -136,6 +155,22 @@ func (l *YAMLLoader) convertAndValidate(raw *yamlConfig, configDir string) (*dom
 	}
 
 	return config, nil
+}
+
+// convertLauncherConfig validates and converts launcher configuration.
+func (l *YAMLLoader) convertLauncherConfig(raw *yamlLauncherConfig) (*domain.LauncherConfig, error) {
+	target := strings.ToLower(raw.Target)
+	if target == "" {
+		target = "foreground"
+	}
+
+	if target != "foreground" && target != "background" {
+		return nil, fmt.Errorf("invalid launcher.target value: %q (must be 'foreground' or 'background')", raw.Target)
+	}
+
+	return &domain.LauncherConfig{
+		Target: target,
+	}, nil
 }
 
 // convertHarness validates and converts a single YAML harness to domain type.

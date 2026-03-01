@@ -59,9 +59,15 @@ type LaunchResult struct {
 	Error      error
 }
 
+// LauncherConfig controls how new tmux windows are created.
+type LauncherConfig struct {
+	Target string
+}
+
 // Config holds the top-level blunderbust configuration.
 type Config struct {
 	Harnesses []Harness
+	Launcher  *LauncherConfig
 	Defaults  *Defaults
 }
 

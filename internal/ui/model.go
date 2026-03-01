@@ -23,7 +23,7 @@ func initList(l *list.Model, width, height int, title string) {
 }
 
 func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
-	hl := newHarnessList(harnesses)
+	hl := newHarnessList(harnesses, app.Registry)
 	initList(&hl, 0, 0, "Select a Harness")
 
 	tl := newTicketList(nil)

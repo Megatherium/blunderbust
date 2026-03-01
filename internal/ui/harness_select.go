@@ -2,25 +2,71 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
 )
 
+const (
+	providerPrefix = "provider:"
+	activeKeyword  = "discover:active"
+)
+
 type harnessItem struct {
-	harness domain.Harness
+	harness  domain.Harness
+	registry *discovery.Registry
 }
 
 func (i harnessItem) Title() string { return i.harness.Name }
+
 func (i harnessItem) Description() string {
-	return fmt.Sprintf("Models: %d\nAgents: %d", len(i.harness.SupportedModels), len(i.harness.SupportedAgents))
+	modelCount := i.getModelCount()
+	return fmt.Sprintf("Models: %d\nAgents: %d", modelCount, len(i.harness.SupportedAgents))
 }
+
 func (i harnessItem) FilterValue() string { return i.harness.Name }
 
-func newHarnessList(harnesses []domain.Harness) list.Model {
+// getModelCount returns the actual number of resolved models.
+// It expands provider wildcards (e.g., "provider:openai") and "discover:active"
+// into actual model counts using the discovery registry.
+func (i harnessItem) getModelCount() int {
+	if i.registry == nil {
+		// Fallback: just count raw entries if registry unavailable
+		return len(i.harness.SupportedModels)
+	}
+
+	count := 0
+	for _, model := range i.harness.SupportedModels {
+		switch {
+		case model == activeKeyword:
+			// Expand to all active models from all providers
+			activeModels := i.registry.GetActiveModels()
+			count += len(activeModels)
+
+		case strings.HasPrefix(model, providerPrefix):
+			// Expand to models for this specific provider
+			providerID := strings.TrimPrefix(model, providerPrefix)
+			providerModels := i.registry.GetModelsForProvider(providerID)
+			count += len(providerModels)
+
+		default:
+			// Regular model ID, count as 1
+			count++
+		}
+	}
+
+	return count
+}
+
+func newHarnessList(harnesses []domain.Harness, registry *discovery.Registry) list.Model {
 	items := make([]list.Item, 0, len(harnesses))
 	for i := range harnesses {
-		items = append(items, harnessItem{harness: harnesses[i]})
+		items = append(items, harnessItem{
+			harness:  harnesses[i],
+			registry: registry,
+		})
 	}
 
 	delegate := newGradientDelegate()

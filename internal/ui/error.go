@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/megatherium/blunderbust/internal/data/dolt"
 )
 
 var (
@@ -48,6 +49,11 @@ func errorView(err error) string {
 		b.WriteString(errorStyle.Render("Cannot connect to Dolt server."))
 		b.WriteString("\n\n")
 		b.WriteString("Please check that the Dolt server is running and the connection details are correct.")
+
+	case dolt.IsErrServerNotRunning(err):
+		b.WriteString(errorStyle.Render("Dolt server is not running."))
+		b.WriteString("\n\n")
+		b.WriteString("Start dolt server? [y/N]")
 
 	case strings.Contains(errStr, "connection refused"):
 		b.WriteString(errorStyle.Render("Connection refused."))

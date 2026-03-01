@@ -11,6 +11,9 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -92,4 +95,63 @@ func buildServerDSN(metadata *Metadata) string {
 	cfg.Loc = time.UTC
 
 	return cfg.FormatDSN()
+}
+
+// StartServer attempts to start the Dolt server by running 'bd dolt start'.
+// It waits for the server to be ready by polling with exponential backoff.
+// Returns an error if the server fails to start or doesn't become ready within the timeout.
+func StartServer(beadsDir string, timeout time.Duration) error {
+	projectDir := filepath.Dir(beadsDir)
+
+	// Run 'bd dolt start' with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "bd", "dolt", "start")
+	cmd.Dir = projectDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start dolt server: %w", err)
+	}
+
+	// Wait for the command to complete (it should daemonize)
+	if err := cmd.Wait(); err != nil {
+		// Check if it's just the context timeout (server still starting)
+		if ctx.Err() == context.DeadlineExceeded {
+			// This is expected if the server takes time to start
+			// Continue to polling below
+		} else {
+			return fmt.Errorf("dolt server start command failed: %w", err)
+		}
+	}
+
+	// Poll for server readiness
+	return waitForServerReady(beadsDir, 10*time.Second)
+}
+
+// waitForServerReady polls the Dolt server status until it's ready or timeout.
+func waitForServerReady(beadsDir string, timeout time.Duration) error {
+	projectDir := filepath.Dir(beadsDir)
+	deadline := time.Now().Add(timeout)
+
+	for time.Now().Before(deadline) {
+		cmd := exec.Command("bd", "dolt", "status")
+		cmd.Dir = projectDir
+		output, err := cmd.CombinedOutput()
+
+		if err == nil {
+			outputStr := string(output)
+			// Check if server is running
+			if strings.Contains(outputStr, "Status: running") ||
+				strings.Contains(outputStr, "Port:") {
+				return nil
+			}
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	return fmt.Errorf("dolt server did not become ready within %v", timeout)
 }

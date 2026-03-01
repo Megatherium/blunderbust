@@ -9,6 +9,13 @@
 #   Paths are relative to the config file location
 #   Example: command_template: "@./templates/opencode_command.txt"
 
+# General application settings
+general:
+  # autostart_dolt: Automatically start the Dolt server if it's not running
+  # When true: server will be started automatically on connection failure
+  # When false: user will be prompted to start the server
+  autostart_dolt: true
+
 # Launcher configuration controls how new tmux windows are created
 launcher:
   # target: Controls whether bdb switches focus to the new window

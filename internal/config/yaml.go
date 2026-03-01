@@ -21,6 +21,7 @@ type yamlConfig struct {
 	Harnesses []yamlHarness       `yaml:"harnesses"`
 	Launcher  *yamlLauncherConfig `yaml:"launcher,omitempty"`
 	Defaults  *yamlDefaults       `yaml:"defaults,omitempty"`
+	General   *yamlGeneralConfig  `yaml:"general,omitempty"`
 }
 
 // yamlLauncherConfig is the raw YAML structure for launcher configuration.
@@ -43,6 +44,11 @@ type yamlDefaults struct {
 	Harness string `yaml:"harness,omitempty"`
 	Model   string `yaml:"model,omitempty"`
 	Agent   string `yaml:"agent,omitempty"`
+}
+
+// yamlGeneralConfig is the raw YAML structure for general settings.
+type yamlGeneralConfig struct {
+	AutostartDolt *bool `yaml:"autostart_dolt,omitempty"`
 }
 
 // YAMLLoader implements the Loader interface for YAML configuration files.
@@ -151,6 +157,21 @@ func (l *YAMLLoader) convertAndValidate(raw *yamlConfig, configDir string) (*dom
 			Harness: raw.Defaults.Harness,
 			Model:   raw.Defaults.Model,
 			Agent:   raw.Defaults.Agent,
+		}
+	}
+
+	if raw.General != nil {
+		autostart := true // default
+		if raw.General.AutostartDolt != nil {
+			autostart = *raw.General.AutostartDolt
+		}
+		config.General = &domain.GeneralConfig{
+			AutostartDolt: autostart,
+		}
+	} else {
+		// Default to true if not specified
+		config.General = &domain.GeneralConfig{
+			AutostartDolt: true,
 		}
 	}
 

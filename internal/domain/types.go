@@ -64,11 +64,17 @@ type LauncherConfig struct {
 	Target string
 }
 
+// GeneralConfig holds general application settings.
+type GeneralConfig struct {
+	AutostartDolt bool
+}
+
 // Config holds the top-level blunderbust configuration.
 type Config struct {
 	Harnesses []Harness
 	Launcher  *LauncherConfig
 	Defaults  *Defaults
+	General   *GeneralConfig
 }
 
 // Defaults holds optional default selections for quickdraw/blitzdraw modes.
@@ -86,4 +92,5 @@ type AppOptions struct {
 	BeadsDir   string
 	DSN        string
 	Demo       bool
+	AutostartDolt bool
 }

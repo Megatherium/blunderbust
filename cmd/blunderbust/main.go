@@ -187,12 +187,13 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	renderer := config.NewRenderer()
 
 	app, err := ui.NewApp(cfgLoader, launcher, statusChecker, runner, renderer, domain.AppOptions{
-		ConfigPath: cfgPath,
-		BeadsDir:   beadsPath,
-		DSN:        dsn,
-		DryRun:     dryRun,
-		Debug:      debug,
-		Demo:       demo,
+		ConfigPath:    cfgPath,
+		BeadsDir:      beadsPath,
+		DSN:           dsn,
+		DryRun:        dryRun,
+		Debug:         debug,
+		Demo:          demo,
+		AutostartDolt: cfg.General != nil && cfg.General.AutostartDolt,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

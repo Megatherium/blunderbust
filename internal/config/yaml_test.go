@@ -804,3 +804,78 @@ defaults:
 		t.Errorf("Expected prompt %q, got %q", expectedPrompt, spec.RenderedPrompt)
 	}
 }
+
+func TestYAMLLoader_Load_GeneralConfig_AutostartDolt(t *testing.T) {
+	tests := []struct {
+		name           string
+		yamlContent    string
+		expectedAutostart bool
+	}{
+		{
+			name: "autostart_dolt_true",
+			yamlContent: `
+general:
+  autostart_dolt: true
+harnesses:
+  - name: test
+    command_template: "test"
+`,
+			expectedAutostart: true,
+		},
+		{
+			name: "autostart_dolt_false",
+			yamlContent: `
+general:
+  autostart_dolt: false
+harnesses:
+  - name: test
+    command_template: "test"
+`,
+			expectedAutostart: false,
+		},
+		{
+			name: "general_section_missing_defaults_to_true",
+			yamlContent: `
+harnesses:
+  - name: test
+    command_template: "test"
+`,
+			expectedAutostart: true,
+		},
+		{
+			name: "autostart_dolt_omitted_defaults_to_true",
+			yamlContent: `
+general:
+  some_other_field: value
+harnesses:
+  - name: test
+    command_template: "test"
+`,
+			expectedAutostart: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "config.yaml")
+			if err := os.WriteFile(configPath, []byte(tt.yamlContent), 0644); err != nil {
+				t.Fatalf("Failed to write test config: %v", err)
+			}
+
+			loader := NewYAMLLoader()
+			config, err := loader.Load(configPath)
+			if err != nil {
+				t.Fatalf("Load() error = %v", err)
+			}
+
+			if config.General == nil {
+				t.Fatal("Expected General config to be set")
+			}
+
+			if config.General.AutostartDolt != tt.expectedAutostart {
+				t.Errorf("AutostartDolt = %v, want %v", config.General.AutostartDolt, tt.expectedAutostart)
+			}
+		})
+	}
+}

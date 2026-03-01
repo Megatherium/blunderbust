@@ -83,7 +83,7 @@ func (a *App) CreateStore(ctx context.Context) (data.TicketStore, error) {
 		return fake.NewWithSampleData(), nil
 	}
 
-	store, err := dolt.NewStore(ctx, a.opts)
+	store, err := dolt.NewStore(ctx, a.opts, a.opts.AutostartDolt)
 	if err != nil {
 		return nil, err
 	}

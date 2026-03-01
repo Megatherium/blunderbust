@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	osexec "os/exec"
 
 	"github.com/megatherium/blunderbust/internal/config"
 	"github.com/megatherium/blunderbust/internal/data"
@@ -14,6 +15,21 @@ import (
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
 
+type FontConfig struct {
+	HasNerdFont bool
+}
+
+func DetectNerdFont() bool {
+	if _, err := osexec.LookPath("fc-list"); err == nil {
+		out, err := osexec.Command("fc-list", ":family", "|", "grep", "-i", "nerd").CombinedOutput()
+		if err == nil && len(out) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 // App encapsulates the Bubble Tea program's dependencies.
 type App struct {
 	store         data.TicketStore
@@ -24,6 +40,7 @@ type App struct {
 	Renderer      *config.Renderer
 	Registry      *discovery.Registry
 	opts          domain.AppOptions
+	Fonts         FontConfig
 }
 
 // NewApp creates a new App instance with necessary dependencies.
@@ -42,6 +59,7 @@ func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.St
 		Renderer:      renderer,
 		Registry:      registry,
 		opts:          opts,
+		Fonts:         FontConfig{HasNerdFont: DetectNerdFont()},
 	}, nil
 }
 

@@ -32,7 +32,7 @@ type AgentClearedMsg struct {
 	AgentID string
 }
 
-type AllStoppedAgentsClearedMsg struct{
+type AllStoppedAgentsClearedMsg struct {
 	ClearedIDs []string
 }
 
@@ -45,5 +45,14 @@ type agentOutputMsg struct {
 	agentID string
 	content string
 }
+
+// Auto-refresh messages
+type ticketUpdateCheckMsg struct{}
+
+type ticketsAutoRefreshedMsg struct{}
+
+type clearRefreshIndicatorMsg struct{}
+
+type refreshAnimationTickMsg struct{}
 
 func (e errMsg) Error() string { return e.err.Error() }

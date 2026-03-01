@@ -65,6 +65,23 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 }
 
 func (m UIModel) Init() tea.Cmd {
+	store, err := m.app.CreateStore(context.Background())
+	if err != nil {
+		return tea.Batch(
+			func() tea.Msg {
+				if err := m.app.Registry.Load(context.Background()); err != nil {
+					return warningMsg{err: fmt.Errorf("model discovery load failed: %w", err)}
+				}
+				return registryLoadedMsg{}
+			},
+			func() tea.Msg {
+				return errMsg{err}
+			},
+			discoverWorktreesCmd(m.app.opts.BeadsDir),
+			animationTickCmd(),
+		)
+	}
+
 	return tea.Batch(
 		func() tea.Msg {
 			if err := m.app.Registry.Load(context.Background()); err != nil {
@@ -73,10 +90,6 @@ func (m UIModel) Init() tea.Cmd {
 			return registryLoadedMsg{}
 		},
 		func() tea.Msg {
-			store, err := m.app.CreateStore(context.Background())
-			if err != nil {
-				return errMsg{err}
-			}
 			tickets, err := store.ListTickets(context.Background(), data.TicketFilter{})
 			if err != nil {
 				return errMsg{err}
@@ -84,7 +97,8 @@ func (m UIModel) Init() tea.Cmd {
 			return ticketsLoadedMsg(tickets)
 		},
 		discoverWorktreesCmd(m.app.opts.BeadsDir),
-		animationTickCmd(), // Start animation loop
+		animationTickCmd(),
+		checkTicketUpdatesCmd(store, time.Time{}),
 	)
 }
 
@@ -144,6 +158,18 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AllStoppedAgentsClearedMsg:
 		return m.handleAllStoppedAgentsCleared(msg)
+
+	case ticketUpdateCheckMsg:
+		return m.handleTicketUpdateCheck()
+
+	case ticketsAutoRefreshedMsg:
+		return m.handleTicketsAutoRefreshed()
+
+	case clearRefreshIndicatorMsg:
+		return m.handleClearRefreshIndicator()
+
+	case refreshAnimationTickMsg:
+		return m.handleRefreshAnimationTick()
 
 	case tea.WindowSizeMsg:
 		m, cmd = m.handleWindowSizeMsg(msg)

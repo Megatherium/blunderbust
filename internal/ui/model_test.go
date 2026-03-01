@@ -3,8 +3,10 @@ package ui
 import (
 	"context"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
@@ -428,4 +430,88 @@ func TestUIModel_BothColumnsDisabled_Navigation(t *testing.T) {
 	m.focus = FocusSidebar
 	m.retreatFocus()
 	assert.Equal(t, FocusSidebar, m.focus)
+}
+
+// Ticket Auto-Refresh Tests
+
+func TestHandleTicketUpdateCheck(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.lastTicketUpdate = time.Now()
+
+	newM, cmd := m.handleTicketUpdateCheck()
+	updatedM := newM.(UIModel)
+
+	assert.NotNil(t, cmd, "checkTicketUpdatesCmd should return a command")
+	assert.Equal(t, m.lastTicketUpdate, updatedM.lastTicketUpdate)
+}
+
+func TestHandleTicketUpdateCheck_WithNilStore(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.app.store = nil
+
+	newM, cmd := m.handleTicketUpdateCheck()
+	updatedM := newM.(UIModel)
+
+	assert.NotNil(t, cmd, "Should return tick command even with nil store")
+	assert.Equal(t, time.Time{}, updatedM.lastTicketUpdate)
+}
+
+func TestHandleTicketsAutoRefreshed(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.app.store = &mockStore{}
+
+	newM, cmd := m.handleTicketsAutoRefreshed()
+	updatedM := newM.(UIModel)
+
+	assert.True(t, updatedM.refreshedRecently, "refreshedRecently should be set to true")
+	assert.Equal(t, 0, updatedM.refreshAnimationFrame, "Animation frame should reset to 0")
+	assert.NotNil(t, cmd, "Should return batch commands")
+}
+
+func TestHandleClearRefreshIndicator(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.refreshedRecently = true
+
+	newM, cmd := m.handleClearRefreshIndicator()
+	updatedM := newM.(UIModel)
+
+	assert.False(t, updatedM.refreshedRecently, "refreshedRecently should be set to false")
+	assert.Nil(t, cmd, "Should not return any command")
+}
+
+func TestHandleRefreshAnimationTick(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.refreshAnimationFrame = 2
+
+	newM, cmd := m.handleRefreshAnimationTick()
+	updatedM := newM.(UIModel)
+
+	assert.Equal(t, 3, updatedM.refreshAnimationFrame, "Animation frame should increment")
+	assert.NotNil(t, cmd, "Should return tick command for next frame")
+}
+
+func TestRefreshAnimationCycle(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+
+	m.refreshAnimationFrame = 3
+	newM, _ := m.handleRefreshAnimationTick()
+	updatedM := newM.(UIModel)
+
+	assert.Equal(t, 0, updatedM.refreshAnimationFrame, "Animation should cycle from 3 to 0")
+}
+
+type mockStore struct{}
+
+func (m *mockStore) ListTickets(ctx context.Context, filter data.TicketFilter) ([]domain.Ticket, error) {
+	return []domain.Ticket{}, nil
+}
+
+func (m *mockStore) Close() error {
+	return nil
 }

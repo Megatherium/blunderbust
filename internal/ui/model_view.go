@@ -335,7 +335,20 @@ func (m UIModel) View() string {
 		Foreground(ThemeFooterFg).
 		Padding(0, 1)
 
-	helpView := footerStyle.Render(m.help.View(m.keys))
+	helpView := m.help.View(m.keys)
+
+	if m.refreshedRecently {
+		hourglassFrames := []string{"󰊓", "󰊯", "󰊰", "󰊱"}
+		var refreshIcon string
+		if m.app.Fonts.HasNerdFont {
+			refreshIcon = hourglassFrames[m.refreshAnimationFrame]
+		} else {
+			refreshIcon = "⟳"
+		}
+		helpView = refreshIcon + " Tickets refreshed  " + helpView
+	}
+
+	helpView = footerStyle.Render(helpView)
 
 	mainContentStyle := lipgloss.NewStyle().Height(m.height).MaxHeight(m.height)
 	mainContent := mainContentStyle.Render(s)

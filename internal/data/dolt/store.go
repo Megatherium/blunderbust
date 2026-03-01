@@ -69,13 +69,18 @@ func NewStore(ctx context.Context, opts domain.AppOptions) (*Store, error) {
 	}
 }
 
-// Close closes the database connection.
+// Close closes of database connection.
 func (s *Store) Close() error {
 	if s.closed {
 		return nil
 	}
 	s.closed = true
 	return s.db.Close()
+}
+
+// DB exposes the underlying SQL connection for advanced queries
+func (s *Store) DB() *sql.DB {
+	return s.db
 }
 
 // ListTickets queries the ready_issues view and returns tickets matching the filter.

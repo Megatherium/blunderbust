@@ -74,11 +74,12 @@ var (
 // SidebarModel is a bubbletea model that renders a tree view of projects,
 // worktrees, and harnesses for navigation.
 type SidebarModel struct {
-	state        domain.SidebarState
-	selectedPath string
-	width        int
-	height       int
-	focused      bool
+	state         domain.SidebarState
+	selectedPath  string
+	width         int
+	height        int
+	focused       bool
+	hasStoreError bool
 }
 
 // NewSidebarModel creates a new sidebar model with default state.
@@ -236,6 +237,13 @@ func (m SidebarModel) renderNodeName(node *domain.SidebarNode, isCursor bool) st
 }
 
 func (m SidebarModel) renderProjectName(name string, isCursor bool) string {
+	if m.hasStoreError {
+		name += " [!]"
+		if m.shouldApplyStyle(isCursor) {
+			return projectStyle.Foreground(lipgloss.Color("#9d7cd8")).Render(name)
+		}
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#9d7cd8")).Render(name)
+	}
 	if m.shouldApplyStyle(isCursor) {
 		return projectStyle.Render(name)
 	}
@@ -325,6 +333,11 @@ func (m *SidebarModel) Focused() bool {
 // SetSelectedPath sets the currently selected worktree path.
 func (m *SidebarModel) SetSelectedPath(path string) {
 	m.selectedPath = path
+}
+
+// SetStoreError sets the store error state.
+func (m *SidebarModel) SetStoreError(hasError bool) {
+	m.hasStoreError = hasError
 }
 
 // State returns a pointer to the sidebar state for manipulation.

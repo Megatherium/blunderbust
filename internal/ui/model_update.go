@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 
@@ -18,13 +19,22 @@ import (
 
 func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) {
 	if len(msg) == 0 {
+		if m.app.Store() == nil {
+			m.ticketList = createErrorList("Couldn't load ticket list:\nStore initialization failed")
+			m.sidebar.SetStoreError(true)
+			m.loading = false
+			return m, nil
+		}
 		m.ticketList = newEmptyTicketList()
+		m.sidebar.SetStoreError(false)
 	} else {
 		m.ticketList = newTicketList(msg)
+		m.sidebar.SetStoreError(false)
 	}
 	initList(&m.ticketList, 0, 0, "Select a Ticket")
 	m.loading = false
 	m.updateSizes()
+	m.lastTicketUpdate = time.Now()
 	return m, nil
 }
 
@@ -669,6 +679,63 @@ func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) 
 
 	m.animState.PulsePhase = phase
 
-	// Continue the animation loop
+	// Continue animation loop
 	return m, animationTickCmd()
+}
+
+func createErrorList(message string) list.Model {
+	items := []list.Item{errorItem{message: message}}
+	l := list.New(items, newGradientDelegate(), 0, 0)
+	l.Title = "Select a Ticket"
+	l.SetShowStatusBar(false)
+	return l
+}
+
+type errorItem struct {
+	message string
+}
+
+func (i errorItem) Title() string       { return "⚠ " + i.message }
+func (i errorItem) Description() string { return "" }
+func (i errorItem) FilterValue() string { return "" }
+
+func (m UIModel) handleTicketUpdateCheck() (tea.Model, tea.Cmd) {
+	store := m.app.Store()
+	if store == nil {
+		return m, tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+			return ticketUpdateCheckMsg{}
+		})
+	}
+	return m, checkTicketUpdatesCmd(store, m.lastTicketUpdate)
+}
+
+func (m UIModel) handleTicketsAutoRefreshed() (tea.Model, tea.Cmd) {
+	m.refreshedRecently = true
+	m.refreshAnimationFrame = 0
+
+	cmds := []tea.Cmd{loadTicketsCmd(m.app.Store())}
+
+	if m.app.Fonts.HasNerdFont {
+		cmds = append(cmds, tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+			return refreshAnimationTickMsg{}
+		}))
+	}
+
+	cmds = append(cmds, tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+		return clearRefreshIndicatorMsg{}
+	}))
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m UIModel) handleClearRefreshIndicator() (tea.Model, tea.Cmd) {
+	m.refreshedRecently = false
+	return m, nil
+}
+
+func (m UIModel) handleRefreshAnimationTick() (tea.Model, tea.Cmd) {
+	m.refreshAnimationFrame = (m.refreshAnimationFrame + 1) % 4
+	return m, tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+		return refreshAnimationTickMsg{}
+	})
 }

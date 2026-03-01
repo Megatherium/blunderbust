@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
@@ -93,6 +95,11 @@ type UIModel struct {
 
 	// Animation state
 	animState AnimationState
+
+	// Ticket auto-refresh tracking
+	lastTicketUpdate      time.Time
+	refreshedRecently    bool
+	refreshAnimationFrame int
 }
 
 // RunningAgent tracks a launched agent session

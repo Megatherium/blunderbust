@@ -3,7 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
-	"os/exec"
+	osexec "os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/data"
+	"github.com/megatherium/blunderbust/internal/data/dolt"
 	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
@@ -27,7 +28,7 @@ func loadTicketsCmd(store data.TicketStore) tea.Cmd {
 
 func loadModalCmd(ticketID string) tea.Cmd {
 	return func() tea.Msg {
-		out, err := exec.Command("bd", "show", ticketID).CombinedOutput()
+		out, err := osexec.Command("bd", "show", ticketID).CombinedOutput()
 		if err != nil {
 			return modalContentMsg(fmt.Sprintf("Error loading bd show:\n%v\n%s", err, string(out)))
 		}
@@ -166,5 +167,34 @@ func clearAllStoppedAgentsCmd(agents []agentToClear) tea.Cmd {
 			return AllStoppedAgentsClearedMsg{ClearedIDs: cleared}
 		}
 		return nil
+	}
+}
+
+// Ticket auto-refresh commands
+
+func checkTicketUpdatesCmd(store data.TicketStore, lastUpdate time.Time) tea.Cmd {
+	return func() tea.Msg {
+		doltStore, ok := store.(*dolt.Store)
+		if !ok {
+			return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+				return ticketUpdateCheckMsg{}
+			})
+		}
+
+		var dbUpdate time.Time
+		err := doltStore.DB().QueryRow("SELECT MAX(updated_at) FROM ready_issues").Scan(&dbUpdate)
+		if err != nil {
+			return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+				return ticketUpdateCheckMsg{}
+			})
+		}
+
+		if !dbUpdate.Equal(lastUpdate) && !dbUpdate.IsZero() {
+			return ticketsAutoRefreshedMsg{}
+		}
+
+		return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+			return ticketUpdateCheckMsg{}
+		})
 	}
 }

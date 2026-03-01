@@ -80,6 +80,7 @@ type SidebarModel struct {
 	height        int
 	focused       bool
 	hasStoreError bool
+	hasNerdFont   bool
 }
 
 // NewSidebarModel creates a new sidebar model with default state.
@@ -257,10 +258,19 @@ func (m SidebarModel) renderWorktreeName(node *domain.SidebarNode, name string, 
 		return name
 	}
 
+	dirtyIndicator := "●"
+	if m.hasNerdFont {
+		dirtyIndicator = "🧀"
+	}
+
 	// Determine if we need a status indicator
 	hasIndicator := node.IsRunning || node.WorktreeInfo.IsDirty
 	if hasIndicator {
-		name = name + " ●"
+		if node.WorktreeInfo.IsDirty {
+			name = name + " " + dirtyIndicator
+		} else {
+			name = name + " ●"
+		}
 	}
 
 	// Apply styling if not currently selected
@@ -338,6 +348,11 @@ func (m *SidebarModel) SetSelectedPath(path string) {
 // SetStoreError sets the store error state.
 func (m *SidebarModel) SetStoreError(hasError bool) {
 	m.hasStoreError = hasError
+}
+
+// SetHasNerdFont sets the nerd font detection flag.
+func (m *SidebarModel) SetHasNerdFont(hasNerdFont bool) {
+	m.hasNerdFont = hasNerdFont
 }
 
 // State returns a pointer to the sidebar state for manipulation.

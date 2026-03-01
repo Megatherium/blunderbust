@@ -149,7 +149,7 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if key.Matches(msg, m.keys.Refresh) {
 		if m.state == ViewStateMatrix && m.focus == FocusTickets {
 			m.loading = true
-			return m, loadTicketsCmd(m.app.store), true
+			return m, tea.Batch(loadTicketsCmd(m.app.Store()), discoverWorktreesCmd(m.app.opts.BeadsDir)), true
 		}
 	}
 	if key.Matches(msg, m.keys.Back) {
@@ -733,7 +733,7 @@ func (m UIModel) handleTicketsAutoRefreshed() (tea.Model, tea.Cmd) {
 	m.refreshedRecently = true
 	m.refreshAnimationFrame = 0
 
-	cmds := []tea.Cmd{loadTicketsCmd(m.app.Store())}
+	cmds := []tea.Cmd{loadTicketsCmd(m.app.Store()), discoverWorktreesCmd(m.app.opts.BeadsDir)}
 
 	if m.app.Fonts.HasNerdFont {
 		cmds = append(cmds, tea.Tick(animationTickInterval, func(t time.Time) tea.Msg {

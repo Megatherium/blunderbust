@@ -61,7 +61,12 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		animState: AnimationState{
 			StartTime: time.Now(),
 		},
-	}
+	}.initSidebar()
+}
+
+func (m UIModel) initSidebar() UIModel {
+	m.sidebar.SetHasNerdFont(m.app.Fonts.HasNerdFont)
+	return m
 }
 
 func (m UIModel) Init() tea.Cmd {

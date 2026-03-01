@@ -40,12 +40,12 @@ func newTestHarnesses() []domain.Harness {
 // newTestAppWithHarnesses creates a test app with sample harnesses using demo mode
 func newTestAppWithHarnesses(t *testing.T) *App {
 	t.Helper()
-	
+
 	// Create app with demo mode to use fake store
 	opts := domain.AppOptions{
 		Demo: true,
 	}
-	
+
 	app, err := NewApp(nil, nil, nil, nil, nil, opts)
 	require.NoError(t, err, "Failed to create test app")
 	return app

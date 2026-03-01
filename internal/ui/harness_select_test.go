@@ -48,8 +48,8 @@ func TestHarnessItem_getModelCount(t *testing.T) {
 			want:     3, // 1 + 2
 		},
 		{
-			name:     "discover:active wildcard",
-			models:   []string{"discover:active"},
+			name:   "discover:active wildcard",
+			models: []string{"discover:active"},
 			setupEnv: func() {
 				os.Setenv("OPENAI_API_KEY", "test-key")
 				os.Setenv("ANTHROPIC_API_KEY", "test-key")
@@ -176,18 +176,18 @@ func setupMockRegistry() *discovery.Registry {
 	registry, _ := discovery.NewRegistry("")
 	registry.SetProviders(map[string]discovery.Provider{
 		"openai": {
-			ID:     "openai",
-			Name:   "OpenAI",
-			Env:    []string{"OPENAI_API_KEY"}, // Set required env var for active detection
+			ID:   "openai",
+			Name: "OpenAI",
+			Env:  []string{"OPENAI_API_KEY"}, // Set required env var for active detection
 			Models: map[string]discovery.Model{
 				"gpt-4":       {ID: "gpt-4", Name: "GPT-4"},
 				"gpt-4-turbo": {ID: "gpt-4-turbo", Name: "GPT-4 Turbo"},
 			},
 		},
 		"anthropic": {
-			ID:     "anthropic",
-			Name:   "Anthropic",
-			Env:    []string{"ANTHROPIC_API_KEY"}, // Set required env var for active detection
+			ID:   "anthropic",
+			Name: "Anthropic",
+			Env:  []string{"ANTHROPIC_API_KEY"}, // Set required env var for active detection
 			Models: map[string]discovery.Model{
 				"claude-3-opus":   {ID: "claude-3-opus", Name: "Claude 3 Opus"},
 				"claude-3-sonnet": {ID: "claude-3-sonnet", Name: "Claude 3 Sonnet"},

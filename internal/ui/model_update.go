@@ -116,6 +116,8 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
+	m.termWidth = msg.Width
+	m.termHeight = msg.Height
 	h, v := docStyle.GetFrameSize()
 	// Account for: frame borders (v) + margins (verticalMargins) + footer
 	m.width, m.height = msg.Width-h, msg.Height-v-verticalMargins-footerHeight

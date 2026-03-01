@@ -291,7 +291,7 @@ func TestTeatest_WindowResize(t *testing.T) {
 	harnesses := newTestHarnesses()
 	m := NewUIModel(app, harnesses)
 
-	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 30))
+	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
 	defer tm.Quit()
 
 	// Wait for render at initial size

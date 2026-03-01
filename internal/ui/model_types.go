@@ -20,7 +20,7 @@ var (
 	ThemeWarning  = lipgloss.AdaptiveColor{Light: "214", Dark: "214"}
 )
 
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
+var docStyle = lipgloss.NewStyle().Padding(1, 2)
 
 const (
 	footerHeight     = 1
@@ -73,6 +73,9 @@ type UIModel struct {
 
 	width  int
 	height int
+
+	termWidth  int
+	termHeight int
 
 	err          error
 	warnings     []string

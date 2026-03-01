@@ -23,6 +23,8 @@ type ThemePalette struct {
 	LaunchFg       lipgloss.Color // For LAUNCH button text
 	ArcadeGold     lipgloss.Color // For "INSERT COIN" text
 	FocusIndicator lipgloss.Color // For ▶ indicator
+	AppBg          lipgloss.Color // Main app background
+	AppFg          lipgloss.Color // Main app foreground
 }
 
 // Glow intensity constants - tune these to adjust glow effect
@@ -57,6 +59,8 @@ var MatrixTheme = ThemePalette{
 	LaunchFg:       lipgloss.Color("#ffffff"), // White text
 	ArcadeGold:     lipgloss.Color("#ffcc00"), // Classic arcade gold
 	FocusIndicator: lipgloss.Color("#ffff00"), // Yellow indicator
+	AppBg:          lipgloss.Color("#051010"), // Very dark green/teal
+	AppFg:          lipgloss.Color("#e0ffe0"), // Very light green fade
 }
 
 // MatrixThemeColorCycles defines accent colors for cycling within Matrix theme
@@ -86,6 +90,8 @@ var CyberpunkTheme = ThemePalette{
 	LaunchFg:       lipgloss.Color("#ffffff"), // White text
 	ArcadeGold:     lipgloss.Color("#ffcc00"), // Classic arcade gold
 	FocusIndicator: lipgloss.Color("#00ffff"), // Cyan indicator
+	AppBg:          lipgloss.Color("#10051a"), // Very dark purple
+	AppFg:          lipgloss.Color("#ffe0ff"), // Very light pink
 }
 
 // CyberpunkThemeColorCycles defines accent colors for cycling within Cyberpunk theme
@@ -96,10 +102,42 @@ var CyberpunkThemeColorCycles = []ColorCycle{
 	{Base: "#8a2be2", Dark: "#531a88", Bright: "#b380ee"}, // Blue-violet
 }
 
+// TokyoNightTheme: Deep rich blues and vibrant accents
+var TokyoNightTheme = ThemePalette{
+	Name: "TokyoNight",
+	Gradient: []string{
+		"#bb9af7", "#b597f3", "#af93f0", "#a990ec", "#a38ce9",
+		"#9d89e5", "#9786e2", "#9182df", "#8b7fdc", "#857bd8",
+		"#7f78d5", "#7975d2", "#7371ce", "#6d6ecb", "#676bc7",
+		"#6168c4", "#5b64c1", "#5561bd", "#4f5dba", "#495ab7",
+		"#4356b3", "#3d53b0", "#3750ad", "#314ca9", "#2b49a6",
+		"#2546a3", "#1f42a0", "#193f9c", "#133c99", "#0d3996",
+	},
+	FlashColor:     lipgloss.Color("#ff9e64"), // Orange
+	GlowColor:      lipgloss.Color("#24283b"), // Tokyo night storm bg
+	TitleColor:     lipgloss.Color("#7aa2f7"), // Light Blue
+	ReadyColor:     lipgloss.Color("#9ece6a"), // Green
+	LaunchBg:       lipgloss.Color("#f7768e"), // Red
+	LaunchFg:       lipgloss.Color("#15161e"), // Dark text
+	ArcadeGold:     lipgloss.Color("#e0af68"), // Gold/Yellow
+	FocusIndicator: lipgloss.Color("#7aa2f7"), // Light Blue
+	AppBg:          lipgloss.Color("#1a1b26"), // Main theme bg
+	AppFg:          lipgloss.Color("#a9b1d6"), // Main theme fg
+}
+
+// TokyoNightThemeColorCycles defines accent colors for cycling within TokyoNight theme
+var TokyoNightThemeColorCycles = []ColorCycle{
+	{Base: "#7aa2f7", Dark: "#3d59a1", Bright: "#89ddff"}, // Blue
+	{Base: "#bb9af7", Dark: "#5a4a78", Bright: "#c0a0ff"}, // Purple
+	{Base: "#9ece6a", Dark: "#4f6935", Bright: "#b4f9f8"}, // Green
+	{Base: "#f7768e", Dark: "#7c3b47", Bright: "#ff9e64"}, // Red/Orange
+}
+
 // AvailableThemes is the list of all available themes
 var AvailableThemes = []*ThemePalette{
 	&MatrixTheme,
 	&CyberpunkTheme,
+	&TokyoNightTheme,
 }
 
 // parseHexColor parses a hex color string to RGB values

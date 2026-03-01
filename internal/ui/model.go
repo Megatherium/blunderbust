@@ -58,11 +58,11 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		showModal:   false,
 		showSidebar: true,
 		agents:      make(map[string]*RunningAgent),
-		currentTheme: &MatrixTheme, // Default to Matrix theme
+		currentTheme: &TokyoNightTheme, // Default to TokyoNight theme
 		animState: AnimationState{
 			StartTime:       time.Now(),
 			ColorCycleStart: time.Now(),
-			CurrentThemeIdx: 0, // Matrix theme index
+			CurrentThemeIdx: 2, // TokyoNight theme index (2)
 		},
 	}.initSidebar()
 }

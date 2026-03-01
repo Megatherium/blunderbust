@@ -23,7 +23,7 @@ func newHarnessList(harnesses []domain.Harness) list.Model {
 		items = append(items, harnessItem{harness: harnesses[i]})
 	}
 
-	delegate := list.NewDefaultDelegate()
+	delegate := newGradientDelegate()
 	// SetHeight(3) is required to prevent visual clipping of the 2-line description ("Models: X\nAgents: Y").
 	// Default list delegates assume 1 line description (height 2 total).
 	delegate.SetHeight(3)

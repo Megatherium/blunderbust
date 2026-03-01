@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -656,4 +657,18 @@ func (m *UIModel) retreatFocus() {
 		return
 	}
 	// No enabled column found, stay at current position
+}
+
+func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) {
+	elapsed := msg.Time.Sub(m.animState.StartTime).Seconds()
+
+	// Pulse cycle: 0 to 1 to 0 over PulsePeriodSeconds
+	// Using sine wave: sin(2π * t / period)
+	period := PulsePeriodSeconds
+	phase := (math.Sin(2*math.Pi*elapsed/period) + 1) / 2 // Normalize to 0-1
+
+	m.animState.PulsePhase = phase
+
+	// Continue the animation loop
+	return m, animationTickCmd()
 }

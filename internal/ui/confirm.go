@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	titleStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).MarginBottom(1)
+	titleStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(GradientColors[8])).MarginBottom(1)
 	itemStyle        = lipgloss.NewStyle().MarginLeft(2)
 	dryRunBadgeStyle = lipgloss.NewStyle().
 				Bold(true).

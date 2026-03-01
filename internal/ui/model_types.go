@@ -90,6 +90,9 @@ type UIModel struct {
 	// Column disable state - set based on harness configuration
 	modelColumnDisabled bool // true when harness has no models
 	agentColumnDisabled bool // true when harness has no agents
+
+	// Animation state
+	animState AnimationState
 }
 
 // RunningAgent tracks a launched agent session

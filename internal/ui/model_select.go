@@ -18,7 +18,7 @@ func newModelList(models []string) list.Model {
 		items = append(items, modelItem{name: m})
 	}
 
-	delegate := list.NewDefaultDelegate()
+	delegate := newGradientDelegate()
 	delegate.ShowDescription = false
 	l := list.New(items, delegate, 0, 0)
 	l.Title = "Select a Model"

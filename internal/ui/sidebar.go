@@ -27,13 +27,13 @@ var (
 
 	projectStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.AdaptiveColor{Light: "26", Dark: "86"})
+			Foreground(lipgloss.Color(GradientColors[4]))
 
 	worktreeStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "244", Dark: "252"})
 
 	worktreeDirtyStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "214", Dark: "214"})
+				Foreground(lipgloss.Color("196"))
 
 	worktreeMainStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "42", Dark: "42"}).

@@ -86,7 +86,7 @@ func (m UIModel) renderMainContent() string {
 		}
 
 		modalBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.ThickBorder()).
 			BorderForeground(ThemeActive).
 			Padding(1, 2).
 			Width(modalWidth).
@@ -112,13 +112,16 @@ func (m UIModel) renderMatrixView() string {
 
 	listHeight := m.height - filterHeight
 
+	// Get pulsing color based on animation phase
+	pulsingColor := getPulsingColor(m.animState.PulsePhase)
+
 	activeBorder := func(w int) lipgloss.Style {
 		if w < 2 {
 			w = 2
 		}
 		return lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ThemeActive).
+			Border(lipgloss.ThickBorder()).
+			BorderForeground(pulsingColor).
 			Width(w - 2).
 			Height(listHeight - 2)
 	}
@@ -128,7 +131,7 @@ func (m UIModel) renderMatrixView() string {
 			w = 2
 		}
 		return lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.ThickBorder()).
 			BorderForeground(ThemeInactive).
 			Faint(false).
 			Width(w - 2).
@@ -180,11 +183,11 @@ func (m UIModel) renderMatrixView() string {
 	// Model column - greyed out if disabled
 	if m.modelColumnDisabled {
 		disabledStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.ThickBorder()).
 			BorderForeground(ThemeInactive).
 			Faint(true).
-			Width(m.mWidth - 2).
-			Height(listHeight - 2).
+			Width(m.mWidth-2).
+			Height(listHeight-2).
 			Align(lipgloss.Center, lipgloss.Center)
 		mView = disabledStyle.Render("N/A\n\nNo models available\nfor this harness")
 	} else if m.focus == FocusModel {
@@ -199,11 +202,11 @@ func (m UIModel) renderMatrixView() string {
 	// Agent column - greyed out if disabled
 	if m.agentColumnDisabled {
 		disabledStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.ThickBorder()).
 			BorderForeground(ThemeInactive).
 			Faint(true).
-			Width(m.aWidth - 2).
-			Height(listHeight - 2).
+			Width(m.aWidth-2).
+			Height(listHeight-2).
 			Align(lipgloss.Center, lipgloss.Center)
 		aView = disabledStyle.Render("N/A\n\nNo agents available\nfor this harness")
 	} else if m.focus == FocusAgent {
@@ -218,7 +221,7 @@ func (m UIModel) renderMatrixView() string {
 	matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6
 
 	filterBox := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.ThickBorder()).
 		Width(matrixWidth-2).
 		Height(1).
 		Padding(0, 1).
@@ -243,12 +246,12 @@ func (m UIModel) renderMatrixView() string {
 		}
 
 		sidebarBorder := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.ThickBorder()).
 			Width(w - 2).
 			Height(m.height - 2)
 
 		if m.focus == FocusSidebar {
-			sidebarBorder = sidebarBorder.BorderForeground(ThemeActive)
+			sidebarBorder = sidebarBorder.BorderForeground(pulsingColor)
 		} else {
 			sidebarBorder = sidebarBorder.BorderForeground(ThemeInactive)
 		}
@@ -303,7 +306,7 @@ func (m UIModel) renderAgentOutputView() string {
 	}
 
 	outputStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.ThickBorder()).
 		BorderForeground(ThemeInactive).
 		Width(m.width-4).
 		Height(m.height-10).

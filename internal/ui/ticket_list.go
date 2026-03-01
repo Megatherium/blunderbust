@@ -23,7 +23,8 @@ func newTicketList(tickets []domain.Ticket) list.Model {
 		items = append(items, ticketItem{ticket: tickets[i]})
 	}
 
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	delegate := newGradientDelegate()
+	l := list.New(items, delegate, 0, 0)
 	l.Title = "Select a Ticket"
 	return l
 }
@@ -38,7 +39,7 @@ func (i emptyTicketItem) FilterValue() string { return "" }
 // newEmptyTicketList creates a list with a single empty state item
 func newEmptyTicketList() list.Model {
 	items := []list.Item{emptyTicketItem{}}
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	l := list.New(items, newGradientDelegate(), 0, 0)
 	l.Title = "Select a Ticket"
 	l.SetShowStatusBar(false)
 	return l

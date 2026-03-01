@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
@@ -57,6 +58,9 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		showModal:   false,
 		showSidebar: true,
 		agents:      make(map[string]*RunningAgent),
+		animState: AnimationState{
+			StartTime: time.Now(),
+		},
 	}
 }
 
@@ -80,6 +84,7 @@ func (m UIModel) Init() tea.Cmd {
 			return ticketsLoadedMsg(tickets)
 		},
 		discoverWorktreesCmd(m.app.opts.BeadsDir),
+		animationTickCmd(), // Start animation loop
 	)
 }
 
@@ -131,6 +136,9 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case agentOutputMsg:
 		return m.handleAgentOutput(msg)
 
+	case animationTickMsg:
+		return m.handleAnimationTick(msg)
+
 	case AgentClearedMsg:
 		return m.handleAgentCleared(msg)
 
@@ -158,9 +166,9 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
 				prevHarness = i.harness.Name
 			}
-			
+
 			m.harnessList, cmd = m.harnessList.Update(msg)
-			
+
 			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
 				if prevHarness != i.harness.Name {
 					// Harness selection changed, update downstream

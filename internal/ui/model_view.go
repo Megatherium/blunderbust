@@ -393,8 +393,43 @@ func (m UIModel) View() string {
 
 	helpView = footerStyle.Render(helpView)
 
-	mainContentStyle := lipgloss.NewStyle().Height(m.height).MaxHeight(m.height)
+	theme := m.currentTheme
+	if theme == nil {
+		theme = &MatrixTheme
+	}
+
+	mainContentStyle := lipgloss.NewStyle().
+		Width(m.width).
+		Height(m.height).
+		MaxHeight(m.height).
+		Background(theme.AppBg).
+		Foreground(theme.AppFg)
+
 	mainContent := mainContentStyle.Render(s)
 
-	return docStyle.Render(lipgloss.JoinVertical(lipgloss.Top, mainContent, helpView))
+	// 1. Create a fully rectangular block of inner content
+	fullView := lipgloss.JoinVertical(lipgloss.Top, mainContent, helpView)
+
+	// Since docStyle natively uses standard spaces for padding, Bubble Tea will strip them
+	// at the end of lines if it misidentifies the default terminal color. To avoid this,
+	// we skip docStyle padding and instead use lipgloss.Place to pad the terminal directly
+	// using non-breaking spaces (`\u00A0`).
+	//
+	// Because every line will end with `\u00A0` instead of a standard space, Bubble Tea's
+	// trailing whitespace stripper will be bypassed, and the inner blocks' background
+	// colored spaces will be fully preserved!
+	if m.termWidth > 0 && m.termHeight > 0 {
+		return lipgloss.Place(
+			m.termWidth,
+			m.termHeight,
+			lipgloss.Center,
+			lipgloss.Center,
+			fullView,
+			lipgloss.WithWhitespaceChars("\u00A0"),
+			lipgloss.WithWhitespaceBackground(theme.AppBg),
+			lipgloss.WithWhitespaceForeground(theme.AppFg),
+		)
+	}
+
+	return fullView
 }

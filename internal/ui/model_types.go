@@ -29,6 +29,11 @@ const (
 	minWindowHeight  = 10
 	sidebarBaseWidth = 25
 	verticalMargins  = 2 // docStyle has Margin(1, 2) - 1 top + 1 bottom
+
+	// Auto-refresh constants
+	ticketPollingInterval    = 3 * time.Second
+	refreshIndicatorDuration = 3 * time.Second
+	animationTickInterval    = 500 * time.Millisecond
 )
 
 type FocusColumn int
@@ -98,7 +103,7 @@ type UIModel struct {
 
 	// Ticket auto-refresh tracking
 	lastTicketUpdate      time.Time
-	refreshedRecently    bool
+	refreshedRecently     bool
 	refreshAnimationFrame int
 }
 

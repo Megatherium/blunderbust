@@ -176,7 +176,7 @@ func checkTicketUpdatesCmd(store data.TicketStore, lastUpdate time.Time) tea.Cmd
 	return func() tea.Msg {
 		doltStore, ok := store.(*dolt.Store)
 		if !ok {
-			return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+			return tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 				return ticketUpdateCheckMsg{}
 			})
 		}
@@ -184,7 +184,7 @@ func checkTicketUpdatesCmd(store data.TicketStore, lastUpdate time.Time) tea.Cmd
 		var dbUpdate time.Time
 		err := doltStore.DB().QueryRow("SELECT MAX(updated_at) FROM ready_issues").Scan(&dbUpdate)
 		if err != nil {
-			return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+			return tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 				return ticketUpdateCheckMsg{}
 			})
 		}
@@ -193,7 +193,7 @@ func checkTicketUpdatesCmd(store data.TicketStore, lastUpdate time.Time) tea.Cmd
 			return ticketsAutoRefreshedMsg{}
 		}
 
-		return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+		return tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 			return ticketUpdateCheckMsg{}
 		})
 	}

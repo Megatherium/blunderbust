@@ -702,7 +702,7 @@ func (i errorItem) FilterValue() string { return "" }
 func (m UIModel) handleTicketUpdateCheck() (tea.Model, tea.Cmd) {
 	store := m.app.Store()
 	if store == nil {
-		return m, tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+		return m, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 			return ticketUpdateCheckMsg{}
 		})
 	}
@@ -716,12 +716,12 @@ func (m UIModel) handleTicketsAutoRefreshed() (tea.Model, tea.Cmd) {
 	cmds := []tea.Cmd{loadTicketsCmd(m.app.Store())}
 
 	if m.app.Fonts.HasNerdFont {
-		cmds = append(cmds, tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+		cmds = append(cmds, tea.Tick(animationTickInterval, func(t time.Time) tea.Msg {
 			return refreshAnimationTickMsg{}
 		}))
 	}
 
-	cmds = append(cmds, tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+	cmds = append(cmds, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 		return clearRefreshIndicatorMsg{}
 	}))
 
@@ -735,7 +735,7 @@ func (m UIModel) handleClearRefreshIndicator() (tea.Model, tea.Cmd) {
 
 func (m UIModel) handleRefreshAnimationTick() (tea.Model, tea.Cmd) {
 	m.refreshAnimationFrame = (m.refreshAnimationFrame + 1) % 4
-	return m, tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+	return m, tea.Tick(animationTickInterval, func(t time.Time) tea.Msg {
 		return refreshAnimationTickMsg{}
 	})
 }

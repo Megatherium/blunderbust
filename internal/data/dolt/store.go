@@ -69,7 +69,7 @@ func NewStore(ctx context.Context, opts domain.AppOptions) (*Store, error) {
 	}
 }
 
-// Close closes of database connection.
+// Close closes the database connection.
 func (s *Store) Close() error {
 	if s.closed {
 		return nil

@@ -160,19 +160,12 @@ func (l *YAMLLoader) convertAndValidate(raw *yamlConfig, configDir string) (*dom
 		}
 	}
 
-	if raw.General != nil {
-		autostart := true // default
-		if raw.General.AutostartDolt != nil {
-			autostart = *raw.General.AutostartDolt
-		}
-		config.General = &domain.GeneralConfig{
-			AutostartDolt: autostart,
-		}
-	} else {
-		// Default to true if not specified
-		config.General = &domain.GeneralConfig{
-			AutostartDolt: true,
-		}
+	autostart := true
+	if raw.General != nil && raw.General.AutostartDolt != nil {
+		autostart = *raw.General.AutostartDolt
+	}
+	config.General = &domain.GeneralConfig{
+		AutostartDolt: autostart,
 	}
 
 	return config, nil

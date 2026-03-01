@@ -114,7 +114,7 @@ func (m UIModel) renderMatrixView() string {
 
 	// Determine the active border color - use flash color if lock-in is active for focused column
 	var activeColor lipgloss.Color
-	if m.animState.LockInActive && m.animState.LockInTarget == m.focus && m.animState.LockInIntensity > 0.3 {
+	if m.animState.shouldShowFlash(m.focus) {
 		// Flash takes priority during the bright phase of the animation
 		activeColor = FlashColor
 	} else {

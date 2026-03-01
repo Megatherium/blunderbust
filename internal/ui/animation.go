@@ -16,7 +16,8 @@ const (
 
 // Lock-in flash timing
 const (
-	LockInFlashDuration = 48 * time.Millisecond // 3 frames at 60fps for snappy feedback
+	LockInFlashDuration      = 48 * time.Millisecond // 3 frames at 60fps for snappy feedback
+	FlashVisibilityThreshold = 0.3                   // Minimum intensity (30%) to show flash color
 )
 
 // GradientColors is the signature palette: light green → dark blue
@@ -86,9 +87,9 @@ func (a AnimationState) getFlashIntensity() float64 {
 	return a.LockInIntensity
 }
 
-// shouldShowFlash returns true if flash should be rendered for the given column
+// shouldShowFlash returns true if flash should be rendered for given column
 func (a AnimationState) shouldShowFlash(column FocusColumn) bool {
-	return a.LockInActive && a.LockInTarget == column && a.LockInIntensity > 0.3
+	return a.LockInActive && a.LockInTarget == column && a.LockInIntensity > FlashVisibilityThreshold
 }
 
 // getPulsingColor returns a color from the gradient based on pulse phase

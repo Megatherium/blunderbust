@@ -19,7 +19,7 @@ import (
 
 func TestNewTmuxLauncher(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, false, false)
+	launcher := NewTmuxLauncher(fake, false, false, "foreground")
 
 	if launcher == nil {
 		t.Fatal("NewTmuxLauncher returned nil")
@@ -36,11 +36,15 @@ func TestNewTmuxLauncher(t *testing.T) {
 	if launcher.skipTmuxCheck {
 		t.Error("skipTmuxCheck should be false")
 	}
+
+	if launcher.target != "foreground" {
+		t.Errorf("Expected target 'foreground', got %q", launcher.target)
+	}
 }
 
 func TestNewTmuxLauncher_WithOptions(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, true, true)
+	launcher := NewTmuxLauncher(fake, true, true, "background")
 
 	if !launcher.dryRun {
 		t.Error("dryRun should be true")
@@ -49,11 +53,24 @@ func TestNewTmuxLauncher_WithOptions(t *testing.T) {
 	if !launcher.skipTmuxCheck {
 		t.Error("skipTmuxCheck should be true")
 	}
+
+	if launcher.target != "background" {
+		t.Errorf("Expected target 'background', got %q", launcher.target)
+	}
+}
+
+func TestNewTmuxLauncher_InvalidTargetDefaultsToForeground(t *testing.T) {
+	fake := NewFakeRunner()
+	launcher := NewTmuxLauncher(fake, false, false, "invalid")
+
+	if launcher.target != "foreground" {
+		t.Errorf("Expected target to default to 'foreground', got %q", launcher.target)
+	}
 }
 
 func TestLauncher_validateTmuxContext_WithoutTmux(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, false, false)
+	launcher := NewTmuxLauncher(fake, false, false, "foreground")
 
 	oldTmux := os.Getenv("TMUX")
 	defer func() { os.Setenv("TMUX", oldTmux) }()
@@ -73,7 +90,7 @@ func TestLauncher_validateTmuxContext_WithoutTmux(t *testing.T) {
 
 func TestLauncher_validateTmuxContext_WithTmux(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, false, false)
+	launcher := NewTmuxLauncher(fake, false, false, "foreground")
 
 	oldTmux := os.Getenv("TMUX")
 	defer func() { os.Setenv("TMUX", oldTmux) }()
@@ -88,7 +105,7 @@ func TestLauncher_validateTmuxContext_WithTmux(t *testing.T) {
 
 func TestLauncher_validateTmuxContext_SkipCheck(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, false, true)
+	launcher := NewTmuxLauncher(fake, false, true, "foreground")
 
 	oldTmux := os.Getenv("TMUX")
 	defer func() { os.Setenv("TMUX", oldTmux) }()
@@ -105,7 +122,7 @@ func TestLauncher_Launch_DryRun(t *testing.T) {
 	fake := NewFakeRunner()
 	// Justification: When testing Launch in a dry run outside of tmux, we must skip the tmux context check
 	// because the CI pipeline or local test environment might not be running within a tmux session.
-	launcher := NewTmuxLauncher(fake, true, true)
+	launcher := NewTmuxLauncher(fake, true, true, "foreground")
 
 	spec := domain.LaunchSpec{
 		Selection: domain.Selection{
@@ -147,7 +164,7 @@ func TestLauncher_Launch_DryRun(t *testing.T) {
 func TestLauncher_Launch_Success(t *testing.T) {
 	fake := NewFakeRunner()
 	fake.SetOutput("tmux", []string{"new-window", "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=", "-n", "bb-3zg", "opencode", "--model", "claude-sonnet"}, []byte("@1\n"))
-	launcher := NewTmuxLauncher(fake, false, true)
+	launcher := NewTmuxLauncher(fake, false, true, "foreground")
 
 	spec := domain.LaunchSpec{
 		Selection: domain.Selection{
@@ -200,7 +217,7 @@ func TestLauncher_Launch_CommandError(t *testing.T) {
 	fake.SetError("tmux", []string{"new-window", "-n", "bb-3zg", "opencode"},
 		errors.New("tmux command failed"))
 
-	launcher := NewTmuxLauncher(fake, false, true)
+	launcher := NewTmuxLauncher(fake, false, true, "foreground")
 
 	spec := domain.LaunchSpec{
 		Selection: domain.Selection{
@@ -235,7 +252,7 @@ func TestLauncher_Launch_CommandError(t *testing.T) {
 
 func TestLauncher_Launch_NotInTmux(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, false, false)
+	launcher := NewTmuxLauncher(fake, false, false, "foreground")
 
 	oldTmux := os.Getenv("TMUX")
 	defer func() { os.Setenv("TMUX", oldTmux) }()
@@ -269,7 +286,7 @@ func TestLauncher_Launch_NotInTmux(t *testing.T) {
 
 func TestLauncher_buildCommand(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, false, true)
+	launcher := NewTmuxLauncher(fake, false, true, "foreground")
 
 	now := time.Now()
 	spec := domain.LaunchSpec{
@@ -338,6 +355,64 @@ func TestLauncher_buildCommand(t *testing.T) {
 	expectedCommand := "opencode --model claude-sonnet-4-20250514 --agent coder"
 	if cmd[11] != expectedCommand {
 		t.Errorf("Expected command %q, got %q", expectedCommand, cmd[11])
+	}
+}
+
+func TestLauncher_buildCommand_BackgroundMode(t *testing.T) {
+	fake := NewFakeRunner()
+	launcher := NewTmuxLauncher(fake, false, true, "background")
+
+	now := time.Now()
+	spec := domain.LaunchSpec{
+		Selection: domain.Selection{
+			Ticket: domain.Ticket{
+				ID:          "bb-3zg",
+				Title:       "Test ticket",
+				Description: "Test description",
+				Status:      "open",
+				Priority:    1,
+				IssueType:   "task",
+				Assignee:    "testuser",
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			},
+			Harness: domain.Harness{
+				Name:            "opencode",
+				CommandTemplate: "opencode --model {{.Model}} --agent {{.Agent}}",
+			},
+			Model: "claude-sonnet-4-20250514",
+			Agent: "coder",
+		},
+		RenderedCommand: "opencode --model claude-sonnet-4-20250514 --agent coder",
+		RenderedPrompt:  "Work on ticket bb-3zg: Test ticket",
+		WindowName:      "bb-3zg",
+	}
+
+	cmd := launcher.buildCommand(spec)
+
+	if len(cmd) != 13 {
+		t.Fatalf("Expected 13 arguments, got %d: %v", len(cmd), cmd)
+	}
+
+	if cmd[0] != "tmux" {
+		t.Errorf("Expected first arg to be 'tmux', got %q", cmd[0])
+	}
+
+	if cmd[1] != "new-window" {
+		t.Errorf("Expected second arg to be 'new-window', got %q", cmd[1])
+	}
+
+	if cmd[2] != "-d" {
+		t.Errorf("Expected third arg to be '-d' for background mode, got %q", cmd[2])
+	}
+
+	if cmd[3] != "-P" {
+		t.Errorf("Expected fourth arg to be '-P', got %q", cmd[3])
+	}
+
+	expectedCommand := "opencode --model claude-sonnet-4-20250514 --agent coder"
+	if cmd[12] != expectedCommand {
+		t.Errorf("Expected command %q, got %q", expectedCommand, cmd[12])
 	}
 }
 
@@ -416,7 +491,7 @@ some footer`
 
 func TestLauncher_buildCommand_Escaping(t *testing.T) {
 	fake := NewFakeRunner()
-	launcher := NewTmuxLauncher(fake, false, true)
+	launcher := NewTmuxLauncher(fake, false, true, "foreground")
 
 	spec := domain.LaunchSpec{
 		RenderedCommand: "echo 'hello world' && ls -la",
@@ -427,7 +502,7 @@ func TestLauncher_buildCommand_Escaping(t *testing.T) {
 	cmdStr := strings.Join(cmd, " ")
 
 	if !contains(cmdStr, "echo 'hello world' && ls -la") {
-		t.Errorf("Command should contain the full command: %q", cmdStr)
+		t.Errorf("Command should contain full command: %q", cmdStr)
 	}
 
 	if !contains(cmdStr, "test-window") {

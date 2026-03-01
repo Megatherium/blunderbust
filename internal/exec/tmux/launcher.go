@@ -21,16 +21,28 @@ type Launcher struct {
 	runner        CommandRunner
 	dryRun        bool
 	skipTmuxCheck bool
+	target        string
 }
 
 // NewTmuxLauncher creates a new tmux-based launcher.
 // If dryRun is true, commands are printed but not executed.
 // If skipTmuxCheck is true, the TMUX environment guard is disabled.
-func NewTmuxLauncher(runner CommandRunner, dryRun, skipTmuxCheck bool) *Launcher {
+// target specifies whether to focus on the new window: "foreground" or "background".
+func NewTmuxLauncher(runner CommandRunner, dryRun, skipTmuxCheck bool, target string) *Launcher {
+	validTargets := map[string]bool{
+		"foreground": true,
+		"background": true,
+	}
+
+	if !validTargets[target] {
+		target = "foreground"
+	}
+
 	return &Launcher{
 		runner:        runner,
 		dryRun:        dryRun,
 		skipTmuxCheck: skipTmuxCheck,
+		target:        target,
 	}
 }
 
@@ -82,9 +94,15 @@ func (l *Launcher) validateTmuxContext() error {
 
 // buildCommand constructs the full tmux command with environment variables.
 func (l *Launcher) buildCommand(spec domain.LaunchSpec) []string {
-	args := make([]string, 0, 14)
+	args := make([]string, 0, 15)
 
-	args = append(args, "tmux", "new-window", "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=")
+	args = append(args, "tmux", "new-window")
+
+	if l.target == "background" {
+		args = append(args, "-d")
+	}
+
+	args = append(args, "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=")
 
 	for key, val := range spec.Selection.Harness.Env {
 		args = append(args, "-e", fmt.Sprintf("%s=%s", key, val))

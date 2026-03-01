@@ -173,9 +173,15 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Loaded %d harness(es) from config\n", len(cfg.Harnesses))
 	}
 
+	target := cfg.Launcher.Target
+
+	if debug {
+		fmt.Fprintf(os.Stderr, "Launcher target: %s\n", target)
+	}
+
 	// Wire real tmux launcher and status checker
 	runner := tmux.NewRealRunner()
-	launcher := tmux.NewTmuxLauncher(runner, dryRun, false)
+	launcher := tmux.NewTmuxLauncher(runner, dryRun, false, target)
 	statusChecker := tmux.NewStatusChecker(runner)
 
 	renderer := config.NewRenderer()

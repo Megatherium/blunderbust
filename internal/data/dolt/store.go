@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/domain"
@@ -84,7 +83,7 @@ func NewStore(ctx context.Context, opts domain.AppOptions, autostart bool) (*Sto
 					if opts.Debug {
 						fmt.Fprintf(os.Stderr, "Dolt server not running, attempting to start...\n")
 					}
-					if startErr := StartServer(beadsDir, 30*time.Second); startErr != nil {
+					if startErr := StartServer(beadsDir, metadata); startErr != nil {
 						return nil, fmt.Errorf("failed to auto-start dolt server: %w", startErr)
 					}
 					// Retry connection after starting server

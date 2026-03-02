@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 // Mode represents the Dolt connection mode.
@@ -41,6 +42,8 @@ type Metadata struct {
 	ServerPort int `json:"dolt_server_port"`
 	// ServerUser is the MySQL user for server mode connections
 	ServerUser string `json:"dolt_server_user"`
+	// ServerReadyTimeoutSeconds is the timeout in seconds to wait for Dolt server to be ready
+	ServerReadyTimeoutSeconds int `json:"dolt_server_ready_timeout"`
 }
 
 // ConnectionMode determines the connection mode from the metadata.
@@ -60,6 +63,14 @@ func (m *Metadata) ConnectionMode() Mode {
 // IsValid returns true if the metadata contains the minimum required fields.
 func (m *Metadata) IsValid() bool {
 	return m.DoltDatabase != ""
+}
+
+// ServerReadyTimeout returns the configured server ready timeout or default 10 seconds.
+func (m *Metadata) ServerReadyTimeout() time.Duration {
+	if m.ServerReadyTimeoutSeconds > 0 {
+		return time.Duration(m.ServerReadyTimeoutSeconds) * time.Second
+	}
+	return 10 * time.Second
 }
 
 // LoadMetadata reads and parses the metadata.json file from the given beads directory.

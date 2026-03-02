@@ -73,7 +73,7 @@ func (m UIModel) initSidebar() UIModel {
 }
 
 func (m UIModel) Init() tea.Cmd {
-	store, err := m.app.CreateStore(context.Background())
+	project, err := m.app.CreateProjectContext(context.Background())
 	if err != nil {
 		return tea.Batch(
 			func() tea.Msg {
@@ -98,15 +98,15 @@ func (m UIModel) Init() tea.Cmd {
 			return registryLoadedMsg{}
 		},
 		func() tea.Msg {
-			tickets, err := store.ListTickets(context.Background(), data.TicketFilter{})
+			tickets, err := project.Store().ListTickets(context.Background(), data.TicketFilter{})
 			if err != nil {
 				return errMsg{err}
 			}
 			return ticketsLoadedMsg(tickets)
 		},
-		discoverWorktreesCmd(m.app.opts.BeadsDir),
+		discoverWorktreesCmd(project.RootPath()),
 		animationTickCmd(),
-		checkTicketUpdatesCmd(store, time.Time{}),
+		checkTicketUpdatesCmd(project.Store(), time.Time{}),
 	)
 }
 

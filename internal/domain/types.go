@@ -69,6 +69,13 @@ type GeneralConfig struct {
 	AutostartDolt bool
 }
 
+// Defaults holds optional default selections for quickdraw/blitzdraw modes.
+type Defaults struct {
+	Harness string
+	Model   string
+	Agent   string
+}
+
 // Config holds the top-level blunderbust configuration.
 type Config struct {
 	Harnesses []Harness
@@ -77,20 +84,13 @@ type Config struct {
 	General   *GeneralConfig
 }
 
-// Defaults holds optional default selections for quickdraw/blitzdraw modes.
-type Defaults struct {
-	Harness string
-	Model   string
-	Agent   string
-}
-
 // AppOptions configure the application at a global level.
 type AppOptions struct {
-	DryRun     bool
-	ConfigPath string
-	Debug      bool
-	BeadsDir   string
-	DSN        string
-	Demo       bool
+	DryRun       bool
+	ConfigPath   string
+	Debug        bool
+	BeadsDir     string
+	DSN          string
+	Demo         bool
 	AutostartDolt bool
 }

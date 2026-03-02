@@ -449,7 +449,7 @@ func TestHandleTicketUpdateCheck(t *testing.T) {
 func TestHandleTicketUpdateCheck_WithNilStore(t *testing.T) {
 	app := newTestApp()
 	m := NewUIModel(app, nil)
-	m.app.store = nil
+	app.project = nil
 
 	newM, cmd := m.handleTicketUpdateCheck()
 	updatedM := newM.(UIModel)
@@ -461,8 +461,9 @@ func TestHandleTicketUpdateCheck_WithNilStore(t *testing.T) {
 func TestHandleTicketsAutoRefreshed(t *testing.T) {
 	app := newTestApp()
 	m := NewUIModel(app, nil)
-	m.app.store = &mockStore{}
-
+	mockStore := &mockStore{}
+	app.project = data.NewProjectContext(mockStore, ".beads", "/repo/root")
+	
 	newM, cmd := m.handleTicketsAutoRefreshed()
 	updatedM := newM.(UIModel)
 

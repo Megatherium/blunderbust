@@ -32,19 +32,19 @@ func DetectNerdFont() bool {
 
 // App encapsulates the Bubble Tea program's dependencies.
 type App struct {
-	store         data.TicketStore
-	loader        config.Loader
-	launcher      exec.Launcher
+	project      *data.ProjectContext
+	loader       config.Loader
+	launcher     exec.Launcher
 	statusChecker *tmux.StatusChecker
-	runner        tmux.CommandRunner
-	Renderer      *config.Renderer
-	Registry      *discovery.Registry
-	opts          domain.AppOptions
-	Fonts         FontConfig
+	runner       tmux.CommandRunner
+	Renderer     *config.Renderer
+	Registry     *discovery.Registry
+	opts         domain.AppOptions
+	Fonts        FontConfig
 }
 
 // NewApp creates a new App instance with necessary dependencies.
-// Store is created lazily via CreateStore().
+// ProjectContext is created lazily via CreateProjectContext().
 func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.StatusChecker, runner tmux.CommandRunner, renderer *config.Renderer, opts domain.AppOptions) (*App, error) {
 	registry, err := discovery.NewRegistry("")
 	if err != nil {
@@ -63,19 +63,27 @@ func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.St
 	}, nil
 }
 
-// StatusChecker returns the status checker for monitoring tmux windows.
-func (a *App) StatusChecker() *tmux.StatusChecker {
-	return a.statusChecker
+// Project returns the current project context (may be nil if CreateProjectContext hasn't been called).
+func (a *App) Project() *data.ProjectContext {
+	return a.project
 }
 
-// Runner returns the command runner for creating output captures.
-func (a *App) Runner() tmux.CommandRunner {
-	return a.runner
-}
-
-// CreateStore initializes the TicketStore based on AppOptions.
+// CreateProjectContext initializes the ProjectContext based on AppOptions.
 // This should be called from the TUI's async initialization.
-func (a *App) CreateStore(ctx context.Context) (data.TicketStore, error) {
+func (a *App) CreateProjectContext(ctx context.Context) (*data.ProjectContext, error) {
+	store, err := a.createStore(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rootPath := extractRepoRoot(a.opts.BeadsDir)
+	project := data.NewProjectContext(store, a.opts.BeadsDir, rootPath)
+	a.project = project
+	return project, nil
+}
+
+// createStore creates a TicketStore based on AppOptions.
+func (a *App) createStore(ctx context.Context) (data.TicketStore, error) {
 	if a.opts.Demo {
 		if a.opts.Debug {
 			fmt.Println("Using fake ticket store (demo mode)")
@@ -92,21 +100,32 @@ func (a *App) CreateStore(ctx context.Context) (data.TicketStore, error) {
 		fmt.Println("Connected to beads database")
 	}
 
-	a.store = store
 	return store, nil
 }
 
-// Close cleans up resources, particularly the store.
+// StatusChecker returns the status checker for monitoring tmux windows.
+func (a *App) StatusChecker() *tmux.StatusChecker {
+	return a.statusChecker
+}
+
+// Runner returns the command runner for creating output captures.
+func (a *App) Runner() tmux.CommandRunner {
+	return a.runner
+}
+
+// Close cleans up resources, particularly the project context.
 func (a *App) Close() error {
-	if a.store != nil {
-		if closer, ok := a.store.(interface{ Close() error }); ok {
-			return closer.Close()
-		}
+	if a.project != nil {
+		return a.project.Close()
 	}
 	return nil
 }
 
-// Store returns the current store (may be nil if CreateStore hasn't been called).
+// Store returns the current store (may be nil if CreateProjectContext hasn't been called).
+// Deprecated: Use Project().Store() instead.
 func (a *App) Store() data.TicketStore {
-	return a.store
+	if a.project == nil {
+		return nil
+	}
+	return a.project.Store()
 }

@@ -19,7 +19,7 @@ import (
 
 func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) {
 	if len(msg) == 0 {
-		if m.app.Store() == nil {
+		if m.app.Project() == nil || m.app.Project().Store() == nil {
 			m.ticketList = createErrorList("Couldn't load ticket list:\nStore initialization failed")
 			m.sidebar.SetStoreError(true)
 			m.loading = false
@@ -151,7 +151,7 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if key.Matches(msg, m.keys.Refresh) {
 		if m.state == ViewStateMatrix && m.focus == FocusTickets {
 			m.loading = true
-			return m, tea.Batch(loadTicketsCmd(m.app.Store()), discoverWorktreesCmd(m.app.opts.BeadsDir)), true
+			return m, tea.Batch(loadTicketsCmd(m.app.Project().Store()), discoverWorktreesCmd(m.app.Project().RootPath())), true
 		}
 	}
 	if key.Matches(msg, m.keys.Back) {
@@ -749,7 +749,13 @@ func (i errorItem) Description() string { return "" }
 func (i errorItem) FilterValue() string { return "" }
 
 func (m UIModel) handleTicketUpdateCheck() (tea.Model, tea.Cmd) {
-	store := m.app.Store()
+	if m.app.Project() == nil {
+		return m, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
+			return ticketUpdateCheckMsg{}
+		})
+	}
+
+	store := m.app.Project().Store()
 	if store == nil {
 		return m, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 			return ticketUpdateCheckMsg{}
@@ -762,7 +768,7 @@ func (m UIModel) handleTicketsAutoRefreshed() (tea.Model, tea.Cmd) {
 	m.refreshedRecently = true
 	m.refreshAnimationFrame = 0
 
-	cmds := []tea.Cmd{loadTicketsCmd(m.app.Store()), discoverWorktreesCmd(m.app.opts.BeadsDir)}
+	cmds := []tea.Cmd{loadTicketsCmd(m.app.Project().Store()), discoverWorktreesCmd(m.app.Project().RootPath())}
 
 	if m.app.Fonts.HasNerdFont {
 		cmds = append(cmds, tea.Tick(animationTickInterval, func(t time.Time) tea.Msg {

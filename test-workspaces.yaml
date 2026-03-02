@@ -1,0 +1,20 @@
+general:
+  autostart_dolt: true
+harnesses:
+  - name: opencode
+    command_template: echo "{{.Prompt}}"
+    prompt_template: "Your mother"
+    models:
+      - discover:active
+    agents:
+      - build
+      - plan
+      - architect
+workspaces:
+  default:
+    projects:
+      - dir: /home/sloth/Documents/projects/blunderbust
+        name: blunderbust
+      - dir: /tmp/blunderbust-demo
+        name: blunderbust-demo
+

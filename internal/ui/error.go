@@ -38,6 +38,8 @@ func errorView(err error) string {
 	case strings.Contains(errStr, "metadata.json is missing"):
 		b.WriteString(errorStyle.Render("No beads database found."))
 		b.WriteString("\n\n")
+		b.WriteString(errorStyle.Render(errStr))
+		b.WriteString("\n\n")
 		b.WriteString("Is this a beads project? Run 'bd init' to initialize beads in this repository.")
 
 	case strings.Contains(errStr, "dolt database directory not found"):

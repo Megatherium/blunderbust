@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	osexec "os/exec"
+	"path/filepath"
 
 	"github.com/megatherium/blunderbust/internal/config"
 	"github.com/megatherium/blunderbust/internal/data"
@@ -32,15 +33,17 @@ func DetectNerdFont() bool {
 
 // App encapsulates the Bubble Tea program's dependencies.
 type App struct {
-	project      *data.ProjectContext
-	loader       config.Loader
-	launcher     exec.Launcher
+	stores        map[string]data.TicketStore
+	projects      []domain.Project
+	activeProject string
+	loader        config.Loader
+	launcher      exec.Launcher
 	statusChecker *tmux.StatusChecker
-	runner       tmux.CommandRunner
-	Renderer     *config.Renderer
-	Registry     *discovery.Registry
-	opts         domain.AppOptions
-	Fonts        FontConfig
+	runner        tmux.CommandRunner
+	Renderer      *config.Renderer
+	Registry      *discovery.Registry
+	opts          domain.AppOptions
+	Fonts         FontConfig
 }
 
 // NewApp creates a new App instance with necessary dependencies.
@@ -65,28 +68,73 @@ func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.St
 
 // Project returns the current project context (may be nil if CreateProjectContext hasn't been called).
 func (a *App) Project() *data.ProjectContext {
-	return a.project
+	if a.activeProject == "" {
+		return nil
+	}
+
+	// Fast path check if store exists
+	if store, exists := a.stores[a.activeProject]; exists {
+		// activeProject is the project root path
+		beadsDir := filepath.Join(a.activeProject, ".beads")
+		ctx, _ := data.NewProjectContext(store, beadsDir, a.activeProject)
+		return ctx
+	}
+
+	return nil
 }
 
 // CreateProjectContext initializes the ProjectContext based on AppOptions.
 // This should be called from the TUI's async initialization.
 func (a *App) CreateProjectContext(ctx context.Context) (*data.ProjectContext, error) {
-	store, err := a.createStore(ctx)
+	config, err := a.loader.Load(a.opts.ConfigPath)
+	if err != nil {
+		// Try fallback if no config
+		return a.loadSingleProject(ctx, a.opts.BeadsDir)
+	}
+
+	a.projects = config.Workspace.Projects
+	if len(a.projects) == 0 {
+		return a.loadSingleProject(ctx, a.opts.BeadsDir)
+	}
+
+	a.stores = make(map[string]data.TicketStore)
+
+	// Create store for the first project in workspaces config
+	firstProjectDir := a.projects[0].Dir
+	beadsDir := filepath.Join(firstProjectDir, ".beads")
+	store, err := a.createStore(ctx, beadsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create store for project %s at %s: %w", firstProjectDir, beadsDir, err)
+	}
+
+	a.stores[firstProjectDir] = store
+	a.activeProject = firstProjectDir
+
+	return a.Project(), nil
+}
+
+func (a *App) loadSingleProject(ctx context.Context, beadsDir string) (*data.ProjectContext, error) {
+	if beadsDir == "" {
+		beadsDir = ".beads" // reasonable default for fallback
+	}
+	store, err := a.createStore(ctx, beadsDir)
 	if err != nil {
 		return nil, err
 	}
 
-	rootPath := extractRepoRoot(a.opts.BeadsDir)
-	project, err := data.NewProjectContext(store, a.opts.BeadsDir, rootPath)
-	if err != nil {
-		return nil, err
-	}
-	a.project = project
-	return project, nil
+	a.stores = make(map[string]data.TicketStore)
+	rootPath := extractRepoRoot(beadsDir)
+	a.stores[rootPath] = store
+	a.activeProject = rootPath
+
+	name := data.GetProjectName(rootPath)
+	a.projects = []domain.Project{{Dir: rootPath, Name: name}}
+
+	return a.Project(), nil
 }
 
 // createStore creates a TicketStore based on AppOptions.
-func (a *App) createStore(ctx context.Context) (data.TicketStore, error) {
+func (a *App) createStore(ctx context.Context, beadsDir string) (data.TicketStore, error) {
 	if a.opts.Demo {
 		if a.opts.Debug {
 			fmt.Println("Using fake ticket store (demo mode)")
@@ -94,13 +142,17 @@ func (a *App) createStore(ctx context.Context) (data.TicketStore, error) {
 		return fake.NewWithSampleData(), nil
 	}
 
-	store, err := dolt.NewStore(ctx, a.opts, a.opts.AutostartDolt)
+	// We create a local modified AppOptions to override BeadsDir per project context
+	opts := a.opts
+	opts.BeadsDir = beadsDir
+
+	store, err := dolt.NewStore(ctx, opts, a.opts.AutostartDolt)
 	if err != nil {
 		return nil, err
 	}
 
 	if a.opts.Debug {
-		fmt.Println("Connected to beads database")
+		fmt.Printf("Connected to beads database at %s\n", beadsDir)
 	}
 
 	return store, nil
@@ -118,17 +170,29 @@ func (a *App) Runner() tmux.CommandRunner {
 
 // Close cleans up resources, particularly the project context.
 func (a *App) Close() error {
-	if a.project != nil {
-		return a.project.Close()
+	for _, store := range a.stores {
+		if closer, ok := store.(interface{ Close() error }); ok {
+			closer.Close()
+		}
 	}
 	return nil
 }
 
-// Store returns the current store (may be nil if CreateProjectContext hasn't been called).
-// Deprecated: Use Project().Store() instead.
-func (a *App) Store() data.TicketStore {
-	if a.project == nil {
-		return nil
+// GetProjects returns the list of configured projects.
+func (a *App) GetProjects() []domain.Project {
+	return a.projects
+}
+
+// SetActiveProject switches the active project context, creating the store lazily if needed.
+func (a *App) SetActiveProject(ctx context.Context, projectDir string) error {
+	if _, exists := a.stores[projectDir]; !exists {
+		beadsDir := filepath.Join(projectDir, ".beads")
+		store, err := a.createStore(ctx, beadsDir)
+		if err != nil {
+			return err
+		}
+		a.stores[projectDir] = store
 	}
-	return a.project.Store()
+	a.activeProject = projectDir
+	return nil
 }

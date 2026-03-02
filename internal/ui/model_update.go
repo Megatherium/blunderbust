@@ -17,6 +17,99 @@ import (
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
 
+func (m UIModel) handleModalKeyMsg() (tea.Model, tea.Cmd, bool) {
+	if m.showModal {
+		m.showModal = false
+		return m, nil, true
+	}
+	return m, nil, false
+}
+
+func (m UIModel) handleQuitKeyMsg() (tea.Model, tea.Cmd, bool) {
+	if m.viewingAgentID != "" {
+		m.viewingAgentID = ""
+		return m, nil, true
+	}
+	return m, tea.Quit, true
+}
+
+func (m UIModel) handleRefreshKeyMsg() (tea.Model, tea.Cmd, bool) {
+	if m.state == ViewStateMatrix && m.focus == FocusTickets {
+		m.loading = true
+		return m, tea.Batch(loadTicketsCmd(m.app.Project().Store()), discoverWorktreesCmd(m.app.Project().RootPath())), true
+	}
+	return m, nil, false
+}
+
+func (m UIModel) handleBackKeyMsg() (tea.Model, tea.Cmd, bool) {
+	if m.state == ViewStateConfirm {
+		m.state = ViewStateMatrix
+		return m, nil, true
+	}
+	if m.viewingAgentID != "" {
+		m.viewingAgentID = ""
+		return m, nil, true
+	}
+	if m.state == ViewStateMatrix && m.focus > FocusTickets {
+		m.focus--
+		return m, nil, true
+	}
+	return m, nil, false
+}
+
+func (m UIModel) handleInfoKeyMsg() (tea.Model, tea.Cmd, bool) {
+	if m.state == ViewStateMatrix && m.focus == FocusTickets {
+		if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
+			m.showModal = true
+			m.modalContent = "Loading bd show..."
+			return m, loadModalCmd(i.ticket.ID), true
+		}
+	}
+	return m, nil, false
+}
+
+func (m UIModel) handleToggleSidebarKeyMsg() (tea.Model, tea.Cmd, bool) {
+	m.showSidebar = !m.showSidebar
+	m.updateSizes()
+	return m, nil, true
+}
+
+func (m UIModel) handleToggleThemeKeyMsg() (tea.Model, tea.Cmd, bool) {
+	m.animState.nextTheme()
+	m.currentTheme = m.animState.getCurrentTheme()
+	m.ticketList.SetDelegate(newGradientDelegate(m.currentTheme))
+	m.harnessList.SetDelegate(newGradientDelegate(m.currentTheme))
+	m.modelList.SetDelegate(newGradientDelegate(m.currentTheme))
+	m.agentList.SetDelegate(newGradientDelegate(m.currentTheme))
+	return m, nil, true
+}
+
+func (m UIModel) handleNavigationKeysMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	switch msg.String() {
+	case "left":
+		if m.state == ViewStateMatrix && m.focus > FocusSidebar {
+			m.retreatFocus()
+			return m, nil, true
+		}
+	case "right":
+		if m.state == ViewStateMatrix && m.focus < FocusAgent {
+			m.advanceFocus()
+			return m, nil, true
+		}
+	case "tab":
+		if m.state == ViewStateMatrix {
+			if m.focus < FocusAgent {
+				m.advanceFocus()
+			} else {
+				m.focus = FocusSidebar
+				m.sidebar.SetFocused(true)
+			}
+			return m, nil, true
+		}
+	}
+	return m, nil, false
+}
+
 func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) {
 	if len(msg) == 0 {
 		if m.app.Project() == nil || m.app.Project().Store() == nil {
@@ -134,131 +227,57 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 }
 
 func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if m.showModal {
-		if key.Matches(msg, m.keys.Back, m.keys.Quit, m.keys.Enter, m.keys.Info) {
-			m.showModal = false
-		}
-		return m, nil, true
+	if model, cmd, handled := m.handleModalKeyMsg(); handled {
+		return model, cmd, true
 	}
 
 	if key.Matches(msg, m.keys.Quit) {
-		if m.viewingAgentID != "" {
-			m.viewingAgentID = ""
-			return m, nil, true
-		}
-		return m, tea.Quit, true
-	}
-	if key.Matches(msg, m.keys.Refresh) {
-		if m.state == ViewStateMatrix && m.focus == FocusTickets {
-			m.loading = true
-			return m, tea.Batch(loadTicketsCmd(m.app.Project().Store()), discoverWorktreesCmd(m.app.Project().RootPath())), true
-		}
-	}
-	if key.Matches(msg, m.keys.Back) {
-		if m.state == ViewStateConfirm {
-			m.state = ViewStateMatrix
-			return m, nil, true
-		}
-		// Exit agent output view
-		if m.viewingAgentID != "" {
-			m.viewingAgentID = ""
-			return m, nil, true
-		}
-		if m.state == ViewStateMatrix && m.focus > FocusTickets {
-			m.focus--
-			return m, nil, true
-		}
-	}
-	if key.Matches(msg, m.keys.Info) {
-		if m.state == ViewStateMatrix && m.focus == FocusTickets {
-			if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
-				m.showModal = true
-				m.modalContent = "Loading bd show..."
-				return m, loadModalCmd(i.ticket.ID), true
-			}
-		}
-	}
-	if key.Matches(msg, m.keys.ToggleSidebar) {
-		m.showSidebar = !m.showSidebar
-		m.updateSizes()
-		return m, nil, true
-	}
-	if key.Matches(msg, m.keys.ToggleTheme) {
-		// Cycle to next theme
-		m.animState.nextTheme()
-		m.currentTheme = m.animState.getCurrentTheme()
-		// Update list delegates to use new theme colors
-		m.ticketList.SetDelegate(newGradientDelegate(m.currentTheme))
-		m.harnessList.SetDelegate(newGradientDelegate(m.currentTheme))
-		m.modelList.SetDelegate(newGradientDelegate(m.currentTheme))
-		m.agentList.SetDelegate(newGradientDelegate(m.currentTheme))
-		return m, nil, true
+		return m.handleQuitKeyMsg()
 	}
 
-	// Handle manual left/right navigation outside of keys.go since it's intrinsic to the matrix
-	switch msg.String() {
-	case "left":
-		if m.state == ViewStateMatrix && m.focus > FocusSidebar {
-			m.retreatFocus()
-			return m, nil, true
+	if key.Matches(msg, m.keys.Refresh) {
+		if model, cmd, handled := m.handleRefreshKeyMsg(); handled {
+			return model, cmd, true
 		}
-	case "right":
-		if m.state == ViewStateMatrix && m.focus < FocusAgent {
-			m.advanceFocus()
-			return m, nil, true
+	}
+
+	if key.Matches(msg, m.keys.Back) {
+		if model, cmd, handled := m.handleBackKeyMsg(); handled {
+			return model, cmd, true
 		}
-	case "tab":
-		if m.state == ViewStateMatrix {
-			if m.focus < FocusAgent {
-				m.advanceFocus()
-			} else {
-				m.focus = FocusSidebar
-				m.sidebar.SetFocused(true)
-			}
-			return m, nil, true
+	}
+
+	if key.Matches(msg, m.keys.Info) {
+		if model, cmd, handled := m.handleInfoKeyMsg(); handled {
+			return model, cmd, true
 		}
+	}
+
+	if key.Matches(msg, m.keys.ToggleSidebar) {
+		return m.handleToggleSidebarKeyMsg()
+	}
+
+	if key.Matches(msg, m.keys.ToggleTheme) {
+		return m.handleToggleThemeKeyMsg()
+	}
+
+	if model, cmd, handled := m.handleNavigationKeysMsg(msg); handled {
+		return model, cmd, true
 	}
 
 	if key.Matches(msg, m.keys.Enter) {
-		// Don't handle Enter if sidebar has focus - let sidebar handle it
 		if m.focus == FocusSidebar {
 			return m, nil, false
 		}
 
-		// Trigger lock-in flash before handling the selection
-		// This provides immediate visual feedback that the button press was registered
 		flashCmd := lockInCmd(m.focus)
 
 		model, cmd := m.handleEnterKey()
 		return model, tea.Batch(flashCmd, cmd), true
 	}
 
-	// Handle agent clearing keys
-	if m.focus == FocusSidebar {
-		switch msg.String() {
-		case "c":
-			// Clear selected agent (confirm if running)
-			node := m.sidebar.State().CurrentNode()
-			if node != nil && node.Type == domain.NodeTypeAgent && node.AgentInfo != nil {
-				var capture *tmux.OutputCapture
-				if agent, ok := m.agents[node.AgentInfo.ID]; ok {
-					capture = agent.Capture
-				}
-				return m, clearAgentCmd(node.AgentInfo.ID, capture), true
-			}
-		case "C":
-			// Clear all stopped agents
-			var toClear []agentToClear
-			for id, agent := range m.agents {
-				if agent.Info.Status != domain.AgentRunning {
-					toClear = append(toClear, agentToClear{id: id, capture: agent.Capture})
-				}
-			}
-			if len(toClear) > 0 {
-				return m, clearAllStoppedAgentsCmd(toClear), true
-			}
-			return m, nil, true
-		}
+	if model, cmd, handled := m.handleSidebarAgentKeysMsg(msg); handled {
+		return model, cmd, true
 	}
 
 	return m, nil, false
@@ -793,4 +812,35 @@ func (m UIModel) handleRefreshAnimationTick() (tea.Model, tea.Cmd) {
 	return m, tea.Tick(animationTickInterval, func(t time.Time) tea.Msg {
 		return refreshAnimationTickMsg{}
 	})
+}
+
+func (m UIModel) handleSidebarAgentKeysMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if m.focus != FocusSidebar {
+		return m, nil, false
+	}
+
+	switch msg.String() {
+	case "c":
+		node := m.sidebar.State().CurrentNode()
+		if node != nil && node.Type == domain.NodeTypeAgent && node.AgentInfo != nil {
+			var capture *tmux.OutputCapture
+			if agent, ok := m.agents[node.AgentInfo.ID]; ok {
+				capture = agent.Capture
+			}
+			return m, clearAgentCmd(node.AgentInfo.ID, capture), true
+		}
+	case "C":
+		var toClear []agentToClear
+		for id, agent := range m.agents {
+			if agent.Info.Status != domain.AgentRunning {
+				toClear = append(toClear, agentToClear{id: id, capture: agent.Capture})
+			}
+		}
+		if len(toClear) > 0 {
+			return m, clearAllStoppedAgentsCmd(toClear), true
+		}
+		return m, nil, true
+	}
+
+	return m, nil, false
 }

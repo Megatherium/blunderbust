@@ -10,9 +10,9 @@ import (
 
 // Animation timing constants - tweak these to adjust feel
 const (
-	AnimationTickRate     = 16 * time.Millisecond // ~60fps
-	PulsePeriodSeconds    = 2.5                   // Full breathing cycle
-	ColorCycleInterval    = 8 * time.Second       // Time between color palette switches
+	AnimationTickRate  = 16 * time.Millisecond // ~60fps
+	PulsePeriodSeconds = 2.5                   // Full breathing cycle
+	ColorCycleInterval = 8 * time.Second       // Time between color palette switches
 )
 
 // Lock-in flash timing

@@ -294,23 +294,23 @@ var _ Loader = (*YAMLLoader)(nil)
 // Save writes the configuration to a YAML file.
 func (l *YAMLLoader) Save(path string, cfg *domain.Config) error {
 	yamlCfg := l.domainToYAML(cfg)
-	
+
 	data, err := yaml.Marshal(yamlCfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	
+
 	if err := os.WriteFile(path, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
-	
+
 	return nil
 }
 
 // domainToYAML converts domain.Config to yamlConfig for YAML marshaling.
 func (l *YAMLLoader) domainToYAML(cfg *domain.Config) yamlConfig {
 	var yamlCfg yamlConfig
-	
+
 	// Convert harnesses
 	if len(cfg.Harnesses) > 0 {
 		yamlCfg.Harnesses = make([]yamlHarness, len(cfg.Harnesses))
@@ -325,14 +325,14 @@ func (l *YAMLLoader) domainToYAML(cfg *domain.Config) yamlConfig {
 			}
 		}
 	}
-	
+
 	// Convert launcher
 	if cfg.Launcher != nil {
 		yamlCfg.Launcher = &yamlLauncherConfig{
 			Target: cfg.Launcher.Target,
 		}
 	}
-	
+
 	// Convert defaults
 	if cfg.Defaults != nil {
 		yamlCfg.Defaults = &yamlDefaults{
@@ -341,7 +341,7 @@ func (l *YAMLLoader) domainToYAML(cfg *domain.Config) yamlConfig {
 			Agent:   cfg.Defaults.Agent,
 		}
 	}
-	
+
 	// Convert general config
 	if cfg.General != nil {
 		autostart := cfg.General.AutostartDolt
@@ -349,7 +349,7 @@ func (l *YAMLLoader) domainToYAML(cfg *domain.Config) yamlConfig {
 			AutostartDolt: &autostart,
 		}
 	}
-	
+
 	// Convert workspace
 	if len(cfg.Workspace.Projects) > 0 {
 		projects := make([]yamlProject, len(cfg.Workspace.Projects))
@@ -363,6 +363,6 @@ func (l *YAMLLoader) domainToYAML(cfg *domain.Config) yamlConfig {
 			"default": {Projects: projects},
 		}
 	}
-	
+
 	return yamlCfg
 }

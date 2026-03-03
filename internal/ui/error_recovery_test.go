@@ -84,16 +84,16 @@ func TestErrorRecovery_DisplayStartServerOption(t *testing.T) {
 	// Create a test app with demo mode - in demo mode, the store is not a dolt.Store
 	// so the [s] option won't be shown. This test verifies the view logic structure.
 	// We test the view rendering logic directly instead of using teatest.
-	
+
 	// Test case 1: With nil retryStore, only [q] should be shown
 	m.state = ViewStateError
 	m.err = &dolt.ErrServerNotRunning{Message: "Dolt server is not running"}
 	m.retryStore = nil
-	
+
 	view := m.renderMainContent()
 	assert.Contains(t, view, "[q]")
 	assert.NotContains(t, view, "[s]") // No start option without retryStore
-	
+
 	// Test case 2: With retryStore (even if not dolt.Store), should show retry option
 	m.retryStore = &mockFailingStore{}
 	view = m.renderMainContent()
@@ -154,10 +154,10 @@ func TestErrorRecovery_StateTransitionAfterRetry(t *testing.T) {
 
 	// Simulate pressing 'r'
 	newModel, cmd, handled := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
-	
+
 	// Should handle the key
 	require.True(t, handled, "Should handle 'r' key in error state")
-	
+
 	// Should set loading to true and change state back to matrix
 	updatedModel := newModel.(UIModel)
 	assert.True(t, updatedModel.loading, "Should set loading to true")
@@ -179,10 +179,10 @@ func TestErrorRecovery_NoRetryWithoutStore(t *testing.T) {
 
 	// Simulate pressing 'r'
 	newModel, cmd, handled := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
-	
+
 	// Should handle the key (to block it from other handlers)
 	require.True(t, handled, "Should handle 'r' key")
-	
+
 	// Should stay in error state
 	updatedModel := newModel.(UIModel)
 	assert.Equal(t, originalState, updatedModel.state, "Should stay in error state")
@@ -200,7 +200,7 @@ func TestErrorRecovery_QuitKeyInErrorState(t *testing.T) {
 
 	// Simulate pressing 'q'
 	_, cmd, handled := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
-	
+
 	// Should handle the key and return quit command
 	require.True(t, handled, "Should handle 'q' key")
 	assert.NotNil(t, cmd, "Should return quit command")
@@ -221,10 +221,10 @@ func TestErrorRecovery_StartServerKeyWithoutDoltStore(t *testing.T) {
 
 	// Simulate pressing 's'
 	newModel, cmd, handled := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
-	
+
 	// Should handle the key (to block it from other handlers) but not change state
 	require.True(t, handled, "Should handle 's' key")
-	
+
 	// Should stay in error state because store is not *dolt.Store
 	updatedModel := newModel.(UIModel)
 	assert.Equal(t, originalState, updatedModel.state, "Should stay in error state with non-dolt store")
@@ -240,15 +240,15 @@ func TestErrorRecovery_ServerStartedMsgHandler(t *testing.T) {
 
 	// Create a mock store to be returned
 	mockStore := &mockFailingStore{}
-	
+
 	// Send serverStartedMsg
 	msg := serverStartedMsg{store: mockStore}
 	newModel, cmd := m.Update(msg)
-	
+
 	// Should update the store and load tickets
 	_ = newModel.(UIModel)
 	assert.NotNil(t, cmd, "Should return command to load tickets")
-	
+
 	// Verify the command loads tickets
 	// We can't easily execute the command here, but we verify it's not nil
 }
@@ -265,14 +265,14 @@ func TestErrorRecovery_HandleErrMsgSetsRetryStore(t *testing.T) {
 	// Simulate an error
 	testErr := errors.New("test connection error")
 	msg := errMsg{err: testErr}
-	
+
 	newModel, _ := m.handleErrMsg(msg)
 	updatedModel := newModel.(UIModel)
-	
+
 	// Should set error state
 	assert.Equal(t, ViewStateError, updatedModel.state)
 	assert.Equal(t, testErr, updatedModel.err)
-	
+
 	// Should set retryStore from current project
 	// Note: In demo mode, the project store might be nil or a fake store
 	// We just verify the logic doesn't panic
@@ -298,11 +298,11 @@ func TestErrorRecovery_KeyBindingsInErrorState(t *testing.T) {
 // TestErrorRecovery_ErrorViewDisplaysCorrectly tests that error view renders correctly with different error types
 func TestErrorRecovery_ErrorViewDisplaysCorrectly(t *testing.T) {
 	tests := []struct {
-		name       string
-		err        error
-		hasRetry   bool
-		hasStart   bool
-		wantText   []string
+		name     string
+		err      error
+		hasRetry bool
+		hasStart bool
+		wantText []string
 	}{
 		{
 			name:     "connection refused",

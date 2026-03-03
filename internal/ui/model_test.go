@@ -185,6 +185,132 @@ func TestUIModel_HandleWorktreeSelected(t *testing.T) {
 	assert.False(t, updatedM.sidebar.Focused())
 }
 
+func TestUIModel_HandleWorktreesDiscovered_PreservesSelection(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+
+	// Set initial selection to a non-main worktree
+	m.selectedWorktree = "/home/user/project/feature-branch"
+	m.sidebar.SetSelectedPath("/home/user/project/feature-branch")
+
+	// Simulate worktree refresh with same nodes
+	nodes := []domain.SidebarNode{
+		{
+			Type: domain.NodeTypeProject,
+			Name: "test-project",
+			Path: "/home/user/project",
+			Children: []domain.SidebarNode{
+				{Type: domain.NodeTypeWorktree, Name: "main", Path: "/home/user/project/main"},
+				{Type: domain.NodeTypeWorktree, Name: "feature-branch", Path: "/home/user/project/feature-branch"},
+			},
+		},
+	}
+	msg := worktreesDiscoveredMsg{nodes: nodes, err: nil}
+	newModel, _ := m.handleWorktreesDiscovered(msg)
+	updatedM := newModel.(UIModel)
+
+	// Selection should be preserved
+	assert.Equal(t, "/home/user/project/feature-branch", updatedM.selectedWorktree)
+	assert.Equal(t, "/home/user/project/feature-branch", updatedM.sidebar.SelectedWorktreePath())
+	assert.Len(t, updatedM.warnings, 0)
+}
+
+func TestUIModel_HandleWorktreesDiscovered_UpdatesRemovedSelection(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+
+	// Set initial selection to a worktree that will be removed
+	m.selectedWorktree = "/home/user/project/deleted-branch"
+	m.sidebar.SetSelectedPath("/home/user/project/deleted-branch")
+
+	// Simulate worktree refresh where selected worktree no longer exists
+	nodes := []domain.SidebarNode{
+		{
+			Type: domain.NodeTypeProject,
+			Name: "test-project",
+			Path: "/home/user/project",
+			Children: []domain.SidebarNode{
+				{Type: domain.NodeTypeWorktree, Name: "main", Path: "/home/user/project/main"},
+				{Type: domain.NodeTypeWorktree, Name: "feature-branch", Path: "/home/user/project/feature-branch"},
+			},
+		},
+	}
+	msg := worktreesDiscoveredMsg{nodes: nodes, err: nil}
+	newModel, _ := m.handleWorktreesDiscovered(msg)
+	updatedM := newModel.(UIModel)
+
+	// Selection should fall back to first available worktree
+	assert.Equal(t, "/home/user/project/main", updatedM.selectedWorktree)
+	assert.Equal(t, "/home/user/project/main", updatedM.sidebar.SelectedWorktreePath())
+	assert.Len(t, updatedM.warnings, 0)
+}
+
+func TestUIModel_HandleWorktreesDiscovered_InitialSelection(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+
+	// No initial selection (m.selectedWorktree is empty)
+	assert.Empty(t, m.selectedWorktree)
+
+	// Simulate initial worktree discovery
+	nodes := []domain.SidebarNode{
+		{
+			Type: domain.NodeTypeProject,
+			Name: "test-project",
+			Path: "/home/user/project",
+			Children: []domain.SidebarNode{
+				{Type: domain.NodeTypeWorktree, Name: "main", Path: "/home/user/project/main"},
+			},
+		},
+	}
+	msg := worktreesDiscoveredMsg{nodes: nodes, err: nil}
+	newModel, _ := m.handleWorktreesDiscovered(msg)
+	updatedM := newModel.(UIModel)
+
+	// First worktree should be selected by default
+	assert.Equal(t, "/home/user/project/main", updatedM.selectedWorktree)
+	assert.Equal(t, "/home/user/project/main", updatedM.sidebar.SelectedWorktreePath())
+	assert.Len(t, updatedM.warnings, 0)
+}
+
+func TestUIModel_HandleWorktreesDiscovered_MultipleProjects(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+
+	// Set initial selection to a worktree in the second project
+	m.selectedWorktree = "/home/other-project/feature"
+	m.sidebar.SetSelectedPath("/home/other-project/feature")
+
+	// Simulate worktree refresh with multiple projects
+	nodes := []domain.SidebarNode{
+		{
+			Type: domain.NodeTypeProject,
+			Name: "first-project",
+			Path: "/home/first-project",
+			Children: []domain.SidebarNode{
+				{Type: domain.NodeTypeWorktree, Name: "main", Path: "/home/first-project/main"},
+			},
+		},
+		{
+			Type: domain.NodeTypeProject,
+			Name: "other-project",
+			Path: "/home/other-project",
+			Children: []domain.SidebarNode{
+				{Type: domain.NodeTypeWorktree, Name: "main", Path: "/home/other-project/main"},
+				{Type: domain.NodeTypeWorktree, Name: "feature", Path: "/home/other-project/feature"},
+			},
+		},
+	}
+	msg := worktreesDiscoveredMsg{nodes: nodes, err: nil}
+	newModel, _ := m.handleWorktreesDiscovered(msg)
+	updatedM := newModel.(UIModel)
+
+	// Selection should be preserved across multiple projects
+	assert.Equal(t, "/home/other-project/feature", updatedM.selectedWorktree)
+	assert.Equal(t, "/home/other-project/feature", updatedM.sidebar.SelectedWorktreePath())
+	assert.Len(t, updatedM.warnings, 0)
+}
+
 func TestUIModel_UpdateKeyBindings(t *testing.T) {
 	app := newTestApp()
 	m := NewUIModel(app, nil)
@@ -759,9 +885,9 @@ func TestHandleModelSkip_MixedDiscoveryKeywords(t *testing.T) {
 	m.selection.Harness = domain.Harness{
 		Name: "test-harness",
 		SupportedModels: []string{
-			"provider:openai",    // Working: returns 1 model
-			"provider:unknown",   // Failing: returns 0 models
-			"discover:active",    // Failing: no env vars set
+			"provider:openai",  // Working: returns 1 model
+			"provider:unknown", // Failing: returns 0 models
+			"discover:active",  // Failing: no env vars set
 		},
 		SupportedAgents: []string{"agent1"},
 	}
@@ -821,7 +947,7 @@ func TestHandleModelSkip_InitializationWithEmptyRegistry(t *testing.T) {
 
 	m := NewUIModel(app, nil)
 	m.selection.Harness = domain.Harness{
-		Name: "test-harness",
+		Name:            "test-harness",
 		SupportedModels: []string{"provider:anyprovider"},
 		SupportedAgents: []string{"agent1"},
 	}

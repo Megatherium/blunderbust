@@ -20,12 +20,12 @@ import (
 
 // Store implements data.TicketStore using Dolt.
 type Store struct {
-	db         *sql.DB
-	mode       Mode
-	closed     bool
-	beadsDir   string
-	metadata    *Metadata
-	autostart  bool
+	db        *sql.DB
+	mode      Mode
+	closed    bool
+	beadsDir  string
+	metadata  *Metadata
+	autostart bool
 }
 
 // Verify interface compliance at compile time.
@@ -153,11 +153,11 @@ func (s *Store) TryStartServer(ctx context.Context) (*Store, error) {
 	if s.mode != ServerMode {
 		return nil, fmt.Errorf("cannot start server for embedded mode")
 	}
-	
+
 	if startErr := StartServer(s.beadsDir, s.metadata); startErr != nil {
 		return nil, fmt.Errorf("failed to start dolt server: %w", startErr)
 	}
-	
+
 	// Create new store with fresh connection
 	return newServerStore(ctx, s.beadsDir, s.metadata, s.autostart)
 }

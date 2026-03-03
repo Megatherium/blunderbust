@@ -34,7 +34,7 @@ func NewProjectContext(store TicketStore, beadsDir string, rootPath string) (*Pr
 	if store == nil {
 		return nil, fmt.Errorf("store cannot be nil")
 	}
-	
+
 	return &ProjectContext{
 		store:    store,
 		beadsDir: beadsDir,

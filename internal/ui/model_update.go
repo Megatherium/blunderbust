@@ -370,7 +370,7 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 			node := m.sidebar.State().CurrentNode()
 			if node != nil && node.Type == domain.NodeTypeWorktree {
 				m.selectedWorktree = node.Path
-				m.sidebar.SetSelectedPath(node.Path)
+				m.sidebar.State().SelectByPath(node.Path)
 				m.focus = FocusTickets
 				m.sidebar.SetFocused(false)
 				return m, nil
@@ -550,10 +550,23 @@ func (m UIModel) handleWorktreesDiscovered(msg worktreesDiscoveredMsg) (tea.Mode
 
 	m.sidebar, _ = m.sidebar.Update(SidebarNodesMsg{Nodes: msg.nodes})
 
-	if len(msg.nodes) > 0 && len(msg.nodes[0].Children) > 0 {
+	// Preserve current selection if it still exists in the updated nodes
+	if m.selectedWorktree != "" {
+		// Try to find and re-select the current worktree
+		if found := m.sidebar.State().SelectByPath(m.selectedWorktree); !found {
+			// Current selection no longer exists, fall back to first available worktree
+			if len(msg.nodes) > 0 && len(msg.nodes[0].Children) > 0 {
+				initialPath := msg.nodes[0].Children[0].Path
+				m.selectedWorktree = initialPath
+				m.sidebar.State().SelectByPath(initialPath)
+			}
+		}
+		// If found, SelectByPath already updated both cursor and SelectedPath
+	} else if len(msg.nodes) > 0 && len(msg.nodes[0].Children) > 0 {
+		// No previous selection, use first worktree as default
 		initialPath := msg.nodes[0].Children[0].Path
 		m.selectedWorktree = initialPath
-		m.sidebar.SetSelectedPath(initialPath)
+		m.sidebar.State().SelectByPath(initialPath)
 	}
 
 	return m, nil

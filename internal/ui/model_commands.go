@@ -21,13 +21,13 @@ func startServerAndRetryCmd(app *App, store *dolt.Store) tea.Cmd {
 		if app == nil || store == nil {
 			return errMsg{err: fmt.Errorf("invalid app or store for retry")}
 		}
-		
+
 		// Try to start the server
 		newStore, err := store.TryStartServer(context.Background())
 		if err != nil {
 			return errMsg{err: err}
 		}
-		
+
 		return serverStartedMsg{store: newStore}
 	}
 }

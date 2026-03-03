@@ -66,7 +66,7 @@ func errorView(err error, hasRetry bool, hasStart bool) string {
 	}
 
 	b.WriteString("\n")
-	
+
 	var helpParts []string
 	if hasRetry {
 		helpParts = append(helpParts, "[r] Retry connection")
@@ -75,7 +75,7 @@ func errorView(err error, hasRetry bool, hasStart bool) string {
 		helpParts = append(helpParts, "[s] Start server")
 	}
 	helpParts = append(helpParts, "[q] Quit")
-	
+
 	if len(helpParts) > 0 {
 		b.WriteString(helpStyle.Render("\n" + strings.Join(helpParts, "  ")))
 	} else {

@@ -1,14 +1,7 @@
 package ui
 
 import (
-	"fmt"
-	"strings"
-	"time"
-
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/megatherium/blunderbust/internal/data/dolt"
-	"github.com/megatherium/blunderbust/internal/domain"
 )
 
 func (m *UIModel) updateSizes() {
@@ -62,397 +55,58 @@ func (m *UIModel) updateSizes() {
 }
 
 func (m UIModel) renderMainContent() string {
-	var s string
-	switch m.state {
-	case ViewStateMatrix:
-		if m.loading {
-			s = m.renderLoadingView()
-		} else if m.showFilePicker {
-			s = m.renderFilePickerView()
-		} else if m.showAddProjectModal {
-			s = m.renderAddProjectModal()
-		} else if m.viewingAgentID != "" {
-			s = m.renderAgentOutputView()
-		} else {
-			s = m.renderMatrixView()
-		}
-	case ViewStateConfirm:
-		s = confirmView(m.selection, m.app.Renderer, m.app.opts.DryRun, m.selectedWorktree, m.currentTheme)
-	case ViewStateError:
-		hasRetry := false
-		hasStart := false
-		if m.retryStore != nil {
-			hasRetry = true
-			if doltStore, ok := m.retryStore.(*dolt.Store); ok {
-				hasStart = doltStore.CanRetryConnection()
-			}
-		}
-		s = errorView(m.err, hasRetry, hasStart)
-	}
-
-	if m.showModal {
-		s = lipgloss.NewStyle().Faint(true).Render(s)
-
-		modalWidth := m.width - 10
-		if modalWidth < 40 {
-			modalWidth = 40
-		}
-
-		modalBox := lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder()).
-			BorderForeground(ThemeActive).
-			Padding(1, 2).
-			Width(modalWidth).
-			Render(m.modalContent)
-
-		s = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
-	}
-
-	if m.showAddProjectModal {
-		s = lipgloss.NewStyle().Faint(true).Render(s)
-
-		modalWidth := m.width - 10
-		if modalWidth < 50 {
-			modalWidth = 50
-		}
-
-		content := fmt.Sprintf(
-			"Add project to workspace?\n\n"+
-				"Path: %s\n\n"+
-				"[y] Add to workspace\n"+
-				"[n] Skip and continue",
-			m.pendingProjectPath,
-		)
-
-		modalBox := lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder()).
-			BorderForeground(ThemeActive).
-			Padding(1, 2).
-			Width(modalWidth).
-			Render(content)
-
-		s = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
-	}
-
-	if len(m.warnings) > 0 {
-		warningStyle := lipgloss.NewStyle().Foreground(ThemeWarning).MarginTop(1)
-		for _, w := range m.warnings {
-			s += "\n" + warningStyle.Render("⚠ "+w)
-		}
-	}
-	return s
+	return RenderMainContent(MainContentConfig{
+		State:               m.state,
+		Focus:               m.focus,
+		Loading:             m.loading,
+		ShowFilePicker:      m.showFilePicker,
+		ShowAddProjectModal: m.showAddProjectModal,
+		ViewingAgentID:      m.viewingAgentID,
+		Selection:           m.selection,
+		Renderer:            m.app.Renderer,
+		DryRun:              m.app.opts.DryRun,
+		SelectedWorktree:    m.selectedWorktree,
+		CurrentTheme:        m.currentTheme,
+		ShowModal:           m.showModal,
+		ModalContent:        m.modalContent,
+		PendingProjectPath:  m.pendingProjectPath,
+		Warnings:            m.warnings,
+		Width:               m.width,
+		Height:              m.height,
+		Err:                 m.err,
+		RetryStore:          m.retryStore,
+		MatrixConfig:        m.buildMatrixConfig(),
+		Agent:               m.agents[m.viewingAgentID],
+		Filepicker:          m.filepicker,
+		AnimState:           m.animState,
+	})
 }
 
-// renderLoadingView displays an arcade-style loading screen
-func (m UIModel) renderLoadingView() string {
-	// Animated spinner frames
-	frames := []string{"◜", "◝", "◞", "◟"}
-	frameIndex := int(time.Since(m.animState.StartTime).Seconds()*4) % 4
-	frame := frames[frameIndex]
-
-	// Use theme colors for loading
-	spinnerColor := m.currentTheme.TitleColor
-	arcadeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(m.currentTheme.ArcadeGold)
-
-	s := "\n\n"
-	s += lipgloss.NewStyle().Foreground(spinnerColor).Render(frame+" Initializing...") + "\n\n"
-	s += arcadeStyle.Render("INSERT COIN TO START") + "\n"
-	s += lipgloss.NewStyle().Faint(true).Render("(Loading tickets...)")
-	return s
-}
-
-func (m UIModel) renderMatrixView() string {
-	// Guard against uninitialized dimensions
-	if m.height < filterHeight+2 {
-		return "Initializing..."
+func (m UIModel) buildMatrixConfig() MatrixConfig {
+	return MatrixConfig{
+		Width:               m.width,
+		Height:              m.height,
+		ShowSidebar:         m.showSidebar,
+		SidebarWidth:        m.sidebarWidth,
+		TWidth:              m.tWidth,
+		HWidth:              m.hWidth,
+		MWidth:              m.mWidth,
+		AWidth:              m.aWidth,
+		ModelColumnDisabled: m.modelColumnDisabled,
+		AgentColumnDisabled: m.agentColumnDisabled,
+		Focus:               m.focus,
+		AnimState:           m.animState,
+		Theme:               m.currentTheme,
+		TicketView:          m.ticketList.View(),
+		HarnessView:         m.harnessList.View(),
+		ModelView:           m.modelList.View(),
+		AgentView:           m.agentList.View(),
+		SidebarView:         m.sidebar.View(),
+		TicketTitle:         m.ticketList.Title,
+		HarnessTitle:        m.harnessList.Title,
+		ModelTitle:          m.modelList.Title,
+		AgentTitle:          m.agentList.Title,
 	}
-
-	listHeight := m.height - filterHeight
-
-	// Get the current theme
-	theme := m.currentTheme
-	if theme == nil {
-		theme = &MatrixTheme
-	}
-
-	// Determine the active border color - use flash color if lock-in is active for focused column
-	var activeColor lipgloss.Color
-	if m.animState.shouldShowFlash(m.focus) {
-		// Flash takes priority during the bright phase of the animation
-		activeColor = FlashColor
-	} else {
-		// Use cycling color for more dynamic effect
-		activeColor = getCyclingColor(m.animState.PulsePhase, m.animState.ColorCycleIndex, theme)
-	}
-
-	// Get glow color based on current pulse phase
-	glowColor := getGlowColor(m.animState.PulsePhase, theme)
-
-	activeBorder := func(w int) lipgloss.Style {
-		if w < 2 {
-			w = 2
-		}
-		return lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder()).
-			BorderForeground(activeColor).
-			Background(glowColor).
-			Width(w - 2).
-			Height(listHeight - 2)
-	}
-
-	inactiveBorder := func(w int) lipgloss.Style {
-		if w < 2 {
-			w = 2
-		}
-		return lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder()).
-			BorderForeground(ThemeInactive).
-			Faint(false).
-			Width(w - 2).
-			Height(listHeight - 2)
-	}
-
-	// Constrain list views to prevent overflow: lipgloss Height only pads,
-	// MaxHeight truncates. MaxWidth prevents wrapping in narrow columns where
-	// the bubbles list may render 1 char wider than SetSize.
-	capView := func(view string, w int) string {
-		return lipgloss.NewStyle().MaxHeight(listHeight - 2).MaxWidth(w - 2).Render(view)
-	}
-	faintCapView := func(view string, w int) string {
-		return lipgloss.NewStyle().Faint(true).MaxHeight(listHeight - 2).MaxWidth(w - 2).Render(view)
-	}
-
-	var tView, hView, mView, aView string
-
-	// Add visible focus indicator (▶) to the title of the focused column
-	// This allows teatest to detect focus changes via text output
-	const focusIndicator = "▶ "
-	const noIndicator = "  "
-
-	// Style for focused column titles - golden arcade style
-	focusedTitleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(theme.FocusIndicator)
-
-	ticketTitle := m.ticketList.Title
-	harnessTitle := m.harnessList.Title
-	modelTitle := m.modelList.Title
-	agentTitle := m.agentList.Title
-
-	if m.focus == FocusTickets {
-		m.ticketList.Title = focusedTitleStyle.Render(focusIndicator) + ticketTitle
-		tView = activeBorder(m.tWidth).Render(capView(m.ticketList.View(), m.tWidth))
-		m.ticketList.Title = ticketTitle // Restore original title
-	} else {
-		m.ticketList.Title = noIndicator + ticketTitle
-		tView = inactiveBorder(m.tWidth).Render(faintCapView(m.ticketList.View(), m.tWidth))
-		m.ticketList.Title = ticketTitle // Restore original title
-	}
-
-	if m.focus == FocusHarness {
-		m.harnessList.Title = focusedTitleStyle.Render(focusIndicator) + harnessTitle
-		hView = activeBorder(m.hWidth).Render(capView(m.harnessList.View(), m.hWidth))
-		m.harnessList.Title = harnessTitle // Restore original title
-	} else {
-		m.harnessList.Title = noIndicator + harnessTitle
-		hView = inactiveBorder(m.hWidth).Render(faintCapView(m.harnessList.View(), m.hWidth))
-		m.harnessList.Title = harnessTitle // Restore original title
-	}
-
-	// Model column - greyed out if disabled
-	if m.modelColumnDisabled {
-		disabledStyle := lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder()).
-			BorderForeground(ThemeInactive).
-			Faint(true).
-			Width(m.mWidth-2).
-			Height(listHeight-2).
-			Align(lipgloss.Center, lipgloss.Center)
-		mView = disabledStyle.Render("N/A\n\nNo models available\nfor this harness")
-	} else if m.focus == FocusModel {
-		mView = activeBorder(m.mWidth).Render(capView(m.modelList.View(), m.mWidth))
-		m.modelList.Title = modelTitle // Restore original title
-	} else {
-		m.modelList.Title = noIndicator + modelTitle
-		mView = inactiveBorder(m.mWidth).Render(faintCapView(m.modelList.View(), m.mWidth))
-		m.modelList.Title = modelTitle // Restore original title
-	}
-
-	// Agent column - greyed out if disabled
-	if m.agentColumnDisabled {
-		disabledStyle := lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder()).
-			BorderForeground(ThemeInactive).
-			Faint(true).
-			Width(m.aWidth-2).
-			Height(listHeight-2).
-			Align(lipgloss.Center, lipgloss.Center)
-		aView = disabledStyle.Render("N/A\n\nNo agents available\nfor this harness")
-	} else if m.focus == FocusAgent {
-		aView = activeBorder(m.aWidth).Render(capView(m.agentList.View(), m.aWidth))
-		m.agentList.Title = agentTitle // Restore original title
-	} else {
-		m.agentList.Title = noIndicator + agentTitle
-		aView = inactiveBorder(m.aWidth).Render(faintCapView(m.agentList.View(), m.aWidth))
-		m.agentList.Title = agentTitle // Restore original title
-	}
-
-	matrixWidth := m.tWidth + m.hWidth + m.mWidth + m.aWidth + 6
-
-	filterBox := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		Width(matrixWidth-2).
-		Height(1).
-		Padding(0, 1).
-		Render("Filters: [All] | (Press / to search)")
-
-	matrixBox := lipgloss.JoinHorizontal(lipgloss.Top,
-		tView,
-		lipgloss.NewStyle().Width(2).Render("  "),
-		hView,
-		lipgloss.NewStyle().Width(2).Render("  "),
-		mView,
-		lipgloss.NewStyle().Width(2).Render("  "),
-		aView,
-	)
-
-	rightPanelBox := lipgloss.JoinVertical(lipgloss.Top, filterBox, matrixBox)
-
-	if m.showSidebar {
-		w := m.sidebarWidth
-		if w < 2 {
-			w = 2
-		}
-
-		sidebarBorder := lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder()).
-			Width(w - 2).
-			Height(m.height - 2)
-
-		if m.focus == FocusSidebar {
-			sidebarBorder = sidebarBorder.BorderForeground(activeColor)
-		} else {
-			sidebarBorder = sidebarBorder.BorderForeground(ThemeInactive)
-		}
-
-		sidebarContent := m.sidebar.View()
-		sidebarBox := sidebarBorder.Render(sidebarContent)
-
-		return lipgloss.JoinHorizontal(lipgloss.Top, sidebarBox, lipgloss.NewStyle().Width(2).Render("  "), rightPanelBox)
-	}
-
-	return rightPanelBox
-}
-
-func (m UIModel) renderAgentOutputView() string {
-	agent, ok := m.agents[m.viewingAgentID]
-	if !ok {
-		return "Agent not found\n\n[Press back to return]"
-	}
-
-	var statusStr string
-	var statusColor lipgloss.Color
-	switch agent.Info.Status {
-	case domain.AgentRunning:
-		statusStr = "Running"
-		statusColor = lipgloss.Color("34")
-	case domain.AgentCompleted:
-		statusStr = "Completed"
-		statusColor = lipgloss.Color("245")
-	case domain.AgentFailed:
-		statusStr = "Failed"
-		statusColor = lipgloss.Color("9")
-	default:
-		statusStr = "Unknown"
-		statusColor = lipgloss.Color("245")
-	}
-
-	statusStyle := lipgloss.NewStyle().Foreground(statusColor).Bold(true)
-	headerStyle := lipgloss.NewStyle().Bold(true).Underline(true)
-
-	header := headerStyle.Render(fmt.Sprintf("Agent: %s", agent.Info.Name))
-	statusLine := fmt.Sprintf("Status: %s", statusStyle.Render(statusStr))
-	windowLine := fmt.Sprintf("Window: %s", agent.Info.WindowName)
-
-	// Show output if we have it, otherwise show placeholder
-	var outputContent string
-	if agent.LastOutput != "" {
-		outputContent = agent.LastOutput
-	} else if agent.Info.Status == domain.AgentRunning {
-		outputContent = "Waiting for output..."
-	} else {
-		outputContent = "No output available"
-	}
-
-	outputStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(ThemeInactive).
-		Width(m.width-4).
-		Height(m.height-10).
-		Padding(0, 1)
-
-	content := lipgloss.JoinVertical(lipgloss.Top,
-		header,
-		statusLine,
-		windowLine,
-		"",
-		"Output:",
-		outputStyle.Render(outputContent),
-		"",
-		"[Press Enter to return to matrix]",
-	)
-
-	return content
-}
-
-// renderFilePickerView renders the file picker for adding projects.
-func (m UIModel) renderFilePickerView() string {
-	var s strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(m.currentTheme.TitleColor).
-		MarginBottom(1)
-
-	helpStyle := lipgloss.NewStyle().
-		Faint(true).
-		MarginTop(1)
-
-	s.WriteString(titleStyle.Render("Add Project - Select Directory"))
-	s.WriteString("\n\n")
-	s.WriteString(m.filepicker.View())
-	s.WriteString("\n")
-	s.WriteString(helpStyle.Render("Press 'a' to select highlighted directory, 'esc' to cancel"))
-
-	return s.String()
-}
-
-// renderAddProjectModal renders the confirmation modal for adding a project.
-func (m UIModel) renderAddProjectModal() string {
-	var s strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(m.currentTheme.TitleColor).
-		MarginBottom(1)
-
-	pathStyle := lipgloss.NewStyle().
-		Foreground(m.currentTheme.ReadyColor).
-		Bold(true)
-
-	helpStyle := lipgloss.NewStyle().
-		Faint(true).
-		MarginTop(1)
-
-	s.WriteString(titleStyle.Render("Add Project?"))
-	s.WriteString("\n\n")
-	s.WriteString(fmt.Sprintf("Add project at:\n%s", pathStyle.Render(m.pendingProjectPath)))
-	s.WriteString("\n\n")
-	s.WriteString(helpStyle.Render("Press 'y' or Enter to confirm, 'n' or Esc to cancel"))
-
-	return s.String()
 }
 
 func (m UIModel) View() string {

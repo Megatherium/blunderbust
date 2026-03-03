@@ -7,18 +7,16 @@ import (
 )
 
 func TestUIModel_RenderMatrixView_SmallHeightGuard(t *testing.T) {
-	app := newTestApp()
-	m := NewUIModel(app, nil)
+	// Test using RenderMatrix directly
+	cfg := MatrixConfig{
+		Width:  80,
+		Height: 4, // filterHeight is 3, so guard triggers for height < 5
+	}
 
-	// filterHeight is 3, so guard triggers for height < 5
-	m.height = 4
-	m.width = 80
-	m.loading = false
-
-	s := m.renderMatrixView()
+	s := RenderMatrix(cfg)
 	assert.Equal(t, "Initializing...", s)
 
-	m.height = 5
-	s = m.renderMatrixView()
+	cfg.Height = 5
+	s = RenderMatrix(cfg)
 	assert.NotEqual(t, "Initializing...", s)
 }

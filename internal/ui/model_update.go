@@ -90,7 +90,8 @@ func (m UIModel) handleNavigationKeysMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bo
 		if m.state == ViewStateMatrix {
 			if m.focus == FocusSidebar {
 				node := m.sidebar.State().CurrentNode()
-				if node != nil && len(node.Children) > 0 && node.IsExpanded {
+				shouldCollapse := node != nil && len(node.Children) > 0 && node.IsExpanded
+				if shouldCollapse {
 					return m, nil, false // Let sidebar handle collapse
 				}
 			}
@@ -103,7 +104,8 @@ func (m UIModel) handleNavigationKeysMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bo
 		if m.state == ViewStateMatrix {
 			if m.focus == FocusSidebar {
 				node := m.sidebar.State().CurrentNode()
-				if node != nil && len(node.Children) > 0 && !node.IsExpanded {
+				shouldExpand := node != nil && len(node.Children) > 0 && !node.IsExpanded
+				if shouldExpand {
 					return m, nil, false // Let sidebar handle expand
 				}
 			}

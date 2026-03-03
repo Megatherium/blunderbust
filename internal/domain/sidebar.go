@@ -61,13 +61,14 @@ func (s AgentStatus) String() string {
 // SidebarNode represents a node in the sidebar tree hierarchy.
 // Nodes can be projects (containing worktrees), worktrees, harnesses, or agents.
 type SidebarNode struct {
-	ID         string
-	Name       string
-	Path       string
-	Type       SidebarNodeType
-	Children   []SidebarNode
-	IsExpanded bool
-	IsRunning  bool
+	ID            string
+	Name          string
+	Path          string
+	Type          SidebarNodeType
+	Children      []SidebarNode
+	IsExpanded    bool
+	IsRunning     bool
+	ParentProject *SidebarNode
 
 	WorktreeInfo *WorktreeInfo
 	HarnessInfo  *HarnessInfo

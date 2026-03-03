@@ -207,21 +207,8 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				node := m.sidebar.State().CurrentNode()
 				if node != nil {
 					var newProjectDir string
-					if node.Type == domain.NodeTypeWorktree {
-						state := m.sidebar.State()
-						for _, pnode := range state.Nodes {
-							if pnode.Type == domain.NodeTypeProject {
-								for _, child := range pnode.Children {
-									if child.Path == node.Path {
-										newProjectDir = pnode.Path
-										break
-									}
-								}
-							}
-							if newProjectDir != "" {
-								break
-							}
-						}
+					if node.Type == domain.NodeTypeWorktree && node.ParentProject != nil {
+						newProjectDir = node.ParentProject.Path
 					} else if node.Type == domain.NodeTypeProject {
 						newProjectDir = node.Path
 					}

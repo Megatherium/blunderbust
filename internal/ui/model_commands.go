@@ -48,24 +48,35 @@ func extractRepoRoot(beadsDir string) string {
 	return repoRoot
 }
 
-func discoverWorktreesCmd(beadsDir string) tea.Cmd {
+func discoverWorktreesCmd(app *App) tea.Cmd {
 	return func() tea.Msg {
-		repoRoot := extractRepoRoot(beadsDir)
-
-		absRepoRoot, err := filepath.Abs(repoRoot)
-		if err != nil {
-			return worktreesDiscoveredMsg{err: fmt.Errorf("failed to resolve repo root: %w", err)}
+		projects := app.GetProjects()
+		if len(projects) == 0 {
+			return worktreesDiscoveredMsg{err: fmt.Errorf("no projects configured")}
 		}
 
-		discoverer := data.NewWorktreeDiscoverer(absRepoRoot)
-		worktrees, err := discoverer.Discover(context.Background())
-		if err != nil {
-			return worktreesDiscoveredMsg{err: err}
+		discoverer := data.NewWorktreeDiscoverer()
+		nodes, errs := discoverer.DiscoverMulti(context.Background(), projects)
+
+		var cmds []tea.Cmd
+		if len(errs) > 0 {
+			var errMsgs []string
+			for _, e := range errs {
+				errMsgs = append(errMsgs, e.Error())
+			}
+			fullErr := strings.Join(errMsgs, "\n")
+			cmds = append(cmds, func() tea.Msg {
+				return warningMsg{fmt.Errorf("discovery warnings:\n%s", fullErr)}
+			})
 		}
 
-		projectName := data.GetProjectName(absRepoRoot)
-		nodes := discoverer.BuildSidebarTree(worktrees, projectName)
-		return worktreesDiscoveredMsg{nodes: nodes}
+		cmds = append(cmds, func() tea.Msg {
+			return worktreesDiscoveredMsg{nodes: nodes}
+		})
+
+		// tea.Sequence to make sure the warnings print after load or whatever?
+		// Actually tea.Batch is fine.
+		return tea.Batch(cmds...)()
 	}
 }
 

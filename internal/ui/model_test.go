@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,8 +12,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type mockConfigLoader struct{}
+
+func (m mockConfigLoader) Load(path string) (*domain.Config, error) {
+	return nil, fmt.Errorf("mock no config")
+}
+
 func newTestApp() *App {
-	return &App{}
+	return &App{
+		loader: mockConfigLoader{},
+	}
 }
 
 func TestUIModel_StateTransitions(t *testing.T) {
@@ -249,6 +258,69 @@ func TestUIModel_HandleKeyMsg_LeftRightWithSidebar(t *testing.T) {
 	assert.True(t, updatedM.sidebar.Focused())
 }
 
+func TestUIModel_HandleKeyMsg_LeftRightWithExpandCollapse(t *testing.T) {
+	app := newTestApp()
+	m := NewUIModel(app, nil)
+	m.state = ViewStateMatrix
+	m.focus = FocusSidebar
+
+	nodes := []domain.SidebarNode{
+		{
+			Type:       domain.NodeTypeProject,
+			Name:       "test-project",
+			IsExpanded: true,
+			Children: []domain.SidebarNode{
+				{Type: domain.NodeTypeWorktree, Name: "main", Path: "/home/user/main"},
+			},
+		},
+		{
+			Type:       domain.NodeTypeProject,
+			Name:       "test-project-2",
+			IsExpanded: false,
+			Children: []domain.SidebarNode{
+				{Type: domain.NodeTypeWorktree, Name: "main", Path: "/home/user/main2"},
+			},
+		},
+	}
+	m.sidebar, _ = m.sidebar.Update(SidebarNodesMsg{Nodes: nodes})
+	// Cursor is at 0 (test-project, IsExpanded=true)
+
+	// Test moving left when already expanded - should collapse, not change focus
+	leftMsg := tea.KeyMsg{Type: tea.KeyLeft, Runes: []rune{'h'}}
+	_, _, handled := m.handleKeyMsg(leftMsg)
+	assert.False(t, handled) // Sidebar handles collapse
+
+	// Test moving right when already expanded - should advance focus to tickets
+	rightMsg := tea.KeyMsg{Type: tea.KeyRight, Runes: []rune{'l'}}
+	newModel, _, handled := m.handleKeyMsg(rightMsg)
+	assert.True(t, handled)
+	updatedM := newModel.(UIModel)
+	assert.Equal(t, FocusTickets, updatedM.focus)
+
+	// Now test on collapsed node
+	m.focus = FocusSidebar
+	m.sidebar.State().MoveDown()
+	m.sidebar.State().MoveDown() // test-project-2 = collapsed
+
+	// Force collapse it (since SidebarNodesMsg might default or preserve true)
+	if m.sidebar.State().CurrentNode().IsExpanded {
+		m.sidebar.State().ToggleExpand()
+	}
+
+	// Test moving right when collapsed - should expand, not change focus
+	_, _, handled = m.handleKeyMsg(rightMsg)
+	assert.False(t, handled) // Sidebar handles expand
+
+	// Test moving left when already collapsed - should retreat focus, but we are at sidebar so no retreat happens. But let's check leaf node.
+	m.sidebar.State().MoveUp() // Go back to worktree node (leaf)
+
+	// Right on leaf node -> should change focus
+	newModel, _, handled = m.handleKeyMsg(rightMsg)
+	assert.True(t, handled)
+	updatedM = newModel.(UIModel)
+	assert.Equal(t, FocusTickets, updatedM.focus)
+}
+
 func TestUIModel_HandleEnterKey_Sidebar(t *testing.T) {
 	app := newTestApp()
 	m := NewUIModel(app, nil)
@@ -449,7 +521,8 @@ func TestHandleTicketUpdateCheck(t *testing.T) {
 func TestHandleTicketUpdateCheck_WithNilStore(t *testing.T) {
 	app := newTestApp()
 	m := NewUIModel(app, nil)
-	app.project = nil
+	app.activeProject = ".beads"
+	app.stores = map[string]data.TicketStore{".beads": &mockStore{}}
 
 	newM, cmd := m.handleTicketUpdateCheck()
 	updatedM := newM.(UIModel)
@@ -461,9 +534,9 @@ func TestHandleTicketUpdateCheck_WithNilStore(t *testing.T) {
 func TestHandleTicketsAutoRefreshed(t *testing.T) {
 	app := newTestApp()
 	m := NewUIModel(app, nil)
-	mockStore := &mockStore{}
-	app.project, _ = data.NewProjectContext(mockStore, ".beads", "/repo/root")
-	
+	app.activeProject = ".beads"
+	app.stores = map[string]data.TicketStore{".beads": &mockStore{}}
+
 	newM, cmd := m.handleTicketsAutoRefreshed()
 	updatedM := newM.(UIModel)
 

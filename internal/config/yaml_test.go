@@ -807,8 +807,8 @@ defaults:
 
 func TestYAMLLoader_Load_GeneralConfig_AutostartDolt(t *testing.T) {
 	tests := []struct {
-		name           string
-		yamlContent    string
+		name              string
+		yamlContent       string
 		expectedAutostart bool
 	}{
 		{
@@ -877,5 +877,65 @@ harnesses:
 				t.Errorf("AutostartDolt = %v, want %v", config.General.AutostartDolt, tt.expectedAutostart)
 			}
 		})
+	}
+}
+
+func TestYAMLLoader_Load_MissingProjectDirectory(t *testing.T) {
+	yamlContent := `
+workspaces:
+  default:
+    projects:
+      - dir: /nonexistent/project/path
+harnesses:
+  - name: test
+    command_template: "test"
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	_, err := loader.Load(configPath)
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent project directory")
+	}
+
+	if !strings.Contains(err.Error(), "project directory does not exist") {
+		t.Errorf("Error should mention non-existent project directory, got: %v", err)
+	}
+}
+
+func TestYAMLLoader_Load_DuplicateProjectDirectory(t *testing.T) {
+	tmpProjectDir := t.TempDir()
+
+	yamlContent := fmt.Sprintf(`
+workspaces:
+  default:
+    projects:
+      - dir: %s
+      - dir: %s
+harnesses:
+  - name: test
+    command_template: "test"
+`, tmpProjectDir, tmpProjectDir)
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	loader := NewYAMLLoader()
+	_, err := loader.Load(configPath)
+
+	if err == nil {
+		t.Fatal("Expected error for duplicate project directory")
+	}
+
+	if !strings.Contains(err.Error(), "duplicate project directory") {
+		t.Errorf("Error should mention duplicate project directory, got: %v", err)
 	}
 }

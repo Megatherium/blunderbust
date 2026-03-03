@@ -19,21 +19,19 @@ import (
 	"github.com/megatherium/blunderbust/internal/domain"
 )
 
-type WorktreeDiscoverer struct {
-	repoRoot string
+type WorktreeDiscoverer struct{}
+
+func NewWorktreeDiscoverer() *WorktreeDiscoverer {
+	return &WorktreeDiscoverer{}
 }
 
-func NewWorktreeDiscoverer(repoRoot string) *WorktreeDiscoverer {
-	return &WorktreeDiscoverer{repoRoot: repoRoot}
-}
-
-func (d *WorktreeDiscoverer) Discover(ctx context.Context) ([]domain.WorktreeInfo, error) {
-	worktrees, err := d.listWorktrees(ctx)
+func (d *WorktreeDiscoverer) Discover(ctx context.Context, repoRoot string) ([]domain.WorktreeInfo, error) {
+	worktrees, err := d.listWorktrees(ctx, repoRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	mainBranch, _ := d.detectMainBranch(ctx)
+	mainBranch, _ := d.detectMainBranch(ctx, repoRoot)
 
 	results := make([]domain.WorktreeInfo, 0, len(worktrees))
 	for _, wt := range worktrees {
@@ -54,30 +52,49 @@ func (d *WorktreeDiscoverer) Discover(ctx context.Context) ([]domain.WorktreeInf
 	return results, nil
 }
 
-func (d *WorktreeDiscoverer) BuildSidebarTree(worktrees []domain.WorktreeInfo, projectName string) []domain.SidebarNode {
-	if len(worktrees) == 0 {
-		return nil
+func (d *WorktreeDiscoverer) DiscoverMulti(ctx context.Context, projects []domain.Project) ([]domain.SidebarNode, []error) {
+	var allNodes []domain.SidebarNode
+	var errs []error
+
+	for _, p := range projects {
+		worktrees, err := d.Discover(ctx, p.Dir)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("project %s: %w", p.Name, err))
+			continue
+		}
+
+		nodes := d.BuildSidebarTree(worktrees, p.Name, p.Dir)
+		allNodes = append(allNodes, nodes...)
 	}
 
+	return allNodes, errs
+}
+
+func (d *WorktreeDiscoverer) BuildSidebarTree(worktrees []domain.WorktreeInfo, projectName, projectDir string) []domain.SidebarNode {
 	projectNode := domain.SidebarNode{
-		ID:         "project",
+		ID:         "project-" + projectName,
 		Name:       projectName,
-		Path:       d.repoRoot,
+		Path:       projectDir,
 		Type:       domain.NodeTypeProject,
 		IsExpanded: true,
 		Children:   make([]domain.SidebarNode, 0, len(worktrees)),
 	}
 
+	if len(worktrees) == 0 {
+		return []domain.SidebarNode{projectNode}
+	}
+
 	for i, wt := range worktrees {
 		worktreeNode := domain.SidebarNode{
-			ID:           fmt.Sprintf("worktree-%d", i),
-			Name:         wt.Name,
-			Path:         wt.Path,
-			Type:         domain.NodeTypeWorktree,
-			IsExpanded:   false,
-			IsRunning:    false,
-			WorktreeInfo: &worktrees[i],
-			Children:     make([]domain.SidebarNode, 0),
+			ID:            fmt.Sprintf("worktree-%s-%d", projectName, i),
+			Name:          wt.Name,
+			Path:          wt.Path,
+			Type:          domain.NodeTypeWorktree,
+			IsExpanded:    false,
+			IsRunning:     false,
+			WorktreeInfo:  &worktrees[i],
+			ParentProject: &projectNode, // Set the pointer
+			Children:      make([]domain.SidebarNode, 0),
 		}
 		projectNode.Children = append(projectNode.Children, worktreeNode)
 	}
@@ -98,12 +115,12 @@ type worktreeEntry struct {
 	branch string
 }
 
-func (d *WorktreeDiscoverer) listWorktrees(ctx context.Context) ([]worktreeEntry, error) {
-	cmd := exec.CommandContext(ctx, "git", "-C", d.repoRoot, "worktree", "list", "--porcelain")
+func (d *WorktreeDiscoverer) listWorktrees(ctx context.Context, repoRoot string) ([]worktreeEntry, error) {
+	cmd := exec.CommandContext(ctx, "git", "-C", repoRoot, "worktree", "list", "--porcelain")
 	output, err := cmd.Output()
 	if err != nil {
 		if isNotGitRepo(err) {
-			return nil, fmt.Errorf("not a git repository: %s", d.repoRoot)
+			return nil, fmt.Errorf("not a git repository: %s", repoRoot)
 		}
 		return nil, fmt.Errorf("failed to list worktrees: %w", err)
 	}
@@ -150,9 +167,9 @@ func extractBranchName(ref string) string {
 	return ref
 }
 
-func (d *WorktreeDiscoverer) detectMainBranch(ctx context.Context) (string, error) {
+func (d *WorktreeDiscoverer) detectMainBranch(ctx context.Context, repoRoot string) (string, error) {
 	for _, candidate := range []string{"main", "master", "develop"} {
-		cmd := exec.CommandContext(ctx, "git", "-C", d.repoRoot, "rev-parse", "--verify", "refs/heads/"+candidate)
+		cmd := exec.CommandContext(ctx, "git", "-C", repoRoot, "rev-parse", "--verify", "refs/heads/"+candidate)
 		if err := cmd.Run(); err == nil {
 			return candidate, nil
 		}

@@ -35,8 +35,7 @@ func newTestHarnesses() []domain.Harness {
 			SupportedAgents: []string{"opencode"},
 		},
 	}
-}
-
+} // This was the missing brace
 // newTestAppWithHarnesses creates a test app with sample harnesses using demo mode
 func newTestAppWithHarnesses(t *testing.T) *App {
 	t.Helper()
@@ -46,7 +45,7 @@ func newTestAppWithHarnesses(t *testing.T) *App {
 		Demo: true,
 	}
 
-	app, err := NewApp(nil, nil, nil, nil, nil, opts)
+	app, err := NewApp(&mockConfigLoader{}, nil, nil, nil, nil, opts)
 	require.NoError(t, err, "Failed to create test app")
 	return app
 }

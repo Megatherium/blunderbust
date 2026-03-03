@@ -82,15 +82,28 @@ type Config struct {
 	Launcher  *LauncherConfig
 	Defaults  *Defaults
 	General   *GeneralConfig
+	Workspace Workspace
+}
+
+// Workspace represents a collection of projects defined in configuration.
+type Workspace struct {
+	Name     string
+	Projects []Project
+}
+
+// Project represents a single codebase with its own ticket store.
+type Project struct {
+	Dir  string
+	Name string
 }
 
 // AppOptions configure the application at a global level.
 type AppOptions struct {
-	DryRun       bool
-	ConfigPath   string
-	Debug        bool
-	BeadsDir     string
-	DSN          string
-	Demo         bool
+	DryRun        bool
+	ConfigPath    string
+	Debug         bool
+	BeadsDir      string
+	DSN           string
+	Demo          bool
 	AutostartDolt bool
 }

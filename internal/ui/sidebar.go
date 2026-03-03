@@ -152,7 +152,8 @@ func (m SidebarModel) shouldApplyStyle(isCursor bool) bool {
 
 // handleSelect processes selection of the current node.
 // For projects, it toggles expansion. For worktrees, it emits SelectWorktreeCmd.
-// For harnesses, it returns nil (no action). For agents, it emits SelectAgentCmd.
+// For harnesses, it emits nil. For agents, it emits SelectAgentCmd.
+// It returns the updated SidebarModel along with the relevant tea.Cmd.
 func (m SidebarModel) handleSelect() (SidebarModel, tea.Cmd) {
 	node := m.state.CurrentNode()
 	if node == nil {

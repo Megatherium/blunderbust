@@ -50,3 +50,7 @@
 # - linear.api-key
 # - github.org
 # - github.repo
+types:
+  custom: "review, refinement"
+backup:
+  git-repo: backup

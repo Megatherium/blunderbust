@@ -22,7 +22,7 @@
 **1. Initiating Review**
 When a task is functionally complete:
 - **STOP**: Do NOT close the task yet.
-- Create a review ticket: `bd create --title="Review: <Task Name>" --type=task`
+- Create a review ticket: `bd create --title="Review: <Task Name>" --type=review`
 - Link dependency: `bd dep add beads-<original_task_id> beads-<review_id>` (Original task blocks on Review)
 - **CRITICAL**: An agent never works on a review ticket he himself created. You're on standby now awaiting the next command.
 - **REVIEW MUST BE DONE BY SOMEONE ELSE** - You cannot review your own work.
@@ -33,7 +33,7 @@ When a task is functionally complete:
 - **Unrelated Issues**: If you see unrelated defects, `bd create` separate issues for each immediately.
 - **Decision Logic**:
     - **Score < 8.5**: MANDATORY Refinement.
-        - `bd create --title="Refinement: <Task Name>" --type=task` (or `bug` if purely defects)
+        - `bd create --title="Refinement: <Task Name>" --type=refinement` (or `bug` if purely defects)
         - Description MUST list *every* defect and *what* needs fixing.
     - **Score >= 9.0**: Reviewer judgment. Pass or optional minor cleanup.
 
@@ -41,7 +41,7 @@ When a task is functionally complete:
 - Implement fixes specified in the Refinement ticket.
 - **Re-Review Decision**: Do I need a second review?
     - **NO**: If changes were small or structural refactors (e.g., renaming 1 variable in 20 files = 1 small change). -> Close Refinement & Original Task.
-    - **YES**: If changes were "Too Much" (Lots of *different* small changes OR few large logic changes). -> Create new Review ticket (Type: Task).
+    - **YES**: If changes were "Too Much" (Lots of *different* small changes OR few large logic changes). -> Create new Review ticket (Type: review).
     - 
 ## Core Rules
 - **Default**: Use beads for ALL task tracking (`bd create`, `bd ready`, `bd close`)
@@ -66,7 +66,7 @@ When a task is functionally complete:
 
 - **Dependencies**: Issues can block other issues. `bd ready` shows only unblocked work.
 - **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers, not words)
-- **Types**: task, bug, feature, epic, question, docs
+- **Types**: task, bug, feature, epic, question, docs, review, refinement
 - **Blocking**: `bd dep add <issue> <depends-on>` to add dependencies
 
 ### Best Practices

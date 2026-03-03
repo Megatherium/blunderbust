@@ -18,10 +18,20 @@ import (
 
 // yamlConfig is the raw YAML structure for unmarshaling.
 type yamlConfig struct {
-	Harnesses []yamlHarness       `yaml:"harnesses"`
-	Launcher  *yamlLauncherConfig `yaml:"launcher,omitempty"`
-	Defaults  *yamlDefaults       `yaml:"defaults,omitempty"`
-	General   *yamlGeneralConfig  `yaml:"general,omitempty"`
+	Harnesses  []yamlHarness            `yaml:"harnesses"`
+	Launcher   *yamlLauncherConfig      `yaml:"launcher,omitempty"`
+	Defaults   *yamlDefaults            `yaml:"defaults,omitempty"`
+	General    *yamlGeneralConfig       `yaml:"general,omitempty"`
+	Workspaces map[string]yamlWorkspace `yaml:"workspaces,omitempty"`
+}
+
+type yamlWorkspace struct {
+	Projects []yamlProject `yaml:"projects"`
+}
+
+type yamlProject struct {
+	Dir  string `yaml:"dir"`
+	Name string `yaml:"name,omitempty"`
 }
 
 // yamlLauncherConfig is the raw YAML structure for launcher configuration.
@@ -137,6 +147,51 @@ func (l *YAMLLoader) convertAndValidate(raw *yamlConfig, configDir string) (*dom
 			return nil, err
 		}
 		config.Harnesses = append(config.Harnesses, *harness)
+	}
+
+	if defaultWorkspace, ok := raw.Workspaces["default"]; ok {
+		var projects []domain.Project
+		seenDirs := make(map[string]bool)
+
+		for _, p := range defaultWorkspace.Projects {
+			if p.Dir == "" {
+				return nil, fmt.Errorf("project must specify a directory")
+			}
+
+			// Validate directory exists
+			info, err := os.Stat(p.Dir)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return nil, fmt.Errorf("project directory does not exist: %s", p.Dir)
+				}
+				return nil, fmt.Errorf("error checking project directory %s: %w", p.Dir, err)
+			}
+			if !info.IsDir() {
+				return nil, fmt.Errorf("project path is not a directory: %s", p.Dir)
+			}
+
+			// Validate directory uniqueness
+			cleanDir := filepath.Clean(p.Dir)
+			if seenDirs[cleanDir] {
+				return nil, fmt.Errorf("duplicate project directory: %s", cleanDir)
+			}
+			seenDirs[cleanDir] = true
+
+			name := p.Name
+			if name == "" {
+				name = filepath.Base(p.Dir)
+			}
+			projects = append(projects, domain.Project{
+				Dir:  cleanDir,
+				Name: name,
+			})
+		}
+		config.Workspace = domain.Workspace{
+			Name:     "default",
+			Projects: projects,
+		}
+	} else {
+		// Backward compatibility: handled by the caller/App using beadsDir if Workspace.Projects is empty
 	}
 
 	if raw.Launcher != nil {

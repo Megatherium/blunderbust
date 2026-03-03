@@ -296,6 +296,8 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // activateProjectAndInit adds the project and initializes the TUI with it.
 func (m UIModel) activateProjectAndInit(projectPath string) tea.Cmd {
+	// Capture app reference explicitly to avoid confusion about what we're mutating
+	app := m.app
 	return tea.Batch(
 		func() tea.Msg {
 			// Add project to workspace
@@ -303,15 +305,15 @@ func (m UIModel) activateProjectAndInit(projectPath string) tea.Cmd {
 				Dir:  projectPath,
 				Name: filepath.Base(projectPath),
 			}
-			m.app.AddProject(project)
+			app.AddProject(project)
 
 			// Activate the project
-			if err := m.app.SetActiveProject(context.Background(), projectPath); err != nil {
+			if err := app.SetActiveProject(context.Background(), projectPath); err != nil {
 				return errMsg{err}
 			}
 
 			// Load tickets
-			projectCtx := m.app.Project()
+			projectCtx := app.Project()
 			if projectCtx == nil {
 				return errMsg{fmt.Errorf("failed to get project context")}
 			}
@@ -322,15 +324,17 @@ func (m UIModel) activateProjectAndInit(projectPath string) tea.Cmd {
 			}
 			return ticketsLoadedMsg(tickets)
 		},
-		discoverWorktreesCmd(m.app),
+		discoverWorktreesCmd(app),
 	)
 }
 
 // continueNormalInit proceeds with normal TUI initialization.
 func (m UIModel) continueNormalInit() tea.Cmd {
+	// Capture app reference explicitly for clarity
+	app := m.app
 	return tea.Batch(
 		func() tea.Msg {
-			project, err := m.app.CreateProjectContext(context.Background())
+			project, err := app.CreateProjectContext(context.Background())
 			if err != nil {
 				return errMsg{err}
 			}
@@ -341,7 +345,7 @@ func (m UIModel) continueNormalInit() tea.Cmd {
 			}
 			return ticketsLoadedMsg(tickets)
 		},
-		discoverWorktreesCmd(m.app),
+		discoverWorktreesCmd(app),
 	)
 }
 

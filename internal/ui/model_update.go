@@ -12,7 +12,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/megatherium/blunderbust/internal/data/dolt"
 	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
@@ -154,12 +153,6 @@ func (m UIModel) handleErrMsg(msg errMsg) (tea.Model, tea.Cmd) {
 	m.err = msg.err
 	m.loading = false
 	m.state = ViewStateError
-	
-	// Store the current store for retry operations
-	if m.app != nil && m.app.Project() != nil {
-		m.retryStore = m.app.Project().Store()
-	}
-	
 	return m, nil
 }
 
@@ -252,32 +245,6 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 }
 
 func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	// Handle error state keys first
-	if m.state == ViewStateError {
-		switch msg.String() {
-		case "q", "Q":
-			return m, tea.Quit, true
-		case "r", "R":
-			if m.retryStore != nil {
-				m.loading = true
-				m.state = ViewStateMatrix
-				return m, loadTicketsCmd(m.retryStore), true
-			}
-		case "s", "S":
-			if m.retryStore != nil {
-				if doltStore, ok := m.retryStore.(*dolt.Store); ok {
-					if doltStore.CanRetryConnection() {
-						m.loading = true
-						m.state = ViewStateMatrix
-						return m, startServerAndRetryCmd(m.app, doltStore), true
-					}
-				}
-			}
-		}
-		// Block all other keys in error state except the ones we handle
-		return m, nil, true
-	}
-
 	// Handle add-project modal keys first
 	if m.showAddProjectModal {
 		switch msg.String() {

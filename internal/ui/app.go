@@ -184,45 +184,6 @@ func (a *App) GetProjects() []domain.Project {
 	return a.projects
 }
 
-// AddProject adds a new project to the list.
-func (a *App) AddProject(project domain.Project) {
-	a.projects = append(a.projects, project)
-}
-
-// CreateStore creates a TicketStore for the given beads directory.
-func (a *App) CreateStore(ctx context.Context, beadsDir string) (data.TicketStore, error) {
-	return a.createStore(ctx, beadsDir)
-}
-
-// AddStore adds a store for a project directory.
-func (a *App) AddStore(projectDir string, store data.TicketStore) {
-	if a.stores == nil {
-		a.stores = make(map[string]data.TicketStore)
-	}
-	a.stores[projectDir] = store
-}
-
-// SaveConfig saves the current configuration to the config file.
-// It reloads the config first to ensure fresh data (in case user or another
-// process modified it).
-func (a *App) SaveConfig() error {
-	// Reload config to get fresh data
-	cfg, err := a.loader.Load(a.opts.ConfigPath)
-	if err != nil {
-		return fmt.Errorf("failed to reload config: %w", err)
-	}
-
-	// Update projects in config
-	cfg.Workspace.Projects = a.projects
-
-	// Save using the loader
-	if err := a.loader.Save(a.opts.ConfigPath, cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
-
-	return nil
-}
-
 // SetActiveProject switches the active project context, creating the store lazily if needed.
 func (a *App) SetActiveProject(ctx context.Context, projectDir string) error {
 	if _, exists := a.stores[projectDir]; !exists {
@@ -270,36 +231,5 @@ func (a *App) ValidateProject(projectDir string) error {
 
 // AddProject adds a new project to the workspace.
 func (a *App) AddProject(project domain.Project) {
-	// Check for duplicates before adding
-	for _, p := range a.projects {
-		if p.Dir == project.Dir {
-			return // Already exists
-		}
-	}
-
-	// Deduplicate project name if collision exists
-	project.Name = a.deduplicateProjectName(project.Name)
-
 	a.projects = append(a.projects, project)
-}
-
-// deduplicateProjectName ensures unique project names by adding counter suffix
-func (a *App) deduplicateProjectName(name string) string {
-	existingNames := make(map[string]bool)
-	for _, p := range a.projects {
-		existingNames[p.Name] = true
-	}
-
-	if !existingNames[name] {
-		return name
-	}
-
-	// Find unique suffix
-	counter := 1
-	candidate := fmt.Sprintf("%s-%d", name, counter)
-	for existingNames[candidate] {
-		counter++
-		candidate = fmt.Sprintf("%s-%d", name, counter)
-	}
-	return candidate
 }

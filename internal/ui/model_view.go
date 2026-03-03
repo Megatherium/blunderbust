@@ -99,6 +99,32 @@ func (m UIModel) renderMainContent() string {
 		s = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
 	}
 
+	if m.showAddProjectModal {
+		s = lipgloss.NewStyle().Faint(true).Render(s)
+
+		modalWidth := m.width - 10
+		if modalWidth < 50 {
+			modalWidth = 50
+		}
+
+		content := fmt.Sprintf(
+			"Add project to workspace?\n\n"+
+				"Path: %s\n\n"+
+				"[y] Add to workspace\n"+
+				"[n] Skip and continue",
+			m.pendingProjectPath,
+		)
+
+		modalBox := lipgloss.NewStyle().
+			Border(lipgloss.ThickBorder()).
+			BorderForeground(ThemeActive).
+			Padding(1, 2).
+			Width(modalWidth).
+			Render(content)
+
+		s = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
+	}
+
 	if len(m.warnings) > 0 {
 		warningStyle := lipgloss.NewStyle().Foreground(ThemeWarning).MarginTop(1)
 		for _, w := range m.warnings {

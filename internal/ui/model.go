@@ -3,11 +3,9 @@ package ui
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -45,15 +43,6 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 	h.Styles.ShortDesc = h.Styles.ShortDesc.Background(ThemeFooterBg).Foreground(ThemeFooterFg)
 	h.Styles.ShortSeparator = h.Styles.ShortSeparator.Background(ThemeFooterBg).Foreground(ThemeFooterFg)
 
-	// Initialize filepicker for adding projects
-	fp := filepicker.New()
-	fp.DirAllowed = true
-	fp.FileAllowed = false
-	fp.ShowHidden = true
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		fp.CurrentDirectory = homeDir
-	}
-
 	return UIModel{
 		app:          app,
 		state:        ViewStateMatrix,
@@ -76,8 +65,6 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 			ColorCycleStart: time.Now(),
 			CurrentThemeIdx: 2, // TokyoNight theme index (2)
 		},
-		filepicker:     fp,
-		showFilePicker: false,
 	}.initSidebar()
 }
 
@@ -87,6 +74,55 @@ func (m UIModel) initSidebar() UIModel {
 }
 
 func (m UIModel) Init() tea.Cmd {
+	targetProject := m.app.GetTargetProject()
+	if targetProject != "" {
+		// Check if project is already in workspace
+		if !m.app.IsProjectInWorkspace(targetProject) {
+			// Validate the project has .beads directory
+			if err := m.app.ValidateProject(targetProject); err != nil {
+				// Show error modal for missing .beads
+				return tea.Batch(
+					func() tea.Msg {
+						return errMsg{err}
+					},
+					func() tea.Msg {
+						if err := m.app.Registry.Load(context.Background()); err != nil {
+							return warningMsg{err: fmt.Errorf("model discovery load failed: %w", err)}
+						}
+						return registryLoadedMsg{}
+					},
+				)
+			}
+			// Show add-project modal
+			return tea.Batch(
+				func() tea.Msg {
+					return addProjectPromptMsg{projectPath: targetProject}
+				},
+				func() tea.Msg {
+					if err := m.app.Registry.Load(context.Background()); err != nil {
+						return warningMsg{err: fmt.Errorf("model discovery load failed: %w", err)}
+					}
+					return registryLoadedMsg{}
+				},
+			)
+		}
+		// Project is in workspace, activate it
+		if err := m.app.SetActiveProject(context.Background(), targetProject); err != nil {
+			return tea.Batch(
+				func() tea.Msg {
+					return errMsg{err}
+				},
+				func() tea.Msg {
+					if err := m.app.Registry.Load(context.Background()); err != nil {
+						return warningMsg{err: fmt.Errorf("model discovery load failed: %w", err)}
+					}
+					return registryLoadedMsg{}
+				},
+			)
+		}
+	}
+
+	// Normal initialization flow
 	project, err := m.app.CreateProjectContext(context.Background())
 	if err != nil {
 		return tea.Batch(
@@ -151,6 +187,23 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.modalContent = string(msg)
 		return m, nil
 
+	case addProjectPromptMsg:
+		m.showAddProjectModal = true
+		m.pendingProjectPath = msg.projectPath
+		return m, nil
+
+	case addProjectResultMsg:
+		m.showAddProjectModal = false
+		if msg.err != nil {
+			m.err = msg.err
+			m.state = ViewStateError
+		} else if msg.success {
+			// Project added, now activate it and continue with normal init
+			return m, m.activateProjectAndInit(m.pendingProjectPath)
+		}
+		// User declined, continue with normal init
+		return m, m.continueNormalInit()
+
 	case launchResultMsg:
 		return m.handleLaunchResult(msg)
 
@@ -201,27 +254,6 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case refreshAnimationTickMsg:
 		return m.handleRefreshAnimationTick()
 
-	case OpenFilePickerMsg:
-		m.showFilePicker = true
-		m.showAddProjectModal = false
-		m.pendingProjectPath = ""
-		return m, nil
-
-	case ShowAddProjectModalMsg:
-		m.showFilePicker = false
-		m.showAddProjectModal = true
-		m.pendingProjectPath = msg.path
-		return m, nil
-
-	case addProjectConfirmedMsg:
-		return m.handleAddProjectConfirmed(msg)
-
-	case addProjectCancelledMsg:
-		m.showFilePicker = true
-		m.showAddProjectModal = false
-		m.pendingProjectPath = ""
-		return m, nil
-
 	case tea.WindowSizeMsg:
 		m, cmd = m.handleWindowSizeMsg(msg)
 		return m, cmd
@@ -230,12 +262,6 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if model, cmd, handled := m.handleKeyMsg(msg); handled {
 			return model, cmd
 		}
-	}
-
-	// Handle filepicker messages when filepicker is active
-	if m.showFilePicker {
-		m.filepicker, cmd = m.filepicker.Update(msg)
-		return m, cmd
 	}
 
 	if m.state == ViewStateMatrix {
@@ -294,30 +320,53 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// addProjectConfirmedMsg is emitted when user confirms adding a project.
-type addProjectConfirmedMsg struct {
-	path string
+// activateProjectAndInit adds the project and initializes the TUI with it.
+func (m UIModel) activateProjectAndInit(projectPath string) tea.Cmd {
+	return tea.Batch(
+		func() tea.Msg {
+			// Add project to workspace
+			project := domain.Project{
+				Dir:  projectPath,
+				Name: filepath.Base(projectPath),
+			}
+			m.app.AddProject(project)
+
+			// Activate the project
+			if err := m.app.SetActiveProject(context.Background(), projectPath); err != nil {
+				return errMsg{err}
+			}
+
+			// Load tickets
+			projectCtx := m.app.Project()
+			if projectCtx == nil {
+				return errMsg{fmt.Errorf("failed to get project context")}
+			}
+
+			tickets, err := projectCtx.Store().ListTickets(context.Background(), data.TicketFilter{})
+			if err != nil {
+				return errMsg{err}
+			}
+			return ticketsLoadedMsg(tickets)
+		},
+		discoverWorktreesCmd(m.app),
+	)
 }
 
-// addProjectCancelledMsg is emitted when user cancels adding a project.
-type addProjectCancelledMsg struct{}
+// continueNormalInit proceeds with normal TUI initialization.
+func (m UIModel) continueNormalInit() tea.Cmd {
+	return tea.Batch(
+		func() tea.Msg {
+			project, err := m.app.CreateProjectContext(context.Background())
+			if err != nil {
+				return errMsg{err}
+			}
 
-// ShowAddProjectModalMsg is emitted to show the add project confirmation modal.
-type ShowAddProjectModalMsg struct {
-	path string
-}
-
-// checkAndPromptAddProject checks if the directory has a .beads subdirectory
-// and shows appropriate modal.
-func (m UIModel) checkAndPromptAddProject(dirPath string) tea.Cmd {
-	return func() tea.Msg {
-		beadsPath := filepath.Join(dirPath, ".beads")
-		if _, err := os.Stat(beadsPath); os.IsNotExist(err) {
-			return errMsg{fmt.Errorf("no .beads directory found in %s", dirPath)}
-		} else if err != nil {
-			return errMsg{fmt.Errorf("error checking .beads directory: %w", err)}
-		}
-		// Directory has .beads, return message to show confirmation modal
-		return ShowAddProjectModalMsg{path: dirPath}
-	}
+			tickets, err := project.Store().ListTickets(context.Background(), data.TicketFilter{})
+			if err != nil {
+				return errMsg{err}
+			}
+			return ticketsLoadedMsg(tickets)
+		},
+		discoverWorktreesCmd(m.app),
+	)
 }

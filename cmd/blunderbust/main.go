@@ -52,13 +52,17 @@ var (
 
 // rootCmd is the base command for the bdb CLI.
 var rootCmd = &cobra.Command{
-	Use:   "bdb",
+	Use:   "bdb [project-path]",
 	Short: "Launch dev harnesses from Beads issues",
 	Long: `Blunderbust launches development harnesses (OpenCode, Claude, etc.)
 in tmux windows with context from Beads issues.
 
 It provides a TUI-driven workflow for selecting tickets, choosing harness
-configurations, and launching development sessions.`,
+configurations, and launching development sessions.
+
+If a project-path is provided as a positional argument and the project is not
+already in the workspace, a modal will ask to add it.`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runRoot,
 }
 
@@ -129,6 +133,19 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(os.Stderr, "Debug mode enabled")
 	}
 
+	// Get optional positional argument for target project
+	var targetProject string
+	if len(args) > 0 {
+		targetProject = args[0]
+		// Resolve to absolute path
+		if absPath, err := filepath.Abs(targetProject); err == nil {
+			targetProject = absPath
+		}
+		if debug {
+			fmt.Fprintf(os.Stderr, "Target project: %s\n", targetProject)
+		}
+	}
+
 	// Resolve beads directory
 	beadsPath := beadsDir
 	if beadsPath == "" {
@@ -194,6 +211,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		Debug:         debug,
 		Demo:          demo,
 		AutostartDolt: cfg.General != nil && cfg.General.AutostartDolt,
+		TargetProject: targetProject,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

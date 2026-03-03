@@ -120,6 +120,9 @@ type UIModel struct {
 	showModal    bool
 	modalContent string
 
+	showAddProjectModal bool
+	pendingProjectPath  string
+
 	showSidebar      bool
 	sidebarWidth     int
 	tWidth           int

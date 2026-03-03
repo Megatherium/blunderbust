@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
 	osexec "os/exec"
 	"path/filepath"
 
@@ -234,4 +235,40 @@ func (a *App) SetActiveProject(ctx context.Context, projectDir string) error {
 	}
 	a.activeProject = projectDir
 	return nil
+}
+
+// GetTargetProject returns the target project path from CLI args, if any.
+func (a *App) GetTargetProject() string {
+	return a.opts.TargetProject
+}
+
+// IsProjectInWorkspace checks if a project directory is already in the workspace.
+func (a *App) IsProjectInWorkspace(projectDir string) bool {
+	for _, p := range a.projects {
+		if p.Dir == projectDir {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateProject checks if a project directory has a .beads subdirectory.
+func (a *App) ValidateProject(projectDir string) error {
+	beadsDir := filepath.Join(projectDir, ".beads")
+	info, err := os.Stat(beadsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("directory %s does not contain a .beads subdirectory", projectDir)
+		}
+		return fmt.Errorf("cannot access %s: %w", beadsDir, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s/.beads exists but is not a directory", projectDir)
+	}
+	return nil
+}
+
+// AddProject adds a new project to the workspace.
+func (a *App) AddProject(project domain.Project) {
+	a.projects = append(a.projects, project)
 }

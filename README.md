@@ -118,6 +118,9 @@ tmux
 
 # Demo mode (uses fake data instead of real beads database)
 ./blunderbust --demo
+
+# Open a specific project by path (adds to workspace if not present)
+./blunderbust /path/to/project
 ```
 
 ## Usage Flow

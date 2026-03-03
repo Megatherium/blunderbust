@@ -106,4 +106,5 @@ type AppOptions struct {
 	DSN           string
 	Demo          bool
 	AutostartDolt bool
+	TargetProject string // Optional: project path from CLI positional arg
 }

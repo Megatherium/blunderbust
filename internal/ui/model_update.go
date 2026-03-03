@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -246,36 +245,19 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 }
 
 func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	// Handle file picker specific keys when file picker is active
-	if m.showFilePicker {
-		switch msg.String() {
-		case "a":
-			// Select current directory to add as project
-			currentDir := m.filepicker.CurrentDirectory
-			if currentDir != "" {
-				return m, m.checkAndPromptAddProject(currentDir), true
-			}
-			return m, nil, true
-		case "esc":
-			m.showFilePicker = false
-			return m, nil, true
-		}
-		// Let filepicker handle other keys
-		return m, nil, false
-	}
-
-	// Handle add project confirmation modal
+	// Handle add-project modal keys first
 	if m.showAddProjectModal {
 		switch msg.String() {
-		case "y", "enter":
+		case "y", "Y":
 			return m, func() tea.Msg {
-				return addProjectConfirmedMsg{path: m.pendingProjectPath}
+				return addProjectResultMsg{success: true}
 			}, true
-		case "n", "esc":
+		case "n", "N", "q", "esc":
 			return m, func() tea.Msg {
-				return addProjectCancelledMsg{}
+				return addProjectResultMsg{success: false}
 			}, true
 		}
+		// Block all other keys when add-project modal is shown
 		return m, nil, true
 	}
 
@@ -896,54 +878,4 @@ func (m UIModel) handleSidebarAgentKeysMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, 
 	}
 
 	return m, nil, false
-}
-
-func (m UIModel) handleAddProjectConfirmed(msg addProjectConfirmedMsg) (tea.Model, tea.Cmd) {
-	projectDir := msg.path
-
-	// Check if project already exists
-	for _, project := range m.app.GetProjects() {
-		if filepath.Clean(project.Dir) == filepath.Clean(projectDir) {
-			m.warnings = append(m.warnings, fmt.Sprintf("Project already exists: %s", projectDir))
-			m.showAddProjectModal = false
-			m.showFilePicker = true
-			return m, nil
-		}
-	}
-
-	// Add project to app
-	project := domain.Project{
-		Dir:  projectDir,
-		Name: filepath.Base(projectDir),
-	}
-	m.app.AddProject(project)
-
-	// Create store for the new project
-	ctx := context.Background()
-	beadsDir := filepath.Join(projectDir, ".beads")
-	store, err := m.app.CreateStore(ctx, beadsDir)
-	if err != nil {
-		m.warnings = append(m.warnings, fmt.Sprintf("Failed to create store for %s: %v", projectDir, err))
-		m.showAddProjectModal = false
-		m.showFilePicker = true
-		return m, nil
-	}
-	m.app.AddStore(projectDir, store)
-
-	// Save config to persist the new project
-	if err := m.app.SaveConfig(); err != nil {
-		m.warnings = append(m.warnings, fmt.Sprintf("Failed to save config: %v", err))
-	}
-
-	// Refresh sidebar to show new project
-	m.showAddProjectModal = false
-	m.showFilePicker = false
-	m.pendingProjectPath = ""
-
-	return m, tea.Batch(
-		discoverWorktreesCmd(m.app),
-		func() tea.Msg {
-			return warningMsg{fmt.Errorf("Added project: %s", projectDir)}
-		},
-	)
 }

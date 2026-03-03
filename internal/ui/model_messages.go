@@ -17,6 +17,15 @@ type launchResultMsg struct {
 
 type modalContentMsg string
 
+type addProjectPromptMsg struct {
+	projectPath string
+}
+
+type addProjectResultMsg struct {
+	success bool
+	err     error
+}
+
 type worktreesDiscoveredMsg struct {
 	nodes []domain.SidebarNode
 	err   error

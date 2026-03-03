@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
@@ -125,15 +124,15 @@ func buildBlunderbust(t *testing.T) string {
 		needsRebuild := false
 
 		// Walk source directory to check modification times
-		filepath.Walk(getProjectRoot(), func(path string, fi os.FileInfo, err error) error {
+		_ = filepath.Walk(getProjectRoot(), func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
-				return nil
+				return nil //nolint:nilerr
 			}
 			if filepath.Ext(path) == ".go" && fi.ModTime().After(info.ModTime()) {
 				needsRebuild = true
 				return filepath.SkipDir
 			}
-			return nil
+			return nil //nolint:nilerr
 		})
 
 		if !needsRebuild {
@@ -188,7 +187,7 @@ func getWebsocketURL(t *testing.T) string {
 }
 
 // connectWebsocket connects to the agent-tui websocket and returns the connection
-// IMPORTANT: The context used for dialing must not be cancelled when this function returns,
+// IMPORTANT: The context used for dialing must not be canceled when this function returns,
 // as the returned connection will use that context for ongoing operations.
 func connectWebsocket(t *testing.T, wsURL string) *websocket.Conn {
 	t.Helper()
@@ -203,7 +202,7 @@ func connectWebsocket(t *testing.T, wsURL string) *websocket.Conn {
 	u, err := url.Parse(wsURL)
 	require.NoError(t, err)
 
-	// Dial uses dialCtx which is cancelled after dial completes, but the connection
+	// Dial uses dialCtx which is canceled after dial completes, but the connection
 	// continues using the parent ctx (Background) which never expires
 	conn, _, err := websocket.Dial(dialCtx, u.String(), nil)
 	require.NoError(t, err)
@@ -288,16 +287,6 @@ func readLivePreviewEvents(t *testing.T, conn *websocket.Conn, timeout time.Dura
 }
 
 // decodeBase64Data decodes base64 data from live preview events
-func decodeBase64Data(events []LivePreviewEvent) string {
-	var result strings.Builder
-	for _, event := range events {
-		if event.DataB64 != "" {
-			data, _ := base64.StdEncoding.DecodeString(event.DataB64)
-			result.Write(data)
-		}
-	}
-	return result.String()
-}
 
 // getScreenContent extracts screen content from events (from init or output events)
 func getScreenContent(events []LivePreviewEvent) string {
@@ -316,12 +305,6 @@ func getScreenContent(events []LivePreviewEvent) string {
 }
 
 // containsAnsiColor checks if text contains ANSI color codes
-func containsAnsiColor(text string, colorCode int) bool {
-	// ANSI color code format: ESC[38;5;COLORm (foreground) or ESC[48;5;COLORm (background)
-	fgPattern := fmt.Sprintf("\x1b[38;5;%dm", colorCode)
-	bgPattern := fmt.Sprintf("\x1b[48;5;%dm", colorCode)
-	return strings.Contains(text, fgPattern) || strings.Contains(text, bgPattern)
-}
 
 // cleanup kills the agent-tui session and cleans up
 func (s *agentTuiSession) cleanup(t *testing.T) {

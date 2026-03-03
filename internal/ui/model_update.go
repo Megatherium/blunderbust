@@ -87,45 +87,53 @@ func (m UIModel) handleToggleThemeKeyMsg() (tea.Model, tea.Cmd, bool) {
 }
 
 func (m UIModel) handleNavigationKeysMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if m.state != ViewStateMatrix {
+		return m, nil, false
+	}
+
 	switch msg.String() {
 	case "left", "h":
-		if m.state == ViewStateMatrix {
-			if m.focus == FocusSidebar {
-				node := m.sidebar.State().CurrentNode()
-				shouldCollapse := node != nil && len(node.Children) > 0 && node.IsExpanded
-				if shouldCollapse {
-					return m, nil, false // Let sidebar handle collapse
-				}
-			}
-			if m.focus > FocusSidebar {
-				m.retreatFocus()
-				return m, nil, true
-			}
-		}
+		return m.handleLeftNavigation()
 	case "right", "l":
-		if m.state == ViewStateMatrix {
-			if m.focus == FocusSidebar {
-				node := m.sidebar.State().CurrentNode()
-				shouldExpand := node != nil && len(node.Children) > 0 && !node.IsExpanded
-				if shouldExpand {
-					return m, nil, false // Let sidebar handle expand
-				}
-			}
-			if m.focus < FocusAgent {
-				m.advanceFocus()
-				return m, nil, true
-			}
-		}
+		return m.handleRightNavigation()
 	case "tab":
-		if m.state == ViewStateMatrix {
-			if m.focus < FocusAgent {
-				m.advanceFocus()
-			} else {
-				m.focus = FocusSidebar
-				m.sidebar.SetFocused(true)
-			}
-			return m, nil, true
+		if m.focus < FocusAgent {
+			m.advanceFocus()
+		} else {
+			m.focus = FocusSidebar
+			m.sidebar.SetFocused(true)
 		}
+		return m, nil, true
+	}
+	return m, nil, false
+}
+
+func (m UIModel) handleLeftNavigation() (tea.Model, tea.Cmd, bool) {
+	if m.focus == FocusSidebar {
+		node := m.sidebar.State().CurrentNode()
+		shouldCollapse := node != nil && len(node.Children) > 0 && node.IsExpanded
+		if shouldCollapse {
+			return m, nil, false // Let sidebar handle collapse
+		}
+	}
+	if m.focus > FocusSidebar {
+		m.retreatFocus()
+		return m, nil, true
+	}
+	return m, nil, false
+}
+
+func (m UIModel) handleRightNavigation() (tea.Model, tea.Cmd, bool) {
+	if m.focus == FocusSidebar {
+		node := m.sidebar.State().CurrentNode()
+		shouldExpand := node != nil && len(node.Children) > 0 && !node.IsExpanded
+		if shouldExpand {
+			return m, nil, false // Let sidebar handle expand
+		}
+	}
+	if m.focus < FocusAgent {
+		m.advanceFocus()
+		return m, nil, true
 	}
 	return m, nil, false
 }
@@ -274,64 +282,69 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if m.showFilePicker {
-		switch msg.String() {
-		case "a":
-			currentDir := m.filepicker.CurrentDirectory
-			if currentDir != "" {
-				return m, m.checkAndPromptAddProject(currentDir), true
-			}
-			return m, nil, true
-		case "esc":
-			m.showFilePicker = false
-			return m, nil, true
-		}
+func (m UIModel) handleFilePickerKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if !m.showFilePicker {
 		return m, nil, false
 	}
-
-	if m.showAddProjectModal {
-		switch msg.String() {
-		case "y", "Y":
-			return m, func() tea.Msg {
-				return addProjectResultMsg{success: true}
-			}, true
-		case "n", "N", "q", "esc":
-			return m, func() tea.Msg {
-				return addProjectResultMsg{success: false}
-			}, true
+	switch msg.String() {
+	case "a":
+		currentDir := m.filepicker.CurrentDirectory
+		if currentDir != "" {
+			return m, m.checkAndPromptAddProject(currentDir), true
 		}
 		return m, nil, true
+	case "esc":
+		m.showFilePicker = false
+		return m, nil, true
 	}
+	return m, nil, false
+}
 
-	if m.state == ViewStateError {
-		switch msg.String() {
-		case "q", "Q":
-			return m, tea.Quit, true
-		case "r", "R":
-			if m.retryStore != nil {
-				m.loading = true
-				m.state = ViewStateMatrix
-				return m, loadTicketsCmd(m.retryStore), true
-			}
-		case "s", "S":
-			if m.retryStore != nil {
-				if doltStore, ok := m.retryStore.(*dolt.Store); ok {
-					if doltStore.CanRetryConnection() {
-						m.loading = true
-						m.state = ViewStateMatrix
-						return m, startServerAndRetryCmd(m.app, doltStore), true
-					}
+func (m UIModel) handleAddProjectModalKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if !m.showAddProjectModal {
+		return m, nil, false
+	}
+	switch msg.String() {
+	case "y", "Y":
+		return m, func() tea.Msg {
+			return addProjectResultMsg{success: true}
+		}, true
+	case "n", "N", "q", "esc":
+		return m, func() tea.Msg {
+			return addProjectResultMsg{success: false}
+		}, true
+	}
+	return m, nil, true
+}
+
+func (m UIModel) handleErrorStateKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if m.state != ViewStateError {
+		return m, nil, false
+	}
+	switch msg.String() {
+	case "q", "Q":
+		return m, tea.Quit, true
+	case "r", "R":
+		if m.retryStore != nil {
+			m.loading = true
+			m.state = ViewStateMatrix
+			return m, loadTicketsCmd(m.retryStore), true
+		}
+	case "s", "S":
+		if m.retryStore != nil {
+			if doltStore, ok := m.retryStore.(*dolt.Store); ok {
+				if doltStore.CanRetryConnection() {
+					m.loading = true
+					m.state = ViewStateMatrix
+					return m, startServerAndRetryCmd(m.app, doltStore), true
 				}
 			}
 		}
-		return m, nil, true
 	}
+	return m, nil, true
+}
 
-	if model, cmd, handled := m.handleModalKeyMsg(); handled {
-		return model, cmd, true
-	}
-
+func (m UIModel) handleGlobalKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if key.Matches(msg, m.keys.Quit) {
 		return m.handleQuitKeyMsg()
 	}
@@ -362,6 +375,30 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m.handleToggleThemeKeyMsg()
 	}
 
+	return m, nil, false
+}
+
+func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if model, cmd, handled := m.handleFilePickerKeyMsg(msg); handled {
+		return model, cmd, handled
+	}
+
+	if model, cmd, handled := m.handleAddProjectModalKeyMsg(msg); handled {
+		return model, cmd, handled
+	}
+
+	if model, cmd, handled := m.handleErrorStateKeyMsg(msg); handled {
+		return model, cmd, handled
+	}
+
+	if model, cmd, handled := m.handleModalKeyMsg(); handled {
+		return model, cmd, true
+	}
+
+	if model, cmd, handled := m.handleGlobalKeyMsg(msg); handled {
+		return model, cmd, true
+	}
+
 	if model, cmd, handled := m.handleNavigationKeysMsg(msg); handled {
 		return model, cmd, true
 	}
@@ -384,6 +421,88 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	return m, nil, false
 }
 
+func (m UIModel) handleMatrixEnterKey() (tea.Model, tea.Cmd) {
+	switch m.focus {
+	case FocusSidebar:
+		return m.handleSidebarEnterKey()
+	case FocusTickets:
+		return m.handleTicketsEnterKey()
+	case FocusHarness:
+		return m.handleHarnessEnterKey()
+	case FocusModel:
+		return m.handleModelEnterKey()
+	case FocusAgent:
+		return m.handleAgentEnterKey()
+	}
+	return m, nil
+}
+
+func (m UIModel) handleSidebarEnterKey() (tea.Model, tea.Cmd) {
+	node := m.sidebar.State().CurrentNode()
+	if node != nil && node.Type == domain.NodeTypeWorktree {
+		m.selectedWorktree = node.Path
+		m.sidebar.SetSelectedPath(node.Path)
+		m.focus = FocusTickets
+		m.sidebar.SetFocused(false)
+		return m, nil
+	}
+	if node != nil && len(node.Children) > 0 {
+		m.sidebar.State().ToggleExpand()
+	}
+	return m, nil
+}
+
+func (m UIModel) handleTicketsEnterKey() (tea.Model, tea.Cmd) {
+	if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
+		m.selection.Ticket = i.ticket
+
+		if len(m.harnesses) == 1 {
+			m.selection.Harness = m.harnesses[0]
+			m, _ = m.handleModelSkip()
+		}
+
+		if m.focus < FocusAgent {
+			m.advanceFocus()
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m UIModel) handleHarnessEnterKey() (tea.Model, tea.Cmd) {
+	if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+		m.selection.Harness = i.harness
+		m, _ = m.handleModelSkip()
+		m, _ = m.handleAgentSkip()
+		if m.focus < FocusAgent {
+			m.advanceFocus()
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m UIModel) handleModelEnterKey() (tea.Model, tea.Cmd) {
+	if i, ok := m.modelList.SelectedItem().(modelItem); ok {
+		m.selection.Model = i.name
+		m, _ = m.handleAgentSkip()
+		if m.focus < FocusAgent {
+			m.advanceFocus()
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m UIModel) handleAgentEnterKey() (tea.Model, tea.Cmd) {
+	if i, ok := m.agentList.SelectedItem().(agentItem); ok {
+		m.selection.Agent = i.name
+		m.state = ViewStateConfirm
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 	// Exit agent output view when Enter is pressed
 	if m.viewingAgentID != "" {
@@ -393,71 +512,7 @@ func (m UIModel) handleEnterKey() (tea.Model, tea.Cmd) {
 
 	switch m.state {
 	case ViewStateMatrix:
-		switch m.focus {
-		case FocusSidebar:
-			node := m.sidebar.State().CurrentNode()
-			if node != nil && node.Type == domain.NodeTypeWorktree {
-				m.selectedWorktree = node.Path
-				m.sidebar.State().SelectByPath(node.Path)
-				m.focus = FocusTickets
-				m.sidebar.SetFocused(false)
-				return m, nil
-			}
-			if node != nil && len(node.Children) > 0 {
-				m.sidebar.State().ToggleExpand()
-			}
-			return m, nil
-		case FocusTickets:
-			if i, ok := m.ticketList.SelectedItem().(ticketItem); ok {
-				m.selection.Ticket = i.ticket
-
-				if len(m.harnesses) == 1 {
-					m.selection.Harness = m.harnesses[0]
-					m, _ = m.handleModelSkip()
-				}
-
-				if m.focus < FocusAgent {
-					m.advanceFocus()
-				}
-				return m, nil
-			}
-		case FocusHarness:
-			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
-				// State transition: harness selection changed
-				// When user selects a different harness, we need to re-evaluate which columns
-				// should be disabled based on the new harness's SupportedModels and SupportedAgents.
-				// This is done by calling handleModelSkip() and handleAgentSkip() which:
-				// 1. Expand provider: and discover:active keywords to actual model/agent lists
-				// 2. Set modelColumnDisabled/agentColumnDisabled flags based on list emptiness
-				// 3. Clear any previously selected model/agent values when columns become disabled
-				// 4. Update the UI lists to reflect the new available options
-				//
-				// Navigation automatically adapts: advanceFocus() and retreatFocus() check the
-				// disabled flags and skip columns that have no selectable items.
-				m.selection.Harness = i.harness
-				m, _ = m.handleModelSkip()
-				m, _ = m.handleAgentSkip()
-				if m.focus < FocusAgent {
-					m.advanceFocus()
-				}
-				return m, nil
-			}
-		case FocusModel:
-			if i, ok := m.modelList.SelectedItem().(modelItem); ok {
-				m.selection.Model = i.name
-				m, _ = m.handleAgentSkip()
-				if m.focus < FocusAgent {
-					m.advanceFocus()
-				}
-				return m, nil
-			}
-		case FocusAgent:
-			if i, ok := m.agentList.SelectedItem().(agentItem); ok {
-				m.selection.Agent = i.name
-				m.state = ViewStateConfirm
-				return m, nil
-			}
-		}
+		return m.handleMatrixEnterKey()
 	case ViewStateConfirm:
 		m.state = ViewStateMatrix
 		return m, m.launchCmd()
@@ -1096,7 +1151,7 @@ func (m UIModel) handleAddProjectConfirmed(msg addProjectConfirmedMsg) (tea.Mode
 	return m, tea.Batch(
 		discoverWorktreesCmd(m.app),
 		func() tea.Msg {
-			return warningMsg{fmt.Errorf("Added project: %s", projectDir)}
+			return warningMsg{fmt.Errorf("added project: %s", projectDir)}
 		},
 	)
 }

@@ -110,8 +110,6 @@ func renderModalOverlay(content string, cfg MainContentConfig) string {
 		return content
 	}
 
-	content = lipgloss.NewStyle().Faint(true).Render(content)
-
 	modalWidth := cfg.Width - 10
 	if modalWidth < 40 {
 		modalWidth = 40

@@ -120,7 +120,7 @@ func (m UIModel) launchCmd() tea.Cmd {
 
 // Agent monitoring commands
 
-func pollAgentStatusCmd(app *App, agentID string, windowName string) tea.Cmd {
+func pollAgentStatusCmd(app *App, agentID, windowName string) tea.Cmd {
 	return func() tea.Msg {
 		if app.StatusChecker() == nil {
 			return AgentStatusMsg{AgentID: agentID, Status: domain.AgentRunning}
@@ -168,7 +168,7 @@ func clearAgentCmd(agentID string, capture *tmux.OutputCapture) tea.Cmd {
 	return func() tea.Msg {
 		// Stop output capture if still running
 		if capture != nil {
-			capture.Stop(context.Background())
+			_ = capture.Stop(context.Background())
 		}
 
 		return AgentClearedMsg{AgentID: agentID}
@@ -182,10 +182,10 @@ type agentToClear struct {
 
 func clearAllStoppedAgentsCmd(agents []agentToClear) tea.Cmd {
 	return func() tea.Msg {
-		var cleared []string
+		cleared := make([]string, 0, len(agents))
 		for _, a := range agents {
 			if a.capture != nil {
-				a.capture.Stop(context.Background())
+				_ = a.capture.Stop(context.Background())
 			}
 			cleared = append(cleared, a.id)
 		}

@@ -87,13 +87,13 @@ func (a *App) Project() *data.ProjectContext {
 // CreateProjectContext initializes the ProjectContext based on AppOptions.
 // This should be called from the TUI's async initialization.
 func (a *App) CreateProjectContext(ctx context.Context) (*data.ProjectContext, error) {
-	config, err := a.loader.Load(a.opts.ConfigPath)
+	cfg, err := a.loader.Load(a.opts.ConfigPath)
 	if err != nil {
 		// Try fallback if no config
 		return a.loadSingleProject(ctx, a.opts.BeadsDir)
 	}
 
-	a.projects = config.Workspace.Projects
+	a.projects = cfg.Workspace.Projects
 	if len(a.projects) == 0 {
 		return a.loadSingleProject(ctx, a.opts.BeadsDir)
 	}

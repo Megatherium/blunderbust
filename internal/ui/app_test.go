@@ -2,7 +2,6 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,11 +11,6 @@ import (
 )
 
 // mockFailingStoreFactory simulates a failure in TicketStore creation.
-type mockFailingStoreFactory struct{}
-
-func (f *mockFailingStoreFactory) createStore(ctx context.Context, beadsDir string) (data.TicketStore, error) {
-	return nil, fmt.Errorf("simulated creation failure for %s", beadsDir)
-}
 
 func TestApp_SetActiveProject_CreationFailure(t *testing.T) {
 	// Initialize a stripped down App instance with a simulated active project

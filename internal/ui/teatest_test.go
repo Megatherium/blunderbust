@@ -57,7 +57,7 @@ func TestTeatest_InitialRender(t *testing.T) {
 	m := NewUIModel(app, harnesses)
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for the initial render - should show "Loading" or the matrix
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -85,7 +85,7 @@ func TestTeatest_KeyboardNavigation_TabCycling(t *testing.T) {
 	m := NewUIModel(app, harnesses)
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for initial render using WaitFor (proper async wait)
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -127,7 +127,7 @@ func TestTeatest_StateTransition_MatrixToConfirm(t *testing.T) {
 	}
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for confirm view to render
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -145,7 +145,7 @@ func TestTeatest_StateTransition_ErrorState(t *testing.T) {
 	m.err = assert.AnError
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for error view to render
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -163,7 +163,7 @@ func TestTeatest_ModalDisplay(t *testing.T) {
 	m.modalContent = "Test modal content"
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for modal to render
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -179,7 +179,7 @@ func TestTeatest_SidebarToggle(t *testing.T) {
 	m.showSidebar = true
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for initial render with sidebar
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -265,7 +265,7 @@ func TestTeatest_EscapeKey_GoesBack(t *testing.T) {
 	m.state = ViewStateConfirm
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for confirm state
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -291,7 +291,7 @@ func TestTeatest_WindowResize(t *testing.T) {
 	m := NewUIModel(app, harnesses)
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for render at initial size
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -319,7 +319,7 @@ func TestTeatest_LoadingState(t *testing.T) {
 	// So we test the initial loading state by checking if it renders something
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for any render output (loading or loaded state)
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
@@ -340,7 +340,7 @@ func TestTeatest_EmptyLists(t *testing.T) {
 	m := NewUIModel(app, nil) // No harnesses
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 40))
-	defer tm.Quit()
+	defer func() { _ = tm.Quit() }()
 
 	// Wait for render
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {

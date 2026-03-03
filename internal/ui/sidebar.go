@@ -291,7 +291,7 @@ func (m SidebarModel) renderWorktreeName(node *domain.SidebarNode, name string, 
 		if node.WorktreeInfo.IsDirty {
 			name = name + " " + dirtyIndicator
 		} else {
-			name = name + " ●"
+			name += " ●"
 		}
 	}
 

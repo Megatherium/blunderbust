@@ -83,6 +83,12 @@ func (m UIModel) renderMainContent() string {
 }
 
 func (m UIModel) buildMatrixConfig() MatrixConfig {
+	var theme ThemePalette
+	if m.currentTheme != nil {
+		theme = *m.currentTheme
+	} else {
+		theme = MatrixTheme
+	}
 	return MatrixConfig{
 		Width:               m.width,
 		Height:              m.height,
@@ -96,7 +102,7 @@ func (m UIModel) buildMatrixConfig() MatrixConfig {
 		AgentColumnDisabled: m.agentColumnDisabled,
 		Focus:               m.focus,
 		AnimState:           m.animState,
-		Theme:               m.currentTheme,
+		Theme:               &theme,
 		TicketView:          m.ticketList.View(),
 		HarnessView:         m.harnessList.View(),
 		ModelView:           m.modelList.View(),

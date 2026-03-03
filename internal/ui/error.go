@@ -22,7 +22,7 @@ var (
 )
 
 // errorView renders an error screen with actionable messaging.
-func errorView(err error, hasRetry bool, hasStart bool) string {
+func errorView(err error, hasRetry, hasStart bool) string {
 	if err == nil {
 		return "An unknown error occurred"
 	}

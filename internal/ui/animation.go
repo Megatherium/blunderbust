@@ -22,7 +22,8 @@ const (
 )
 
 // GradientColors is the signature palette: light green → dark blue
-// DEPRECATED: Use theme.Gradient instead. Kept for backward compatibility.
+
+// Deprecated: Use theme.Gradient instead. Kept for backward compatibility.
 var GradientColors = []string{
 	"#90EE90", "#8BE88C", "#86E288", "#81DC88", "#7CD688",
 	"#77D088", "#72CA88", "#6DC488", "#68BE88", "#63B888",
@@ -101,7 +102,8 @@ func (a AnimationState) shouldShowFlash(column FocusColumn) bool {
 
 // getPulsingColor returns a color from the gradient based on pulse phase
 // phase: 0.0 = darkest (valley), 0.5 = base, 1.0 = brightest (peak)
-// DEPRECATED: Use getPulsingColorWithTheme instead
+
+// Deprecated: Use getPulsingColorWithTheme instead
 func getPulsingColor(phase float64) lipgloss.Color {
 	// Map phase 0-1 to gradient index range
 	// GradientDarkestIdx (27) is darkest, GradientBrightestIdx (3) is brightest

@@ -178,18 +178,16 @@ func renderModelColumn(cfg MatrixConfig, theme *ThemePalette, listHeight int,
 			Width(cfg.MWidth-2).
 			Height(listHeight-2).
 			Align(lipgloss.Center, lipgloss.Center)
-		return disabledStyle.Render("N/A\n\nNo models available\nfor this harness")
+		return disabledStyle.Render("Models\n\nN/A\n\nNo models available\nfor this harness")
 	}
 
-	if cfg.Focus == FocusModel {
-		activeColor := getActiveColor(cfg.AnimState, FocusModel, theme)
-		glowColor := getGlowColor(cfg.AnimState.PulsePhase, theme)
-		activeBorder := createActiveBorder(listHeight, activeColor, glowColor)
-		return activeBorder(cfg.MWidth).Render(capView(cfg.ModelView, cfg.MWidth))
-	}
-
-	inactiveBorder := createInactiveBorder(listHeight)
-	return inactiveBorder(cfg.MWidth).Render(faintCapView(cfg.ModelView, cfg.MWidth))
+	return renderMatrixColumn(cfg.ModelView, cfg.MWidth, cfg.Focus == FocusModel,
+		"Models", theme,
+		func(w int) lipgloss.Style {
+			return createActiveBorder(listHeight, getActiveColor(cfg.AnimState, FocusModel, theme), getGlowColor(cfg.AnimState.PulsePhase, theme))(w)
+		},
+		createInactiveBorder(listHeight),
+		capView, faintCapView)
 }
 
 func renderAgentColumn(cfg MatrixConfig, theme *ThemePalette, listHeight int,
@@ -202,18 +200,16 @@ func renderAgentColumn(cfg MatrixConfig, theme *ThemePalette, listHeight int,
 			Width(cfg.AWidth-2).
 			Height(listHeight-2).
 			Align(lipgloss.Center, lipgloss.Center)
-		return disabledStyle.Render("N/A\n\nNo agents available\nfor this harness")
+		return disabledStyle.Render("Agents\n\nN/A\n\nNo agents available\nfor this harness")
 	}
 
-	if cfg.Focus == FocusAgent {
-		activeColor := getActiveColor(cfg.AnimState, FocusAgent, theme)
-		glowColor := getGlowColor(cfg.AnimState.PulsePhase, theme)
-		activeBorder := createActiveBorder(listHeight, activeColor, glowColor)
-		return activeBorder(cfg.AWidth).Render(capView(cfg.AgentView, cfg.AWidth))
-	}
-
-	inactiveBorder := createInactiveBorder(listHeight)
-	return inactiveBorder(cfg.AWidth).Render(faintCapView(cfg.AgentView, cfg.AWidth))
+	return renderMatrixColumn(cfg.AgentView, cfg.AWidth, cfg.Focus == FocusAgent,
+		"Agents", theme,
+		func(w int) lipgloss.Style {
+			return createActiveBorder(listHeight, getActiveColor(cfg.AnimState, FocusAgent, theme), getGlowColor(cfg.AnimState.PulsePhase, theme))(w)
+		},
+		createInactiveBorder(listHeight),
+		capView, faintCapView)
 }
 
 func renderMatrixWithSidebar(cfg MatrixConfig, rightPanelBox string, activeColor lipgloss.Color) string {

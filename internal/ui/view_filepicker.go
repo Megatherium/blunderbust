@@ -71,7 +71,7 @@ func RenderAddProjectModal(cfg AddProjectConfig) string {
 
 	s.WriteString(titleStyle.Render("Add Project?"))
 	s.WriteString("\n\n")
-	s.WriteString(fmt.Sprintf("Add project at:\n%s", pathStyle.Render(cfg.PendingProjectPath)))
+	fmt.Fprintf(&s, "Add project at:\n%s", pathStyle.Render(cfg.PendingProjectPath))
 	s.WriteString("\n\n")
 	s.WriteString(helpStyle.Render("Press 'y' or Enter to confirm, 'n' or Esc to cancel"))
 

@@ -126,9 +126,7 @@ func (m UIModel) Init() tea.Cmd {
 	)
 }
 
-func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
+func (m UIModel) handleCoreMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	switch msg := msg.(type) {
 	case registryLoadedMsg:
 		if len(m.harnesses) > 0 {
@@ -138,182 +136,211 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m, _ = m.handleAgentSkip()
 			}
 		}
-		return m, m.continueInitAfterRegistry()
-
+		return m, m.continueInitAfterRegistry(), true
 	case ticketsLoadedMsg:
 		m.lastTicketUpdate = time.Now()
 		updatedM, _ := m.handleTicketsLoaded(msg)
 		return updatedM, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 			return ticketUpdateCheckMsg{}
-		})
-
+		}), true
 	case errMsg:
-		return m.handleErrMsg(msg)
-
+		newM, cmd := m.handleErrMsg(msg)
+		return newM, cmd, true
 	case warningMsg:
-		return m.handleWarningMsg(msg)
-
+		newM, cmd := m.handleWarningMsg(msg)
+		return newM, cmd, true
 	case modalContentMsg:
 		m.modalContent = string(msg)
-		return m, nil
+		return m, nil, true
+	case tea.WindowSizeMsg:
+		newM, cmd := m.handleWindowSizeMsg(msg)
+		return newM, cmd, true
+	case tea.KeyMsg:
+		if model, cmd, handled := m.handleKeyMsg(msg); handled {
+			return model, cmd, true
+		}
+	}
+	return m, nil, false
+}
 
+func (m UIModel) handleProjectMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
 	case addProjectPromptMsg:
 		m.showAddProjectModal = true
 		m.pendingProjectPath = msg.projectPath
-		return m, nil
-
+		return m, nil, true
 	case addProjectResultMsg:
 		m.showAddProjectModal = false
 		if msg.err != nil {
 			m.err = msg.err
 			m.state = ViewStateError
 		} else if msg.success {
-			// Project added, now activate it and continue with normal init
-			return m, m.activateProjectAndInit(m.pendingProjectPath)
+			return m, m.activateProjectAndInit(m.pendingProjectPath), true
 		}
-		// User declined, continue with normal init
-		return m, m.continueNormalInit()
-
-	case launchResultMsg:
-		return m.handleLaunchResult(msg)
-
+		return m, m.continueNormalInit(), true
 	case worktreesDiscoveredMsg:
-		return m.handleWorktreesDiscovered(msg)
-
+		newM, cmd := m.handleWorktreesDiscovered(msg)
+		return newM, cmd, true
 	case WorktreeSelectedMsg:
-		return m.handleWorktreeSelected(msg)
-
-	case AgentSelectedMsg:
-		return m.handleAgentSelected(msg)
-
-	case AgentStatusMsg:
-		return m.handleAgentStatus(msg)
-
-	case agentTickMsg:
-		return m.handleAgentTick(msg)
-
-	case agentOutputMsg:
-		return m.handleAgentOutput(msg)
-
-	case animationTickMsg:
-		return m.handleAnimationTick(msg)
-
-	case lockInMsg:
-		// Trigger lock-in flash effect
-		m.animState.LockInActive = true
-		m.animState.LockInIntensity = 1.0
-		m.animState.LockInStartTime = time.Now()
-		m.animState.LockInTarget = msg.Column
-		return m, nil
-
-	case AgentClearedMsg:
-		return m.handleAgentCleared(msg)
-
-	case AllStoppedAgentsClearedMsg:
-		return m.handleAllStoppedAgentsCleared(msg)
-
-	case ticketUpdateCheckMsg:
-		return m.handleTicketUpdateCheck()
-
-	case ticketsAutoRefreshedMsg:
-		return m.handleTicketsAutoRefreshed()
-
-	case clearRefreshIndicatorMsg:
-		return m.handleClearRefreshIndicator()
-
-	case refreshAnimationTickMsg:
-		return m.handleRefreshAnimationTick()
-
+		newM, cmd := m.handleWorktreeSelected(msg)
+		return newM, cmd, true
 	case serverStartedMsg:
 		activeProject := m.app.activeProject
 		if activeProject != "" {
 			m.app.stores[activeProject] = msg.store
 		}
-		return m, loadTicketsCmd(msg.store)
-
+		return m, loadTicketsCmd(msg.store), true
 	case OpenFilePickerMsg:
 		m.showFilePicker = true
 		m.showAddProjectModal = false
 		m.pendingProjectPath = ""
-		return m, nil
-
+		return m, nil, true
 	case ShowAddProjectModalMsg:
 		m.showFilePicker = false
 		m.showAddProjectModal = true
 		m.pendingProjectPath = msg.path
-		return m, nil
-
+		return m, nil, true
 	case addProjectConfirmedMsg:
-		return m.handleAddProjectConfirmed(msg)
-
+		newM, cmd := m.handleAddProjectConfirmed(msg)
+		return newM, cmd, true
 	case addProjectCancelledMsg:
 		m.showFilePicker = true
 		m.showAddProjectModal = false
 		m.pendingProjectPath = ""
-		return m, nil
+		return m, nil, true
+	}
+	return m, nil, false
+}
 
-	case tea.WindowSizeMsg:
-		m, cmd = m.handleWindowSizeMsg(msg)
+func (m UIModel) handleAgentMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case launchResultMsg:
+		newM, cmd := m.handleLaunchResult(msg)
+		return newM, cmd, true
+	case AgentSelectedMsg:
+		newM, cmd := m.handleAgentSelected(msg)
+		return newM, cmd, true
+	case AgentStatusMsg:
+		newM, cmd := m.handleAgentStatus(msg)
+		return newM, cmd, true
+	case agentTickMsg:
+		newM, cmd := m.handleAgentTick(msg)
+		return newM, cmd, true
+	case agentOutputMsg:
+		newM, cmd := m.handleAgentOutput(msg)
+		return newM, cmd, true
+	case animationTickMsg:
+		newM, cmd := m.handleAnimationTick(msg)
+		return newM, cmd, true
+	case lockInMsg:
+		m.animState.LockInActive = true
+		m.animState.LockInIntensity = 1.0
+		m.animState.LockInStartTime = time.Now()
+		m.animState.LockInTarget = msg.Column
+		return m, nil, true
+	case AgentClearedMsg:
+		newM, cmd := m.handleAgentCleared(msg)
+		return newM, cmd, true
+	case AllStoppedAgentsClearedMsg:
+		newM, cmd := m.handleAllStoppedAgentsCleared(msg)
+		return newM, cmd, true
+	case ticketUpdateCheckMsg:
+		newM, cmd := m.handleTicketUpdateCheck()
+		return newM, cmd, true
+	case ticketsAutoRefreshedMsg:
+		newM, cmd := m.handleTicketsAutoRefreshed()
+		return newM, cmd, true
+	case clearRefreshIndicatorMsg:
+		newM, cmd := m.handleClearRefreshIndicator()
+		return newM, cmd, true
+	case refreshAnimationTickMsg:
+		newM, cmd := m.handleRefreshAnimationTick()
+		return newM, cmd, true
+	}
+	return m, nil, false
+}
+
+func (m UIModel) handleSidebarFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
+	var cmd tea.Cmd
+	prevCursor := m.sidebar.State().Cursor
+	m.sidebar, cmd = m.sidebar.Update(msg)
+
+	if m.sidebar.State().Cursor != prevCursor {
+		node := m.sidebar.State().CurrentNode()
+		if node != nil {
+			var newProjectDir string
+			if node.Type == domain.NodeTypeWorktree && node.ParentProject != nil {
+				newProjectDir = node.ParentProject.Path
+			} else if node.Type == domain.NodeTypeProject {
+				newProjectDir = node.Path
+			}
+
+			if newProjectDir != "" && newProjectDir != m.app.activeProject {
+				err := m.app.SetActiveProject(context.Background(), newProjectDir)
+				if err == nil {
+					m.selection.Ticket = domain.Ticket{}
+					m.selection.Model = ""
+					m.selection.Agent = ""
+					cmd = tea.Batch(cmd, loadTicketsCmd(m.app.Project().Store()))
+				}
+			}
+		}
+	}
+	return m, cmd
+}
+
+func (m UIModel) handleHarnessFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
+	var cmd tea.Cmd
+	var prevHarness string
+	if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+		prevHarness = i.harness.Name
+	}
+
+	m.harnessList, cmd = m.harnessList.Update(msg)
+
+	if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
+		if prevHarness != i.harness.Name {
+			m.selection.Harness = i.harness
+			m, _ = m.handleModelSkip()
+			m, _ = m.handleAgentSkip()
+		}
+	}
+	return m, cmd
+}
+
+func (m UIModel) handleFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
+	var cmd tea.Cmd
+	if m.state != ViewStateMatrix {
 		return m, cmd
-
-	case tea.KeyMsg:
-		if model, cmd, handled := m.handleKeyMsg(msg); handled {
-			return model, cmd
-		}
 	}
 
-	if m.state == ViewStateMatrix {
-		switch m.focus {
-		case FocusSidebar:
-			prevCursor := m.sidebar.State().Cursor
-			m.sidebar, cmd = m.sidebar.Update(msg)
+	switch m.focus {
+	case FocusSidebar:
+		return m.handleSidebarFocusUpdate(msg)
+	case FocusTickets:
+		m.ticketList, cmd = m.ticketList.Update(msg)
+	case FocusHarness:
+		return m.handleHarnessFocusUpdate(msg)
+	case FocusModel:
+		m.modelList, cmd = m.modelList.Update(msg)
+	case FocusAgent:
+		m.agentList, cmd = m.agentList.Update(msg)
+	}
+	return m, cmd
+}
 
-			if m.sidebar.State().Cursor != prevCursor {
-				node := m.sidebar.State().CurrentNode()
-				if node != nil {
-					var newProjectDir string
-					if node.Type == domain.NodeTypeWorktree && node.ParentProject != nil {
-						newProjectDir = node.ParentProject.Path
-					} else if node.Type == domain.NodeTypeProject {
-						newProjectDir = node.Path
-					}
-
-					if newProjectDir != "" && newProjectDir != m.app.activeProject {
-						err := m.app.SetActiveProject(context.Background(), newProjectDir)
-						if err == nil {
-							m.selection.Ticket = domain.Ticket{}
-							m.selection.Model = ""
-							m.selection.Agent = ""
-							cmd = tea.Batch(cmd, loadTicketsCmd(m.app.Project().Store()))
-						}
-					}
-				}
-			}
-		case FocusTickets:
-			m.ticketList, cmd = m.ticketList.Update(msg)
-		case FocusHarness:
-			var prevHarness string
-			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
-				prevHarness = i.harness.Name
-			}
-
-			m.harnessList, cmd = m.harnessList.Update(msg)
-
-			if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
-				if prevHarness != i.harness.Name {
-					// Harness selection changed, update downstream
-					m.selection.Harness = i.harness
-					m, _ = m.handleModelSkip()
-					m, _ = m.handleAgentSkip()
-				}
-			}
-		case FocusModel:
-			m.modelList, cmd = m.modelList.Update(msg)
-		case FocusAgent:
-			m.agentList, cmd = m.agentList.Update(msg)
-		}
+func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if newModel, cmd, handled := m.handleCoreMsgs(msg); handled {
+		return newModel, cmd
+	}
+	if newModel, cmd, handled := m.handleProjectMsgs(msg); handled {
+		return newModel, cmd
+	}
+	if newModel, cmd, handled := m.handleAgentMsgs(msg); handled {
+		return newModel, cmd
 	}
 
+	m, cmd := m.handleFocusUpdate(msg)
 	m.updateKeyBindings()
 	return m, cmd
 }

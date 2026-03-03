@@ -78,7 +78,7 @@ func TestAddProjectModal_KeyHandlers(t *testing.T) {
 
 	// Test 'y' key accepts
 	yMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
-	newModel, cmd, handled := m.handleKeyMsg(yMsg)
+	_, cmd, handled := m.handleKeyMsg(yMsg)
 	require.True(t, handled, "y key should be handled")
 	require.NotNil(t, cmd)
 
@@ -91,7 +91,7 @@ func TestAddProjectModal_KeyHandlers(t *testing.T) {
 	// Reset and test 'n' key declines
 	m.showAddProjectModal = true
 	nMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
-	newModel, cmd, handled = m.handleKeyMsg(nMsg)
+	_, cmd, handled = m.handleKeyMsg(nMsg)
 	require.True(t, handled, "n key should be handled")
 	require.NotNil(t, cmd)
 
@@ -99,9 +99,6 @@ func TestAddProjectModal_KeyHandlers(t *testing.T) {
 	resultMsg, ok = msg.(addProjectResultMsg)
 	require.True(t, ok, "should return addProjectResultMsg")
 	assert.False(t, resultMsg.success, "n should indicate decline")
-
-	// Suppress unused variable warning
-	_ = newModel
 }
 
 // TestAddProjectModal_BlocksOtherKeys tests that other keys are blocked when modal is shown

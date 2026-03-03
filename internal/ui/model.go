@@ -3,8 +3,11 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -42,6 +45,15 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 	h.Styles.ShortDesc = h.Styles.ShortDesc.Background(ThemeFooterBg).Foreground(ThemeFooterFg)
 	h.Styles.ShortSeparator = h.Styles.ShortSeparator.Background(ThemeFooterBg).Foreground(ThemeFooterFg)
 
+	// Initialize filepicker for adding projects
+	fp := filepicker.New()
+	fp.DirAllowed = true
+	fp.FileAllowed = false
+	fp.ShowHidden = true
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		fp.CurrentDirectory = homeDir
+	}
+
 	return UIModel{
 		app:          app,
 		state:        ViewStateMatrix,
@@ -64,6 +76,8 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 			ColorCycleStart: time.Now(),
 			CurrentThemeIdx: 2, // TokyoNight theme index (2)
 		},
+		filepicker:     fp,
+		showFilePicker: false,
 	}.initSidebar()
 }
 
@@ -187,6 +201,27 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case refreshAnimationTickMsg:
 		return m.handleRefreshAnimationTick()
 
+	case OpenFilePickerMsg:
+		m.showFilePicker = true
+		m.showAddProjectModal = false
+		m.pendingProjectPath = ""
+		return m, nil
+
+	case ShowAddProjectModalMsg:
+		m.showFilePicker = false
+		m.showAddProjectModal = true
+		m.pendingProjectPath = msg.path
+		return m, nil
+
+	case addProjectConfirmedMsg:
+		return m.handleAddProjectConfirmed(msg)
+
+	case addProjectCancelledMsg:
+		m.showFilePicker = true
+		m.showAddProjectModal = false
+		m.pendingProjectPath = ""
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m, cmd = m.handleWindowSizeMsg(msg)
 		return m, cmd
@@ -195,6 +230,12 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if model, cmd, handled := m.handleKeyMsg(msg); handled {
 			return model, cmd
 		}
+	}
+
+	// Handle filepicker messages when filepicker is active
+	if m.showFilePicker {
+		m.filepicker, cmd = m.filepicker.Update(msg)
+		return m, cmd
 	}
 
 	if m.state == ViewStateMatrix {
@@ -251,4 +292,32 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.updateKeyBindings()
 	return m, cmd
+}
+
+// addProjectConfirmedMsg is emitted when user confirms adding a project.
+type addProjectConfirmedMsg struct {
+	path string
+}
+
+// addProjectCancelledMsg is emitted when user cancels adding a project.
+type addProjectCancelledMsg struct{}
+
+// ShowAddProjectModalMsg is emitted to show the add project confirmation modal.
+type ShowAddProjectModalMsg struct {
+	path string
+}
+
+// checkAndPromptAddProject checks if the directory has a .beads subdirectory
+// and shows appropriate modal.
+func (m UIModel) checkAndPromptAddProject(dirPath string) tea.Cmd {
+	return func() tea.Msg {
+		beadsPath := filepath.Join(dirPath, ".beads")
+		if _, err := os.Stat(beadsPath); os.IsNotExist(err) {
+			return errMsg{fmt.Errorf("no .beads directory found in %s", dirPath)}
+		} else if err != nil {
+			return errMsg{fmt.Errorf("error checking .beads directory: %w", err)}
+		}
+		// Directory has .beads, return message to show confirmation modal
+		return ShowAddProjectModalMsg{path: dirPath}
+	}
 }

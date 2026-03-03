@@ -11,4 +11,5 @@ import "github.com/megatherium/blunderbust/internal/domain"
 // Loader abstracts configuration file reading and validation.
 type Loader interface {
 	Load(path string) (*domain.Config, error)
+	Save(path string, cfg *domain.Config) error
 }

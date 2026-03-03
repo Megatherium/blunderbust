@@ -18,6 +18,10 @@ func (m mockConfigLoader) Load(path string) (*domain.Config, error) {
 	return nil, fmt.Errorf("mock no config")
 }
 
+func (m mockConfigLoader) Save(path string, cfg *domain.Config) error {
+	return nil
+}
+
 func newTestApp() *App {
 	return &App{
 		loader: mockConfigLoader{},

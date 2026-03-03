@@ -290,3 +290,79 @@ func (l *YAMLLoader) convertHarness(raw yamlHarness, index int, configDir string
 
 // Compile-time check that YAMLLoader implements Loader interface.
 var _ Loader = (*YAMLLoader)(nil)
+
+// Save writes the configuration to a YAML file.
+func (l *YAMLLoader) Save(path string, cfg *domain.Config) error {
+	yamlCfg := l.domainToYAML(cfg)
+	
+	data, err := yaml.Marshal(yamlCfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+	
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	
+	return nil
+}
+
+// domainToYAML converts domain.Config to yamlConfig for YAML marshaling.
+func (l *YAMLLoader) domainToYAML(cfg *domain.Config) yamlConfig {
+	var yamlCfg yamlConfig
+	
+	// Convert harnesses
+	if len(cfg.Harnesses) > 0 {
+		yamlCfg.Harnesses = make([]yamlHarness, len(cfg.Harnesses))
+		for i, h := range cfg.Harnesses {
+			yamlCfg.Harnesses[i] = yamlHarness{
+				Name:            h.Name,
+				CommandTemplate: h.CommandTemplate,
+				PromptTemplate:  h.PromptTemplate,
+				Models:          h.SupportedModels,
+				Agents:          h.SupportedAgents,
+				Env:             h.Env,
+			}
+		}
+	}
+	
+	// Convert launcher
+	if cfg.Launcher != nil {
+		yamlCfg.Launcher = &yamlLauncherConfig{
+			Target: cfg.Launcher.Target,
+		}
+	}
+	
+	// Convert defaults
+	if cfg.Defaults != nil {
+		yamlCfg.Defaults = &yamlDefaults{
+			Harness: cfg.Defaults.Harness,
+			Model:   cfg.Defaults.Model,
+			Agent:   cfg.Defaults.Agent,
+		}
+	}
+	
+	// Convert general config
+	if cfg.General != nil {
+		autostart := cfg.General.AutostartDolt
+		yamlCfg.General = &yamlGeneralConfig{
+			AutostartDolt: &autostart,
+		}
+	}
+	
+	// Convert workspace
+	if len(cfg.Workspace.Projects) > 0 {
+		projects := make([]yamlProject, len(cfg.Workspace.Projects))
+		for i, p := range cfg.Workspace.Projects {
+			projects[i] = yamlProject{
+				Dir:  p.Dir,
+				Name: p.Name,
+			}
+		}
+		yamlCfg.Workspaces = map[string]yamlWorkspace{
+			"default": {Projects: projects},
+		}
+	}
+	
+	return yamlCfg
+}

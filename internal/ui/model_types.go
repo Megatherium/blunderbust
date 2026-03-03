@@ -3,6 +3,7 @@ package ui
 import (
 	"time"
 
+	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
@@ -54,6 +55,40 @@ const (
 	ViewStateError
 )
 
+// UIModel represents the complete state of the TUI application.
+//
+// View State Machine (renderMainContent precedence):
+//
+// 1. loading: Loading animation (initial startup)
+// 2. showFilePicker: File picker overlay for adding projects
+// 3. showAddProjectModal: "Add project?" confirmation modal
+// 4. viewingAgentID: Agent output view (non-empty string)
+// 5. Default: Matrix view (ticket/harness/model/agent columns)
+//
+// Note: showModal is a separate overlay system used for error/info messages
+// and is composited on top of the main content.
+//
+// Valid State Transitions (Add Project flow):
+//
+//	Sidebar (focus=FocusSidebar) + 'a' key → OpenFilePickerMsg
+//	→ showFilePicker = true
+//	→ File picker active, 'a' to select dir, 'esc' to cancel
+//	→ Select dir with .beads → ShowAddProjectModalMsg
+//	→ showFilePicker = false, showAddProjectModal = true
+//	→ 'y' or Enter → addProjectConfirmedMsg → project added
+//	→ 'n' or Esc → addProjectCancelledMsg → back to file picker
+//
+// Valid State Transitions (Agent view):
+//
+//	Matrix view + select agent in sidebar → viewingAgentID = agentID
+//	→ Agent output view
+//	→ Enter or Back → viewingAgentID = "" → back to matrix
+//
+// Column Disable Logic:
+//
+//	modelColumnDisabled = true when harness has no models
+//	agentColumnDisabled = true when harness has no agents
+//	These are set by handleModelSkip() and handleAgentSkip()
 type UIModel struct {
 	app       *App
 	state     ViewState
@@ -111,6 +146,12 @@ type UIModel struct {
 	lastTicketUpdate      time.Time
 	refreshedRecently     bool
 	refreshAnimationFrame int
+
+	// File picker for adding projects
+	filepicker          filepicker.Model
+	showFilePicker      bool
+	showAddProjectModal bool
+	pendingProjectPath  string
 }
 
 // RunningAgent tracks a launched agent session

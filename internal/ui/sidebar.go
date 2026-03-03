@@ -139,6 +139,8 @@ func (m SidebarModel) handleKey(msg tea.KeyMsg) (SidebarModel, tea.Cmd) {
 		if node != nil && len(node.Children) > 0 && node.IsExpanded {
 			m.state.ToggleExpand()
 		}
+	case key.Matches(msg, sidebarKeys.AddProject):
+		return m, OpenFilePickerCmd()
 	}
 	return m, nil
 }
@@ -434,13 +436,24 @@ type AgentSelectedMsg struct {
 	AgentID string
 }
 
+// OpenFilePickerCmd creates a command that emits OpenFilePickerMsg.
+func OpenFilePickerCmd() tea.Cmd {
+	return func() tea.Msg {
+		return OpenFilePickerMsg{}
+	}
+}
+
+// OpenFilePickerMsg is emitted when the user requests to add a project.
+type OpenFilePickerMsg struct{}
+
 // sidebarKeys defines the keybindings for sidebar navigation.
 var sidebarKeys = struct {
-	Up       key.Binding
-	Down     key.Binding
-	Enter    key.Binding
-	Expand   key.Binding
-	Collapse key.Binding
+	Up         key.Binding
+	Down       key.Binding
+	Enter      key.Binding
+	Expand     key.Binding
+	Collapse   key.Binding
+	AddProject key.Binding
 }{
 	Up: key.NewBinding(
 		key.WithKeys("up", "k"),
@@ -461,5 +474,9 @@ var sidebarKeys = struct {
 	Collapse: key.NewBinding(
 		key.WithKeys("left", "h"),
 		key.WithHelp("←/h", "collapse"),
+	),
+	AddProject: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "add project"),
 	),
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -65,11 +66,13 @@ func (m UIModel) renderMainContent() string {
 	case ViewStateMatrix:
 		if m.loading {
 			s = m.renderLoadingView()
+		} else if m.showFilePicker {
+			s = m.renderFilePickerView()
+		} else if m.showAddProjectModal {
+			s = m.renderAddProjectModal()
 		} else if m.viewingAgentID != "" {
-			// Show agent output view
 			s = m.renderAgentOutputView()
 		} else {
-			// Show the matrix view
 			s = m.renderMatrixView()
 		}
 	case ViewStateConfirm:
@@ -367,6 +370,54 @@ func (m UIModel) renderAgentOutputView() string {
 	)
 
 	return content
+}
+
+// renderFilePickerView renders the file picker for adding projects.
+func (m UIModel) renderFilePickerView() string {
+	var s strings.Builder
+
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(m.currentTheme.TitleColor).
+		MarginBottom(1)
+
+	helpStyle := lipgloss.NewStyle().
+		Faint(true).
+		MarginTop(1)
+
+	s.WriteString(titleStyle.Render("Add Project - Select Directory"))
+	s.WriteString("\n\n")
+	s.WriteString(m.filepicker.View())
+	s.WriteString("\n")
+	s.WriteString(helpStyle.Render("Press 'a' to select highlighted directory, 'esc' to cancel"))
+
+	return s.String()
+}
+
+// renderAddProjectModal renders the confirmation modal for adding a project.
+func (m UIModel) renderAddProjectModal() string {
+	var s strings.Builder
+
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(m.currentTheme.TitleColor).
+		MarginBottom(1)
+
+	pathStyle := lipgloss.NewStyle().
+		Foreground(m.currentTheme.ReadyColor).
+		Bold(true)
+
+	helpStyle := lipgloss.NewStyle().
+		Faint(true).
+		MarginTop(1)
+
+	s.WriteString(titleStyle.Render("Add Project?"))
+	s.WriteString("\n\n")
+	s.WriteString(fmt.Sprintf("Add project at:\n%s", pathStyle.Render(m.pendingProjectPath)))
+	s.WriteString("\n\n")
+	s.WriteString(helpStyle.Render("Press 'y' or Enter to confirm, 'n' or Esc to cancel"))
+
+	return s.String()
 }
 
 func (m UIModel) View() string {

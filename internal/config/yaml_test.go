@@ -939,3 +939,114 @@ harnesses:
 		t.Errorf("Error should mention duplicate project directory, got: %v", err)
 	}
 }
+
+func TestYAMLLoader_SaveAndLoad(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test_save.yaml")
+
+	// Create a real project directory (Load validates this exists)
+	projectDir := filepath.Join(tmpDir, "test_project")
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
+		t.Fatalf("Failed to create project directory: %v", err)
+	}
+
+	// Create a config to save
+	cfg := &domain.Config{
+		Harnesses: []domain.Harness{
+			{
+				Name:            "test-harness",
+				CommandTemplate: "echo {{.TicketID}}",
+				PromptTemplate:  "Test prompt",
+				SupportedModels: []string{"gpt-4"},
+				SupportedAgents: []string{"opencode"},
+				Env:             map[string]string{"KEY": "value"},
+			},
+		},
+		Launcher: &domain.LauncherConfig{
+			Target: "foreground",
+		},
+		Defaults: &domain.Defaults{
+			Harness: "test-harness",
+			Model:   "gpt-4",
+			Agent:   "opencode",
+		},
+		General: &domain.GeneralConfig{
+			AutostartDolt: true,
+		},
+		Workspace: domain.Workspace{
+			Name: "default",
+			Projects: []domain.Project{
+				{Dir: projectDir, Name: "test-project"},
+			},
+		},
+	}
+
+	loader := NewYAMLLoader()
+
+	// Save the config
+	err := loader.Save(configPath, cfg)
+	if err != nil {
+		t.Fatalf("Failed to save config: %v", err)
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Fatal("Config file was not created")
+	}
+
+	// Load the config back
+	loadedCfg, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Failed to load saved config: %v", err)
+	}
+
+	// Verify loaded config matches original
+	if len(loadedCfg.Harnesses) != 1 {
+		t.Errorf("Expected 1 harness, got %d", len(loadedCfg.Harnesses))
+	}
+	if loadedCfg.Harnesses[0].Name != "test-harness" {
+		t.Errorf("Expected harness name 'test-harness', got '%s'", loadedCfg.Harnesses[0].Name)
+	}
+	if loadedCfg.Launcher == nil || loadedCfg.Launcher.Target != "foreground" {
+		t.Error("Launcher config not preserved correctly")
+	}
+	if loadedCfg.Defaults == nil || loadedCfg.Defaults.Harness != "test-harness" {
+		t.Error("Defaults config not preserved correctly")
+	}
+	if loadedCfg.General == nil || !loadedCfg.General.AutostartDolt {
+		t.Error("General config not preserved correctly")
+	}
+	if len(loadedCfg.Workspace.Projects) != 1 {
+		t.Errorf("Expected 1 project, got %d", len(loadedCfg.Workspace.Projects))
+	}
+}
+
+func TestYAMLLoader_SaveEmptyConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test_empty.yaml")
+
+	cfg := &domain.Config{
+		Harnesses: []domain.Harness{
+			{
+				Name:            "test",
+				CommandTemplate: "echo test",
+			},
+		},
+	}
+
+	loader := NewYAMLLoader()
+	err := loader.Save(configPath, cfg)
+	if err != nil {
+		t.Fatalf("Failed to save empty config: %v", err)
+	}
+
+	// Load it back
+	loadedCfg, err := loader.Load(configPath)
+	if err != nil {
+		t.Fatalf("Failed to load saved config: %v", err)
+	}
+
+	if len(loadedCfg.Harnesses) != 1 {
+		t.Errorf("Expected 1 harness, got %d", len(loadedCfg.Harnesses))
+	}
+}

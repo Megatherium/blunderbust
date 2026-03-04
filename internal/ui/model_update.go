@@ -168,23 +168,25 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 	m.updateSizes()
 	m.lastTicketUpdate = time.Now()
 
-	// Restore ticket selection if it still exists in the new list
-	// Note: We only set m.selection.Ticket here, not call m.ticketList.Select().
-	// This is because bubbles/list v0.10.3's Select() doesn't restore visual cursor
-	// position when the same item remains selected - it only updates internal state.
-	// The visual cursor will jump due to library limitations, but the logical selection
-	// state is preserved correctly for downstream use.
+	// Restore ticket selection and visual cursor position if it still exists.
+	// When tickets reorder (for example after priority changes), Select() with the
+	// new index moves the visible cursor to the same ticket again.
+	// When tickets stay at the same index, Select() alone may not visibly move the
+	// cursor, so m.selection.Ticket remains the source of truth for logical state.
 	if prevTicketID != "" {
-		found := false
-		for _, ticket := range msg {
+		foundIndex := -1
+		for idx, ticket := range msg {
 			if ticket.ID == prevTicketID {
 				m.selection.Ticket = ticket
-				found = true
+				foundIndex = idx
 				break
 			}
 		}
+		if foundIndex >= 0 {
+			m.ticketList.Select(foundIndex)
+		}
 		// Clear selection if previously selected ticket no longer exists
-		if !found {
+		if foundIndex < 0 {
 			m.selection.Ticket = domain.Ticket{}
 		}
 	}

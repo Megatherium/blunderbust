@@ -1207,6 +1207,45 @@ func TestHandleTicketsLoaded_PreservesSelection(t *testing.T) {
 	// Ticket selection should be preserved
 	assert.Equal(t, "bb-2", updatedM.selection.Ticket.ID)
 	assert.Equal(t, "Ticket 2", updatedM.selection.Ticket.Title)
+
+	// Visual list cursor should also remain on the selected ticket
+	selectedItem, ok := updatedM.ticketList.SelectedItem().(ticketItem)
+	assert.True(t, ok)
+	assert.Equal(t, "bb-2", selectedItem.ticket.ID)
+}
+
+func TestHandleTicketsLoaded_PreservesSelectionAfterReorder(t *testing.T) {
+	registry, _ := discovery.NewRegistry("")
+	app := &App{
+		loader:   mockConfigLoader{},
+		Registry: registry,
+		opts:     domain.AppOptions{},
+	}
+	m := NewUIModel(app, nil)
+
+	oldTickets := []domain.Ticket{
+		{ID: "bb-1", Title: "Ticket 1", Status: "open", Priority: 1},
+		{ID: "bb-2", Title: "Ticket 2", Status: "open", Priority: 2},
+		{ID: "bb-3", Title: "Ticket 3", Status: "open", Priority: 3},
+	}
+	m.ticketList = newTicketList(oldTickets)
+	m.ticketList.Select(1) // Select bb-2
+	m.selection.Ticket = oldTickets[1]
+
+	// bb-2 moves to index 2 after refresh
+	newTickets := []domain.Ticket{
+		{ID: "bb-1", Title: "Ticket 1", Status: "open", Priority: 1},
+		{ID: "bb-3", Title: "Ticket 3", Status: "open", Priority: 3},
+		{ID: "bb-2", Title: "Ticket 2", Status: "open", Priority: 2},
+	}
+
+	updatedModel, _ := m.handleTicketsLoaded(ticketsLoadedMsg(newTickets))
+	updatedM := updatedModel.(UIModel)
+
+	assert.Equal(t, "bb-2", updatedM.selection.Ticket.ID)
+	selectedItem, ok := updatedM.ticketList.SelectedItem().(ticketItem)
+	assert.True(t, ok)
+	assert.Equal(t, "bb-2", selectedItem.ticket.ID)
 }
 
 func TestHandleTicketsLoaded_UpdatesRemovedSelection(t *testing.T) {

@@ -33,7 +33,7 @@ func TestRenderMatrix_ColumnWithFocus(t *testing.T) {
 		AWidth:       20,
 		Focus:        FocusTickets,
 		AnimState:    AnimationState{StartTime: time.Now()},
-		Theme:        &MatrixTheme,
+		Theme:        MatrixTheme,
 		TicketView:   "ticket1\nticket2",
 		HarnessView:  "harness1",
 		ModelView:    "model1",
@@ -66,7 +66,7 @@ func TestRenderMatrix_ColumnWithoutFocus(t *testing.T) {
 		AWidth:       20,
 		Focus:        FocusHarness, // Harness is focused, not tickets
 		AnimState:    AnimationState{StartTime: time.Now()},
-		Theme:        &MatrixTheme,
+		Theme:        MatrixTheme,
 		TicketView:   "ticket1",
 		HarnessView:  "harness1",
 		ModelView:    "model1",
@@ -97,7 +97,7 @@ func TestRenderMatrix_ModelColumnDisabled(t *testing.T) {
 		ModelColumnDisabled: true,
 		Focus:               FocusTickets,
 		AnimState:           AnimationState{StartTime: time.Now()},
-		Theme:               &MatrixTheme,
+		Theme:               MatrixTheme,
 		TicketView:          "ticket1",
 		HarnessView:         "harness1",
 		ModelView:           "model1",
@@ -127,7 +127,7 @@ func TestRenderMatrix_AgentColumnDisabled(t *testing.T) {
 		AgentColumnDisabled: true,
 		Focus:               FocusTickets,
 		AnimState:           AnimationState{StartTime: time.Now()},
-		Theme:               &MatrixTheme,
+		Theme:               MatrixTheme,
 		TicketView:          "ticket1",
 		HarnessView:         "harness1",
 		ModelView:           "model1",
@@ -157,7 +157,7 @@ func TestRenderMatrix_WithSidebar(t *testing.T) {
 		AWidth:       20,
 		Focus:        FocusSidebar,
 		AnimState:    AnimationState{StartTime: time.Now()},
-		Theme:        &MatrixTheme,
+		Theme:        MatrixTheme,
 		TicketView:   "ticket1",
 		HarnessView:  "harness1",
 		ModelView:    "model1",
@@ -187,7 +187,7 @@ func TestRenderMatrix_WithoutSidebar(t *testing.T) {
 		AWidth:       20,
 		Focus:        FocusTickets,
 		AnimState:    AnimationState{StartTime: time.Now()},
-		Theme:        &MatrixTheme,
+		Theme:        MatrixTheme,
 		TicketView:   "ticket1",
 		HarnessView:  "harness1",
 		ModelView:    "model1",
@@ -218,7 +218,7 @@ func TestRenderMatrix_FilterBox(t *testing.T) {
 		AWidth:       20,
 		Focus:        FocusTickets,
 		AnimState:    AnimationState{StartTime: time.Now()},
-		Theme:        &MatrixTheme,
+		Theme:        MatrixTheme,
 		TicketView:   "ticket1",
 		HarnessView:  "harness1",
 		ModelView:    "model1",
@@ -244,7 +244,7 @@ func TestGetActiveColor_WithFlash(t *testing.T) {
 	}
 	theme := MatrixTheme
 
-	color := getActiveColor(animState, FocusTickets, &theme)
+	color := getActiveColor(animState, FocusTickets, theme)
 	assert.Equal(t, FlashColor, color)
 }
 
@@ -256,7 +256,7 @@ func TestGetActiveColor_WithoutFlash(t *testing.T) {
 	}
 	theme := MatrixTheme
 
-	color := getActiveColor(animState, FocusTickets, &theme)
+	color := getActiveColor(animState, FocusTickets, theme)
 	// Should return a cycling color, not FlashColor
 	assert.NotEqual(t, FlashColor, color)
 }
@@ -295,7 +295,7 @@ func TestRenderMatrixColumn_Focused(t *testing.T) {
 		20,
 		true, // focused
 		"Column Title",
-		&theme,
+		theme,
 		activeBorder,
 		inactiveBorder,
 		capView,
@@ -319,7 +319,7 @@ func TestRenderMatrixColumn_NotFocused(t *testing.T) {
 		20,
 		false, // not focused
 		"Column Title",
-		&theme,
+		theme,
 		activeBorder,
 		inactiveBorder,
 		capView,
@@ -341,7 +341,7 @@ func TestApplySidebarBorder(t *testing.T) {
 	activeColor := lipgloss.Color("#ff0000")
 	rightPanelBox := "right panel"
 
-	s := renderMatrixWithSidebar(cfg, rightPanelBox, activeColor)
+	s := applySidebarBorder(cfg, rightPanelBox, activeColor)
 
 	assert.NotEmpty(t, s)
 	assert.Contains(t, s, "sidebar content")

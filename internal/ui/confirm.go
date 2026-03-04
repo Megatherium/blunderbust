@@ -19,12 +19,7 @@ var (
 				MarginBottom(1)
 )
 
-func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun bool, workDir string, theme *ThemePalette) string {
-	// Use Matrix theme as default if nil
-	if theme == nil {
-		theme = &MatrixTheme
-	}
-
+func confirmView(selection domain.Selection, renderer *config.Renderer, dryRun bool, workDir string, theme ThemePalette) string {
 	// Arcade-style styles using theme colors
 	readyTextStyle := lipgloss.NewStyle().
 		Bold(true).

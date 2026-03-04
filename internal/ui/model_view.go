@@ -54,6 +54,13 @@ func (m *UIModel) updateSizes() {
 	m.help.Width = m.width
 }
 
+func (m UIModel) getThemeValue() ThemePalette {
+	if m.currentTheme != nil {
+		return *m.currentTheme
+	}
+	return MatrixTheme
+}
+
 func (m UIModel) renderMainContent() string {
 	return RenderMainContent(MainContentConfig{
 		State:               m.state,
@@ -66,7 +73,7 @@ func (m UIModel) renderMainContent() string {
 		Renderer:            m.app.Renderer,
 		DryRun:              m.app.opts.DryRun,
 		SelectedWorktree:    m.selectedWorktree,
-		CurrentTheme:        m.currentTheme,
+		CurrentTheme:        m.getThemeValue(),
 		ShowModal:           m.showModal,
 		ModalContent:        m.modalContent,
 		PendingProjectPath:  m.pendingProjectPath,
@@ -102,7 +109,7 @@ func (m UIModel) buildMatrixConfig() MatrixConfig {
 		AgentColumnDisabled: m.agentColumnDisabled,
 		Focus:               m.focus,
 		AnimState:           m.animState,
-		Theme:               &theme,
+		Theme:               theme,
 		TicketView:          m.ticketList.View(),
 		HarnessView:         m.harnessList.View(),
 		ModelView:           m.modelList.View(),

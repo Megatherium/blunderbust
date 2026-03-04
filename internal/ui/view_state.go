@@ -22,7 +22,7 @@ type MainContentConfig struct {
 	Renderer            *config.Renderer
 	DryRun              bool
 	SelectedWorktree    string
-	CurrentTheme        *ThemePalette
+	CurrentTheme        ThemePalette
 	ShowModal           bool
 	ModalContent        string
 	PendingProjectPath  string

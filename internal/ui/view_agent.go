@@ -13,7 +13,7 @@ type AgentConfig struct {
 	Agent  *RunningAgent
 	Width  int
 	Height int
-	Theme  *ThemePalette
+	Theme  ThemePalette
 }
 
 // RenderAgentOutput renders the agent output view

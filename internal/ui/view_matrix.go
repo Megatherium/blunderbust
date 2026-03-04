@@ -29,7 +29,7 @@ type MatrixConfig struct {
 	AnimState AnimationState
 
 	// Current theme
-	Theme *ThemePalette
+	Theme ThemePalette
 
 	// List views
 	TicketView  string
@@ -55,12 +55,9 @@ func RenderMatrix(cfg MatrixConfig) string {
 	listHeight := cfg.Height - filterHeight
 
 	theme := cfg.Theme
-	if theme == nil {
-		theme = &MatrixTheme
-	}
 
 	activeColor := getActiveColor(cfg.AnimState, cfg.Focus, theme)
-	glowColor := getGlowColor(cfg.AnimState.PulsePhase, theme)
+	glowColor := getGlowColor(cfg.AnimState.PulsePhase, &theme)
 
 	activeBorder := createActiveBorder(listHeight, activeColor, glowColor)
 	inactiveBorder := createInactiveBorder(listHeight)
@@ -104,17 +101,17 @@ func RenderMatrix(cfg MatrixConfig) string {
 	rightPanelBox := lipgloss.JoinVertical(lipgloss.Top, filterBox, matrixBox)
 
 	if cfg.ShowSidebar {
-		return renderMatrixWithSidebar(cfg, rightPanelBox, activeColor)
+		return applySidebarBorder(cfg, rightPanelBox, activeColor)
 	}
 
 	return rightPanelBox
 }
 
-func getActiveColor(animState AnimationState, focus FocusColumn, theme *ThemePalette) lipgloss.Color {
+func getActiveColor(animState AnimationState, focus FocusColumn, theme ThemePalette) lipgloss.Color {
 	if animState.shouldShowFlash(focus) {
 		return FlashColor
 	}
-	return getCyclingColor(animState.PulsePhase, animState.ColorCycleIndex, theme)
+	return getCyclingColor(animState.PulsePhase, animState.ColorCycleIndex, &theme)
 }
 
 func createActiveBorder(listHeight int, activeColor, glowColor lipgloss.Color) func(int) lipgloss.Style {
@@ -149,7 +146,7 @@ func renderMatrixColumn(
 	view string, width int,
 	isFocused bool,
 	title string,
-	theme *ThemePalette,
+	theme ThemePalette,
 	activeBorder, inactiveBorder func(int) lipgloss.Style,
 	capView, faintCapView func(string, int) string,
 ) string {
@@ -168,7 +165,7 @@ func renderMatrixColumn(
 	return inactiveBorder(width).Render(faintCapView(titledView, width))
 }
 
-func renderModelColumn(cfg MatrixConfig, theme *ThemePalette, listHeight int,
+func renderModelColumn(cfg MatrixConfig, theme ThemePalette, listHeight int,
 	capView, faintCapView func(string, int) string) string {
 	if cfg.ModelColumnDisabled {
 		disabledStyle := lipgloss.NewStyle().
@@ -184,13 +181,13 @@ func renderModelColumn(cfg MatrixConfig, theme *ThemePalette, listHeight int,
 	return renderMatrixColumn(cfg.ModelView, cfg.MWidth, cfg.Focus == FocusModel,
 		"Models", theme,
 		func(w int) lipgloss.Style {
-			return createActiveBorder(listHeight, getActiveColor(cfg.AnimState, FocusModel, theme), getGlowColor(cfg.AnimState.PulsePhase, theme))(w)
+			return createActiveBorder(listHeight, getActiveColor(cfg.AnimState, FocusModel, theme), getGlowColor(cfg.AnimState.PulsePhase, &theme))(w)
 		},
 		createInactiveBorder(listHeight),
 		capView, faintCapView)
 }
 
-func renderAgentColumn(cfg MatrixConfig, theme *ThemePalette, listHeight int,
+func renderAgentColumn(cfg MatrixConfig, theme ThemePalette, listHeight int,
 	capView, faintCapView func(string, int) string) string {
 	if cfg.AgentColumnDisabled {
 		disabledStyle := lipgloss.NewStyle().
@@ -206,13 +203,13 @@ func renderAgentColumn(cfg MatrixConfig, theme *ThemePalette, listHeight int,
 	return renderMatrixColumn(cfg.AgentView, cfg.AWidth, cfg.Focus == FocusAgent,
 		"Agents", theme,
 		func(w int) lipgloss.Style {
-			return createActiveBorder(listHeight, getActiveColor(cfg.AnimState, FocusAgent, theme), getGlowColor(cfg.AnimState.PulsePhase, theme))(w)
+			return createActiveBorder(listHeight, getActiveColor(cfg.AnimState, FocusAgent, theme), getGlowColor(cfg.AnimState.PulsePhase, &theme))(w)
 		},
 		createInactiveBorder(listHeight),
 		capView, faintCapView)
 }
 
-func renderMatrixWithSidebar(cfg MatrixConfig, rightPanelBox string, activeColor lipgloss.Color) string {
+func applySidebarBorder(cfg MatrixConfig, rightPanelBox string, activeColor lipgloss.Color) string {
 	w := cfg.SidebarWidth
 	if w < 2 {
 		w = 2

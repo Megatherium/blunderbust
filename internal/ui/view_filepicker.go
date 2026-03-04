@@ -11,7 +11,7 @@ import (
 // FilePickerConfig holds configuration for rendering the file picker view
 type FilePickerConfig struct {
 	Filepicker filepicker.Model
-	Theme      *ThemePalette
+	Theme      ThemePalette
 }
 
 // RenderFilePicker renders the file picker for adding projects
@@ -19,9 +19,6 @@ func RenderFilePicker(cfg FilePickerConfig) string {
 	var s strings.Builder
 
 	theme := cfg.Theme
-	if theme == nil {
-		theme = &MatrixTheme
-	}
 
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -44,7 +41,7 @@ func RenderFilePicker(cfg FilePickerConfig) string {
 // AddProjectConfig holds configuration for rendering the add project modal
 type AddProjectConfig struct {
 	PendingProjectPath string
-	Theme              *ThemePalette
+	Theme              ThemePalette
 }
 
 // RenderAddProjectModal renders the confirmation modal for adding a project
@@ -52,9 +49,6 @@ func RenderAddProjectModal(cfg AddProjectConfig) string {
 	var s strings.Builder
 
 	theme := cfg.Theme
-	if theme == nil {
-		theme = &MatrixTheme
-	}
 
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).

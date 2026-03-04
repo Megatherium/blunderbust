@@ -9,7 +9,7 @@ import (
 // LoadingConfig holds configuration for rendering the loading view
 type LoadingConfig struct {
 	StartTime time.Time
-	Theme     *ThemePalette
+	Theme     ThemePalette
 }
 
 // RenderLoading displays an arcade-style loading screen
@@ -21,9 +21,6 @@ func RenderLoading(cfg LoadingConfig) string {
 
 	// Use theme colors for loading
 	theme := cfg.Theme
-	if theme == nil {
-		theme = &MatrixTheme
-	}
 	spinnerColor := theme.TitleColor
 	arcadeStyle := lipgloss.NewStyle().
 		Bold(true).

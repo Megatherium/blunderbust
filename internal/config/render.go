@@ -116,7 +116,7 @@ func BuildTemplateContext(sel domain.Selection, workDir string) domain.TemplateC
 
 		HarnessName: sel.Harness.Name,
 
-		Model: sel.Model,
+		Model: domain.NewModelContext(sel.Model),
 		Agent: sel.Agent,
 
 		RepoPath: "",

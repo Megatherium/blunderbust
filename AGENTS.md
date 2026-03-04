@@ -79,6 +79,7 @@ The interface is nicer for humans. You pick whatever feels right for you.
 
 - **New Features**: When implementing new features, **must** update documentation:
   - User-facing features: Update README.md with usage examples
+  - Template context changes: Document new fields and legacy compatibility behavior
   - Behavioral changes: Update AGENTS.md to inform agents
   - Always keep both files in sync
 

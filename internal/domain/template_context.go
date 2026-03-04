@@ -6,7 +6,66 @@
 
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
+
+// ModelContext keeps the full model ID while exposing structured accessors in templates.
+// Using a string-backed type preserves template truthiness semantics for {{if .Model}}.
+type ModelContext string
+
+// NewModelContext wraps a model ID for template access.
+func NewModelContext(modelID string) ModelContext { return ModelContext(modelID) }
+
+// String preserves backward compatibility with templates that use {{.Model}}.
+func (m ModelContext) String() string {
+	return string(m)
+}
+
+// ModelID returns the full model identifier.
+func (m ModelContext) ModelID() string {
+	return string(m)
+}
+
+// Provider returns the provider segment, if present.
+func (m ModelContext) Provider() string {
+	provider, _, _ := m.parts()
+	return provider
+}
+
+// Org returns the organization segment, if present.
+func (m ModelContext) Org() string {
+	_, org, _ := m.parts()
+	return org
+}
+
+// Organization aliases Org for template readability.
+func (m ModelContext) Organization() string {
+	return m.Org()
+}
+
+// Name returns the model name segment.
+func (m ModelContext) Name() string {
+	_, _, name := m.parts()
+	return name
+}
+
+func (m ModelContext) parts() (provider, org, name string) {
+	if m == "" {
+		return "", "", ""
+	}
+
+	parts := strings.Split(string(m), "/")
+	switch len(parts) {
+	case 1:
+		return "", "", parts[0]
+	case 2:
+		return parts[0], "", parts[1]
+	default:
+		return parts[0], parts[1], strings.Join(parts[2:], "/")
+	}
+}
 
 // TemplateContext is the fat context passed to both command and prompt
 // templates. It is intentionally generous — templates pick what they need.
@@ -26,7 +85,7 @@ type TemplateContext struct {
 	HarnessName string
 
 	// Selection fields
-	Model string
+	Model ModelContext
 	Agent string
 
 	// Environment fields

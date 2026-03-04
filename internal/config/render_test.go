@@ -21,7 +21,7 @@ func TestRenderer_RenderCommand_Simple(t *testing.T) {
 		CommandTemplate: "echo {{.Model}}",
 	}
 	ctx := domain.TemplateContext{
-		Model: "claude-sonnet",
+		Model: domain.NewModelContext("claude-sonnet"),
 	}
 
 	result, err := renderer.RenderCommand(harness, ctx)
@@ -43,7 +43,7 @@ func TestRenderer_RenderCommand_Complex(t *testing.T) {
 	}
 	ctx := domain.TemplateContext{
 		TicketID: "bb-abc",
-		Model:    "claude-sonnet-4-20250514",
+		Model:    domain.NewModelContext("claude-sonnet-4-20250514"),
 		Agent:    "coder",
 	}
 
@@ -363,8 +363,11 @@ func TestBuildTemplateContext_Complete(t *testing.T) {
 	}
 
 	// Verify selection fields
-	if ctx.Model != "claude-sonnet" {
-		t.Errorf("Expected Model 'claude-sonnet', got %q", ctx.Model)
+	if ctx.Model.ModelID() != "claude-sonnet" {
+		t.Errorf("Expected ModelID 'claude-sonnet', got %q", ctx.Model.ModelID())
+	}
+	if ctx.Model.Name() != "claude-sonnet" {
+		t.Errorf("Expected Model.Name 'claude-sonnet', got %q", ctx.Model.Name())
 	}
 	if ctx.Agent != "coder" {
 		t.Errorf("Expected Agent 'coder', got %q", ctx.Agent)
@@ -548,5 +551,47 @@ func TestRenderer_RenderCommand_PromptVariable_Multiline(t *testing.T) {
 	expectedCmd := "script.sh << 'EOF'\nLine 1: bb-multi\nLine 2: Multiline Test\nLine 3: Done\nEOF"
 	if spec.RenderedCommand != expectedCmd {
 		t.Errorf("Expected command %q, got %q", expectedCmd, spec.RenderedCommand)
+	}
+}
+
+func TestRenderer_RenderCommand_ModelStructuredFields(t *testing.T) {
+	renderer := NewRenderer()
+	harness := domain.Harness{
+		Name:            "structured-model",
+		CommandTemplate: "echo {{.Model.Provider}}/{{.Model.Org}}/{{.Model.Name}} {{.Model.ModelID}}",
+	}
+	ctx := domain.TemplateContext{
+		Model: domain.NewModelContext("openrouter/google/gemini-3-pro"),
+	}
+
+	result, err := renderer.RenderCommand(harness, ctx)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expected := "echo openrouter/google/gemini-3-pro openrouter/google/gemini-3-pro"
+	if result != expected {
+		t.Errorf("Expected %q, got %q", expected, result)
+	}
+}
+
+func TestRenderer_RenderCommand_ModelBackwardCompatible(t *testing.T) {
+	renderer := NewRenderer()
+	harness := domain.Harness{
+		Name:            "legacy-model",
+		CommandTemplate: "echo {{.Model}}",
+	}
+	ctx := domain.TemplateContext{
+		Model: domain.NewModelContext("openrouter/google/gemini-3-pro"),
+	}
+
+	result, err := renderer.RenderCommand(harness, ctx)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expected := "echo openrouter/google/gemini-3-pro"
+	if result != expected {
+		t.Errorf("Expected %q, got %q", expected, result)
 	}
 }

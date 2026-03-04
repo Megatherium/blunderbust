@@ -189,13 +189,21 @@ Both `command_template` and `prompt_template` are rendered with Go's `text/templ
 
 - Ticket: `TicketID`, `TicketTitle`, `TicketDescription`, `TicketStatus`, `TicketPriority`, `TicketIssueType`, `TicketAssignee`
 - Harness: `HarnessName`, `Model`, `Agent`
+- Model fields: `Model.ModelID`, `Model.Provider`, `Model.Org` (alias: `Model.Organization`), `Model.Name`
 - Environment: `RepoPath`, `Branch`, `WorkDir`, `User`, `Hostname`
 - Runtime: `DryRun`, `Debug`, `Timestamp`
 - Prompt: `Prompt` (in `command_template` only - contains the rendered prompt text from `prompt_template`)
 
+`{{.Model}}` remains backward compatible and renders the full model ID string.
+
 Example:
 ```yaml
 command_template: "opencode --model {{.Model}} --agent {{.Agent}} --repo {{.RepoPath}}"
+```
+
+Using model subfields:
+```yaml
+command_template: "runner --provider {{.Model.Provider}} --org {{.Model.Org}} --model {{.Model.Name}}"
 ```
 
 Using the rendered prompt in command templates:

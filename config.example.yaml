@@ -30,6 +30,7 @@ harnesses:
     # Available fields: see TemplateContext in internal/domain/template_context.go
     # Includes: TicketID, TicketTitle, TicketDescription, TicketPriority, etc.
     #           HarnessName, Model, Agent
+    #           Model.ModelID, Model.Provider, Model.Org (or Model.Organization), Model.Name
     #           RepoPath, Branch, WorkDir, User, Hostname
     #           DryRun, Debug, Timestamp
     command_template: "opencode --model {{.Model}} --agent {{.Agent}}"

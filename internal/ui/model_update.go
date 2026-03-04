@@ -216,17 +216,22 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if msg.res != nil && msg.res.WindowName != "" {
+		selection := m.selection
+		if msg.spec != nil {
+			selection = msg.spec.Selection
+		}
+
 		// Create agent info
 		agentID := msg.res.WindowName
 		agentInfo := &domain.AgentInfo{
 			ID:           agentID,
-			Name:         m.selection.Ticket.ID,
+			Name:         selection.Ticket.ID,
 			WindowName:   msg.res.WindowName,
 			WindowID:     msg.res.WindowID,
 			WorktreePath: m.selectedWorktree,
 			Status:       domain.AgentRunning,
 			StartedAt:    time.Now(),
-			TicketID:     m.selection.Ticket.ID,
+			TicketID:     selection.Ticket.ID,
 		}
 
 		// Start output capture
@@ -263,6 +268,7 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(
 			pollAgentStatusCmd(m.app, agentID, msg.res.WindowName),
 			startAgentMonitoringCmd(agentID),
+			saveRunningAgentCmd(m.app, msg.spec, msg.res, m.selectedWorktree),
 		)
 	}
 
@@ -740,7 +746,53 @@ func (m UIModel) handleWorktreesDiscovered(msg worktreesDiscoveredMsg) (tea.Mode
 		}
 	}
 
+	for _, running := range m.agents {
+		if running != nil && running.Info != nil {
+			addAgentNodeToSidebar(&m, running.Info)
+		}
+	}
+
 	return m, nil
+}
+
+func (m UIModel) handleRunningAgentsLoaded(msg runningAgentsLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.warnings = append(m.warnings, fmt.Sprintf("Running agents load: %v", msg.err))
+		return m, nil
+	}
+
+	var cmds []tea.Cmd
+	for _, persisted := range msg.agents {
+		agentID := persistedAgentID(persisted)
+		if existing, ok := m.agents[agentID]; ok && existing != nil {
+			existing.Info.Status = domain.AgentRunning
+			continue
+		}
+
+		info := &domain.AgentInfo{
+			ID:           agentID,
+			Name:         persisted.Ticket,
+			WindowName:   persisted.WindowName,
+			WorktreePath: persisted.WorktreePath,
+			Status:       domain.AgentRunning,
+			StartedAt:    persisted.StartedAt,
+			TicketID:     persisted.Ticket,
+		}
+		m.agents[agentID] = &RunningAgent{Info: info}
+		addAgentNodeToSidebar(&m, info)
+
+		if persisted.WindowName != "" {
+			cmds = append(cmds,
+				pollAgentStatusCmd(m.app, agentID, persisted.WindowName),
+				startAgentMonitoringCmd(agentID),
+			)
+		}
+	}
+
+	if len(cmds) == 0 {
+		return m, nil
+	}
+	return m, tea.Batch(cmds...)
 }
 
 func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea.Cmd) {
@@ -766,6 +818,11 @@ func addAgentToProject(projectNode *domain.SidebarNode, agentInfo *domain.AgentI
 	for i := range projectNode.Children {
 		worktreeNode := &projectNode.Children[i]
 		if worktreeNode.Type == domain.NodeTypeWorktree && worktreeNode.Path == agentInfo.WorktreePath {
+			for _, child := range worktreeNode.Children {
+				if child.Type == domain.NodeTypeAgent && child.AgentInfo != nil && child.AgentInfo.ID == agentInfo.ID {
+					return
+				}
+			}
 			agentNode := domain.SidebarNode{
 				ID:         "agent-" + agentInfo.ID,
 				Name:       agentInfo.Name,
@@ -781,6 +838,19 @@ func addAgentToProject(projectNode *domain.SidebarNode, agentInfo *domain.AgentI
 			return
 		}
 	}
+}
+
+func persistedAgentID(a domain.PersistedRunningAgent) string {
+	if a.WindowName != "" && a.PID > 0 {
+		return fmt.Sprintf("%s:%d", a.WindowName, a.PID)
+	}
+	if a.WindowName != "" {
+		return a.WindowName
+	}
+	if a.PID > 0 {
+		return fmt.Sprintf("pid:%d", a.PID)
+	}
+	return fmt.Sprintf("agent:%d", a.ID)
 }
 
 func updateAgentNodeStatus(m *UIModel, agentID string, status domain.AgentStatus) {
@@ -1056,7 +1126,10 @@ func (m UIModel) handleTicketUpdateCheck() (tea.Model, tea.Cmd) {
 	return m, checkTicketUpdatesCmd(store, m.lastTicketUpdate)
 }
 
-func (m UIModel) handleTicketsAutoRefreshed() (tea.Model, tea.Cmd) {
+func (m UIModel) handleTicketsAutoRefreshed(msg ticketsAutoRefreshedMsg) (tea.Model, tea.Cmd) {
+	if !msg.dbUpdatedAt.IsZero() {
+		m.lastTicketUpdate = msg.dbUpdatedAt
+	}
 	m.refreshedRecently = true
 	m.refreshAnimationFrame = 0
 

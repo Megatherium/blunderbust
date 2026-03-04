@@ -63,11 +63,18 @@ func newEmbeddedStore(ctx context.Context, beadsDir string, metadata *Metadata, 
 		return nil, err
 	}
 
-	return &Store{
+	store := &Store{
 		db:        db,
 		mode:      EmbeddedMode,
 		beadsDir:  beadsDir,
 		metadata:  metadata,
 		autostart: autostart,
-	}, nil
+	}
+
+	if err := store.EnsureRunningAgentsTable(ctx); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return store, nil
 }

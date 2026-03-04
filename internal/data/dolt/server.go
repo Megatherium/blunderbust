@@ -55,14 +55,20 @@ func newServerStore(ctx context.Context, beadsDir string, metadata *Metadata, au
 		_ = db.Close()
 		return nil, err
 	}
-
-	return &Store{
+	store := &Store{
 		db:        db,
 		mode:      ServerMode,
 		beadsDir:  beadsDir,
 		metadata:  metadata,
 		autostart: autostart,
-	}, nil
+	}
+
+	if err := store.EnsureRunningAgentsTable(ctx); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return store, nil
 }
 
 // buildServerDSN constructs the MySQL DSN from metadata using mysql.Config

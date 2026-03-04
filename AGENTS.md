@@ -53,6 +53,7 @@ Phase 2 (after SOMEONE ELSE has reviewed it):
 - When the reviewer says "this is completely untouched," stop and actually look at the exact line they're pointing to
 - Adding visible text indicators to UI (like ▶ for focus) is valuable for users even when your testing framework can't leverage them - don't conflate UI improvements with testability.
 - A 3.0/10 review score means you fundamentally misunderstood the requirements - don't try to justify partial fixes, just implement exactly what the reviewer specified.
+- For harness/process validation, binary matching is alias-based (1 harness can map to multiple executable names, e.g. `kilo` and `kilocode`).
 
 ## Modern tooling
 

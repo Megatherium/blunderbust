@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/domain"
 )
@@ -14,8 +16,9 @@ type warningMsg struct{ err error }
 type registryLoadedMsg struct{}
 
 type launchResultMsg struct {
-	res *domain.LaunchResult
-	err error
+	res  *domain.LaunchResult
+	spec *domain.LaunchSpec
+	err  error
 }
 
 type modalContentMsg string
@@ -47,6 +50,11 @@ type worktreesDiscoveredMsg struct {
 	err   error
 }
 
+type runningAgentsLoadedMsg struct {
+	agents []domain.PersistedRunningAgent
+	err    error
+}
+
 // Agent-related messages
 type AgentStatusMsg struct {
 	AgentID string
@@ -74,7 +82,9 @@ type agentOutputMsg struct {
 // Auto-refresh messages
 type ticketUpdateCheckMsg struct{}
 
-type ticketsAutoRefreshedMsg struct{}
+type ticketsAutoRefreshedMsg struct {
+	dbUpdatedAt time.Time
+}
 
 type clearRefreshIndicatorMsg struct{}
 

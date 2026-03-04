@@ -672,11 +672,13 @@ func TestHandleTicketsAutoRefreshed(t *testing.T) {
 	app.activeProject = ".beads"
 	app.stores = map[string]data.TicketStore{".beads": &mockStore{}}
 
-	newM, cmd := m.handleTicketsAutoRefreshed()
+	dbUpdatedAt := time.Now().UTC()
+	newM, cmd := m.handleTicketsAutoRefreshed(ticketsAutoRefreshedMsg{dbUpdatedAt: dbUpdatedAt})
 	updatedM := newM.(UIModel)
 
 	assert.True(t, updatedM.refreshedRecently, "refreshedRecently should be set to true")
 	assert.Equal(t, 0, updatedM.refreshAnimationFrame, "Animation frame should reset to 0")
+	assert.Equal(t, dbUpdatedAt, updatedM.lastTicketUpdate)
 	assert.NotNil(t, cmd, "Should return batch commands")
 }
 

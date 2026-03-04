@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/megatherium/blunderbust/internal/domain"
@@ -70,12 +71,15 @@ func (l *Launcher) Launch(
 	}
 
 	windowID := l.parseWindowID(string(output))
+	paneID, pid, session := l.fetchPaneMetadata(ctx, windowID, spec.WindowName)
 
 	return &domain.LaunchResult{
-		WindowName: spec.WindowName,
-		WindowID:   windowID,
-		PaneID:     "",
-		Error:      nil,
+		WindowName:  spec.WindowName,
+		WindowID:    windowID,
+		PaneID:      paneID,
+		PID:         pid,
+		TmuxSession: session,
+		Error:       nil,
 	}, nil
 }
 
@@ -124,11 +128,45 @@ func (l *Launcher) dryRunLaunch(
 	fmt.Printf("[DRY RUN] Would execute: %s\n", strings.Join(command, " "))
 
 	return &domain.LaunchResult{
-		WindowName: spec.WindowName,
-		WindowID:   "dry-run-id",
-		PaneID:     "dry-run-pane",
-		Error:      nil,
+		WindowName:  spec.WindowName,
+		WindowID:    "dry-run-id",
+		PaneID:      "dry-run-pane",
+		PID:         0,
+		TmuxSession: "dry-run-session",
+		Error:       nil,
 	}, nil
+}
+
+// fetchPaneMetadata resolves pane id, pane pid and tmux session.
+// Best-effort only: errors return empty metadata.
+func (l *Launcher) fetchPaneMetadata(ctx context.Context, windowID, windowName string) (string, int, string) {
+	target := windowID
+	if target == "" {
+		target = windowName
+	}
+	if target == "" {
+		return "", 0, ""
+	}
+
+	out, err := l.runner.Run(ctx, "tmux", "list-panes", "-t", target, "-F", "#{pane_id} #{pane_pid} #{session_name}")
+	if err != nil {
+		return "", 0, ""
+	}
+
+	line := strings.TrimSpace(string(out))
+	if line == "" {
+		return "", 0, ""
+	}
+	fields := strings.Fields(strings.Split(line, "\n")[0])
+	if len(fields) < 3 {
+		return "", 0, ""
+	}
+
+	pid, err := strconv.Atoi(fields[1])
+	if err != nil {
+		pid = 0
+	}
+	return fields[0], pid, fields[2]
 }
 
 // parseWindowID extracts the window ID from tmux new-window output.

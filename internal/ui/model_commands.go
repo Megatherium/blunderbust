@@ -10,6 +10,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/megatherium/blunderbust/internal/config"
 	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/data/dolt"
 	"github.com/megatherium/blunderbust/internal/domain"
@@ -114,7 +115,92 @@ func (m UIModel) launchCmd() tea.Cmd {
 		spec.WindowName = m.selection.Ticket.ID
 
 		res, err := m.app.launcher.Launch(context.Background(), *spec)
-		return launchResultMsg{res: res, err: err}
+		return launchResultMsg{res: res, spec: spec, err: err}
+	}
+}
+
+func loadRunningAgentsCmd(app *App) tea.Cmd {
+	return func() tea.Msg {
+		project := app.Project()
+		if project == nil || project.Store() == nil {
+			return runningAgentsLoadedMsg{}
+		}
+
+		store, ok := project.Store().(*dolt.Store)
+		if !ok {
+			return runningAgentsLoadedMsg{}
+		}
+
+		projectDirs := make([]string, 0, len(app.GetProjects()))
+		for _, p := range app.GetProjects() {
+			projectDirs = append(projectDirs, p.Dir)
+		}
+		if len(projectDirs) == 0 && app.activeProject != "" {
+			projectDirs = append(projectDirs, app.activeProject)
+		}
+
+		if err := store.DeleteStaleRunningAgents(context.Background(), time.Hour); err != nil {
+			return runningAgentsLoadedMsg{err: err}
+		}
+
+		agents, err := store.ValidateAndPruneRunningAgents(context.Background(), projectDirs, nil)
+		if err != nil {
+			return runningAgentsLoadedMsg{err: err}
+		}
+		return runningAgentsLoadedMsg{agents: agents}
+	}
+}
+
+func saveRunningAgentCmd(app *App, spec *domain.LaunchSpec, result *domain.LaunchResult, worktreePath string) tea.Cmd {
+	return func() tea.Msg {
+		if app == nil || spec == nil || result == nil {
+			return nil
+		}
+
+		project := app.Project()
+		if project == nil || project.Store() == nil {
+			return nil
+		}
+		store, ok := project.Store().(*dolt.Store)
+		if !ok {
+			return nil
+		}
+
+		harnessBinary := config.ExtractCommandBinary(spec.RenderedCommand)
+		if harnessBinary == "" {
+			candidates := config.HarnessBinaryCandidates(spec.Selection.Harness.Name)
+			if len(candidates) > 0 {
+				harnessBinary = candidates[0]
+			}
+		}
+
+		projectDir := app.activeProject
+		if projectDir == "" {
+			projectDir = extractRepoRoot(app.opts.BeadsDir)
+		}
+		if worktreePath == "" {
+			worktreePath = projectDir
+		}
+		if result.PID <= 0 {
+			return nil
+		}
+
+		err := store.UpsertRunningAgent(context.Background(), domain.PersistedRunningAgent{
+			ProjectDir:    projectDir,
+			WorktreePath:  worktreePath,
+			PID:           result.PID,
+			TmuxSession:   result.TmuxSession,
+			WindowName:    result.WindowName,
+			Ticket:        spec.Selection.Ticket.ID,
+			HarnessName:   spec.Selection.Harness.Name,
+			HarnessBinary: harnessBinary,
+			Model:         spec.Selection.Model,
+			Agent:         spec.Selection.Agent,
+		})
+		if err != nil {
+			return warningMsg{err: fmt.Errorf("failed to persist running agent: %w", err)}
+		}
+		return nil
 	}
 }
 
@@ -223,7 +309,7 @@ func checkTicketUpdatesCmd(store data.TicketStore, lastUpdate time.Time) tea.Cmd
 		}
 
 		if !dbUpdate.Equal(lastUpdate) && !dbUpdate.IsZero() {
-			return ticketsAutoRefreshedMsg{}
+			return ticketsAutoRefreshedMsg{dbUpdatedAt: dbUpdate}
 		}
 
 		return tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {

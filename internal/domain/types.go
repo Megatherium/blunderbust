@@ -53,10 +53,12 @@ type LaunchSpec struct {
 
 // LaunchResult captures the outcome of a launch attempt.
 type LaunchResult struct {
-	WindowName string
-	WindowID   string
-	PaneID     string
-	Error      error
+	WindowName  string
+	WindowID    string
+	PaneID      string
+	PID         int
+	TmuxSession string
+	Error       error
 }
 
 // LauncherConfig controls how new tmux windows are created.

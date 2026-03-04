@@ -9,6 +9,7 @@ Blunderbust provides a streamlined workflow:
 - Choose harness configurations (which tool, model, agent to use)
 - Launch development sessions in new tmux windows
 - Monitor running sessions from the TUI
+- Persist running agent metadata in Dolt and recover it on startup
 
 Think of it as a mission control for AI-assisted development work.
 
@@ -238,6 +239,17 @@ Activated when `dolt_mode: server` or server connection fields are present:
 ```
 
 **Works with both builds** (default and full).
+
+### Running Agent Persistence
+
+Blunderbust keeps a `running_agents` table in Dolt. On startup, it:
+
+1. Queries running agent rows for projects in the configured workspace
+2. Validates each row by checking PID existence and process command
+3. Deletes stale/invalid rows
+4. Updates `last_seen` for valid rows and renders them in the sidebar
+
+When launching an agent, Blunderbust stores project/worktree, tmux metadata, ticket, harness, model, and agent so sessions survive TUI restarts.
 
 ### Error: "embedded Dolt mode is not available in this build"
 

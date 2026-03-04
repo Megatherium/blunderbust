@@ -203,6 +203,20 @@ func (a *App) SetActiveProject(ctx context.Context, projectDir string) error {
 	return nil
 }
 
+// StoreForProject returns a store for projectDir, creating it lazily if needed.
+func (a *App) StoreForProject(ctx context.Context, projectDir string) (data.TicketStore, error) {
+	if store, exists := a.stores[projectDir]; exists {
+		return store, nil
+	}
+	beadsDir := filepath.Join(projectDir, ".beads")
+	store, err := a.createStore(ctx, beadsDir)
+	if err != nil {
+		return nil, err
+	}
+	a.stores[projectDir] = store
+	return store, nil
+}
+
 // GetTargetProject returns the target project path from CLI args, if any.
 func (a *App) GetTargetProject() string {
 	return a.opts.TargetProject

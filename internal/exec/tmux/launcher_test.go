@@ -164,6 +164,7 @@ func TestLauncher_Launch_DryRun(t *testing.T) {
 func TestLauncher_Launch_Success(t *testing.T) {
 	fake := NewFakeRunner()
 	fake.SetOutput("tmux", []string{"new-window", "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=", "-n", "bb-3zg", "opencode", "--model", "claude-sonnet"}, []byte("@1\n"))
+	fake.SetOutput("tmux", []string{"list-panes", "-t", "@1", "-F", "#{pane_id} #{pane_pid} #{session_name}"}, []byte("%1 4321 session-a\n"))
 	launcher := NewTmuxLauncher(fake, false, true, "foreground")
 
 	spec := domain.LaunchSpec{
@@ -197,13 +198,19 @@ func TestLauncher_Launch_Success(t *testing.T) {
 	if result.WindowID != "@1" {
 		t.Errorf("Expected @1, got %q", result.WindowID)
 	}
+	if result.PID != 4321 {
+		t.Errorf("Expected PID 4321, got %d", result.PID)
+	}
+	if result.TmuxSession != "session-a" {
+		t.Errorf("Expected session name 'session-a', got %q", result.TmuxSession)
+	}
 
 	if result.Error != nil {
 		t.Errorf("Expected no error, got %v", result.Error)
 	}
 
-	if len(fake.Commands) != 1 {
-		t.Errorf("Expected 1 command to be executed, got %d", len(fake.Commands))
+	if len(fake.Commands) != 2 {
+		t.Errorf("Expected 2 commands to be executed, got %d", len(fake.Commands))
 	}
 
 	expectedCmd := "tmux new-window -P -F #{window_id} -e LINES= -e COLUMNS= -n bb-3zg opencode --model claude-sonnet"

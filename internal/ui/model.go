@@ -138,11 +138,14 @@ func (m UIModel) handleCoreMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		}
 		return m, m.continueInitAfterRegistry(), true
 	case ticketsLoadedMsg:
-		m.lastTicketUpdate = time.Now()
+		m.lastTicketUpdate = latestTicketUpdate(msg)
 		updatedM, _ := m.handleTicketsLoaded(msg)
-		return updatedM, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
-			return ticketUpdateCheckMsg{}
-		}), true
+		return updatedM, tea.Batch(
+			tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
+				return ticketUpdateCheckMsg{}
+			}),
+			loadRunningAgentsCmd(m.app),
+		), true
 	case errMsg:
 		newM, cmd := m.handleErrMsg(msg)
 		return newM, cmd, true
@@ -180,6 +183,9 @@ func (m UIModel) handleProjectMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		return m, m.continueNormalInit(), true
 	case worktreesDiscoveredMsg:
 		newM, cmd := m.handleWorktreesDiscovered(msg)
+		return newM, cmd, true
+	case runningAgentsLoadedMsg:
+		newM, cmd := m.handleRunningAgentsLoaded(msg)
 		return newM, cmd, true
 	case WorktreeSelectedMsg:
 		newM, cmd := m.handleWorktreeSelected(msg)
@@ -248,7 +254,7 @@ func (m UIModel) handleAgentMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		newM, cmd := m.handleTicketUpdateCheck()
 		return newM, cmd, true
 	case ticketsAutoRefreshedMsg:
-		newM, cmd := m.handleTicketsAutoRefreshed()
+		newM, cmd := m.handleTicketsAutoRefreshed(msg)
 		return newM, cmd, true
 	case clearRefreshIndicatorMsg:
 		newM, cmd := m.handleClearRefreshIndicator()
@@ -419,4 +425,14 @@ func (m UIModel) loadRegistryCmd() tea.Cmd {
 		}
 		return registryLoadedMsg{}
 	}
+}
+
+func latestTicketUpdate(tickets ticketsLoadedMsg) time.Time {
+	var latest time.Time
+	for _, ticket := range tickets {
+		if ticket.UpdatedAt.After(latest) {
+			latest = ticket.UpdatedAt
+		}
+	}
+	return latest
 }

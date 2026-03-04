@@ -198,6 +198,10 @@ func (m UIModel) handleErrMsg(msg errMsg) (tea.Model, tea.Cmd) {
 	m.err = msg.err
 	m.loading = false
 	m.state = ViewStateError
+	// Preserve the store for retry/start operations in error recovery UI
+	if project := m.app.Project(); project != nil {
+		m.retryStore = project.Store()
+	}
 	return m, nil
 }
 

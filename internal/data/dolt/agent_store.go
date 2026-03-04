@@ -66,17 +66,10 @@ CREATE TABLE IF NOT EXISTS running_agents (
 		return fmt.Errorf("failed to ensure running_agents table: %w", err)
 	}
 
-	const ensureIgnoreTable = `CREATE TABLE IF NOT EXISTS dolt_ignore (
-		pattern VARCHAR(1024) NOT NULL,
-		ignored TINYINT(1) NOT NULL,
-		PRIMARY KEY (pattern)
-	)`
-	_, err = s.db.ExecContext(ctx, ensureIgnoreTable)
-	if err != nil {
-		return fmt.Errorf("failed to ensure dolt_ignore table: %w", err)
-	}
-
-	const ignoreQuery = `INSERT IGNORE INTO dolt_ignore (pattern, ignored) VALUES ('running_agents', 1)`
+	const ignoreQuery = `
+INSERT INTO dolt_ignore (pattern, ignored)
+VALUES ('running_agents', 1)
+ON DUPLICATE KEY UPDATE ignored = VALUES(ignored)`
 	_, err = s.db.ExecContext(ctx, ignoreQuery)
 	if err != nil {
 		return fmt.Errorf("failed to ensure running_agents is ignored: %w", err)

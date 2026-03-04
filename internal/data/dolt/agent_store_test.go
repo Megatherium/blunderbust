@@ -38,9 +38,7 @@ func TestStore_EnsureRunningAgentsTable(t *testing.T) {
 	store := &Store{db: db}
 	mock.ExpectExec("CREATE TABLE IF NOT EXISTS running_agents").
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectExec("CREATE TABLE IF NOT EXISTS dolt_ignore").
-		WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectExec("INSERT IGNORE INTO dolt_ignore").
+	mock.ExpectExec("INSERT INTO dolt_ignore").
 		WithArgs().
 		WillReturnResult(sqlmock.NewResult(0, 0))
 

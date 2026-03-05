@@ -152,15 +152,15 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 
 	if len(msg) == 0 {
 		if m.app.Project() == nil || m.app.Project().Store() == nil {
-			m.ticketList = createErrorList("Couldn't load ticket list:\nStore initialization failed")
+			m.ticketList = createErrorList("Couldn't load ticket list:\nStore initialization failed", m.currentTheme)
 			m.sidebar.SetStoreError(true)
 			m.loading = false
 			return m, nil
 		}
-		m.ticketList = newEmptyTicketList()
+		m.ticketList = newEmptyTicketList(m.currentTheme)
 		m.sidebar.SetStoreError(false)
 	} else {
-		m.ticketList = newTicketList(msg)
+		m.ticketList = newTicketList(msg, m.currentTheme)
 		m.sidebar.SetStoreError(false)
 	}
 	initList(&m.ticketList, 0, 0, "Select a Ticket")
@@ -595,7 +595,7 @@ func (m UIModel) handleModelSkip() (UIModel, tea.Cmd) {
 	if m.modelColumnDisabled {
 		m.selection.Model = ""
 	}
-	m.modelList = newModelList(models)
+	m.modelList = newModelList(models, m.currentTheme)
 	m.updateSizes()
 
 	// Restore model selection if it still exists in the new list
@@ -636,7 +636,7 @@ func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 		m.selection.Agent = ""
 	}
 
-	m.agentList = newAgentList(agents)
+	m.agentList = newAgentList(agents, m.currentTheme)
 	m.updateSizes()
 
 	// Restore agent selection if it still exists in the new list
@@ -1129,10 +1129,20 @@ func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) 
 	cycleElapsed := msg.Time.Sub(m.animState.ColorCycleStart).Seconds()
 	if cycleElapsed >= ColorCycleInterval.Seconds() {
 		var cycleCount int
-		if m.currentTheme == &CyberpunkTheme {
-			cycleCount = len(CyberpunkThemeColorCycles)
-		} else {
+		if m.currentTheme == nil {
 			cycleCount = len(MatrixThemeColorCycles)
+		} else {
+			switch m.currentTheme.Name {
+			case CyberpunkTheme.Name:
+				cycleCount = len(CyberpunkThemeColorCycles)
+			case TokyoNightTheme.Name:
+				cycleCount = len(TokyoNightThemeColorCycles)
+			default:
+				cycleCount = len(MatrixThemeColorCycles)
+			}
+		}
+		if cycleCount < 1 {
+			cycleCount = 1
 		}
 		m.animState.ColorCycleIndex = (m.animState.ColorCycleIndex + 1) % cycleCount
 		m.animState.ColorCycleStart = msg.Time
@@ -1157,10 +1167,11 @@ func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) 
 	return m, animationTickCmd()
 }
 
-func createErrorList(message string) list.Model {
+func createErrorList(message string, theme ...*ThemePalette) list.Model {
 	items := []list.Item{errorItem{message: message}}
-	l := list.New(items, newGradientDelegate(), 0, 0)
+	l := list.New(items, newGradientDelegate(theme...), 0, 0)
 	l.Title = "Select a Ticket"
+	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 	return l
 }

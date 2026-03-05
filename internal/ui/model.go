@@ -17,6 +17,7 @@ import (
 
 func initList(l *list.Model, width, height int, title string) {
 	l.Title = title
+	l.SetShowTitle(false)
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(true)
 	if width > 0 && height > 0 {
@@ -25,16 +26,18 @@ func initList(l *list.Model, width, height int, title string) {
 }
 
 func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
-	hl := newHarnessList(harnesses, app.Registry)
+	currentTheme := &TokyoNightTheme
+
+	hl := newHarnessList(harnesses, app.Registry, currentTheme)
 	initList(&hl, 0, 0, "Select a Harness")
 
-	tl := newTicketList(nil)
+	tl := newTicketList(nil, currentTheme)
 	initList(&tl, 0, 0, "Select a Ticket")
 
-	ml := newModelList(nil)
+	ml := newModelList(nil, currentTheme)
 	initList(&ml, 0, 0, "Select a Model")
 
-	al := newAgentList(nil)
+	al := newAgentList(nil, currentTheme)
 	initList(&al, 0, 0, "Select an Agent")
 
 	h := help.New()
@@ -60,7 +63,7 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		showModal:    false,
 		showSidebar:  true,
 		agents:       make(map[string]*RunningAgent),
-		currentTheme: &TokyoNightTheme, // Default to TokyoNight theme
+		currentTheme: currentTheme, // Default to TokyoNight theme
 		animState: AnimationState{
 			StartTime:       time.Now(),
 			ColorCycleStart: time.Now(),

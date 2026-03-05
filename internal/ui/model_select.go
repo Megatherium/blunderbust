@@ -12,15 +12,16 @@ func (i modelItem) Title() string       { return i.name }
 func (i modelItem) Description() string { return "LLM Model" }
 func (i modelItem) FilterValue() string { return i.name }
 
-func newModelList(models []string) list.Model {
+func newModelList(models []string, theme ...*ThemePalette) list.Model {
 	items := make([]list.Item, 0, len(models))
 	for _, m := range models {
 		items = append(items, modelItem{name: m})
 	}
 
-	delegate := newGradientDelegate()
+	delegate := newGradientDelegate(theme...)
 	delegate.ShowDescription = false
 	l := list.New(items, delegate, 0, 0)
 	l.Title = "Select a Model"
+	l.SetShowTitle(false)
 	return l
 }

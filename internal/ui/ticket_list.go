@@ -17,15 +17,16 @@ func (i ticketItem) Description() string {
 }
 func (i ticketItem) FilterValue() string { return i.ticket.Title }
 
-func newTicketList(tickets []domain.Ticket) list.Model {
+func newTicketList(tickets []domain.Ticket, theme ...*ThemePalette) list.Model {
 	items := make([]list.Item, 0, len(tickets))
 	for i := range tickets {
 		items = append(items, ticketItem{ticket: tickets[i]})
 	}
 
-	delegate := newGradientDelegate()
+	delegate := newGradientDelegate(theme...)
 	l := list.New(items, delegate, 0, 0)
 	l.Title = "Select a Ticket"
+	l.SetShowTitle(false)
 	return l
 }
 
@@ -37,10 +38,11 @@ func (i emptyTicketItem) Description() string { return "Press 'r' to refresh or 
 func (i emptyTicketItem) FilterValue() string { return "" }
 
 // newEmptyTicketList creates a list with a single empty state item
-func newEmptyTicketList() list.Model {
+func newEmptyTicketList(theme ...*ThemePalette) list.Model {
 	items := []list.Item{emptyTicketItem{}}
-	l := list.New(items, newGradientDelegate(), 0, 0)
+	l := list.New(items, newGradientDelegate(theme...), 0, 0)
 	l.Title = "Select a Ticket"
+	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 	return l
 }

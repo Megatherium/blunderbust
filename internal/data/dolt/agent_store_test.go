@@ -40,9 +40,6 @@ func TestStore_EnsureRunningAgentsTable(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("ALTER TABLE running_agents ADD COLUMN ticket_title TEXT").
 		WillReturnError(errors.New("Error 1060: Duplicate column name 'ticket_title'"))
-	mock.ExpectExec("INSERT INTO dolt_ignore").
-		WithArgs().
-		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	if err := store.EnsureRunningAgentsTable(context.Background()); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -64,9 +61,6 @@ func TestStore_EnsureRunningAgentsTable_ColumnAlreadyExistsVariant(t *testing.T)
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("ALTER TABLE running_agents ADD COLUMN ticket_title TEXT").
 		WillReturnError(errors.New(`Error 1105 (HY000): Column "ticket_title" already exists`))
-	mock.ExpectExec("INSERT INTO dolt_ignore").
-		WithArgs().
-		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	if err := store.EnsureRunningAgentsTable(context.Background()); err != nil {
 		t.Fatalf("expected nil error, got %v", err)

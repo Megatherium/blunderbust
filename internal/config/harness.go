@@ -76,7 +76,14 @@ func CommandMatchesAnyBinary(command string, binaries []string) bool {
 		return false
 	}
 	for _, binary := range binaries {
-		if processBinary == normalizeBinaryToken(binary) {
+		normalizedBinary := normalizeBinaryToken(binary)
+		// Check if the first token matches
+		if processBinary == normalizedBinary {
+			return true
+		}
+		// Also check if the binary name appears anywhere in the command path
+		// This handles cases like "node /path/to/opencode" where the script name matches
+		if strings.Contains(strings.ToLower(command), normalizedBinary) {
 			return true
 		}
 	}

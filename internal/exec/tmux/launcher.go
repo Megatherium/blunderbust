@@ -73,6 +73,9 @@ func (l *Launcher) Launch(
 	windowID := l.parseWindowID(string(output))
 	paneID, pid, session := l.fetchPaneMetadata(ctx, windowID, spec.WindowName)
 
+	fmt.Fprintf(os.Stderr, "[DEBUG] tmux.Launch: windowID=%s, paneID=%s, PID=%d, session=%s\n",
+		windowID, paneID, pid, session)
+
 	return &domain.LaunchResult{
 		WindowName:  spec.WindowName,
 		WindowID:    windowID,
@@ -116,7 +119,13 @@ func (l *Launcher) buildCommand(spec domain.LaunchSpec) []string {
 		args = append(args, "-c", spec.WorkDir)
 	}
 
-	args = append(args, "-n", spec.WindowName, spec.RenderedCommand)
+	// Use exec so tmux pane_pid resolves to the harness process instead of the shell wrapper.
+	// This keeps persisted PID validation stable across app restarts.
+	command := strings.TrimSpace(spec.RenderedCommand)
+	if command != "" {
+		command = "exec " + command
+	}
+	args = append(args, "-n", spec.WindowName, command)
 	return args
 }
 

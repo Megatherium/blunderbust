@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
 	osexec "os/exec"
 	"path/filepath"
 	"strings"
@@ -68,12 +69,26 @@ func extractRepoRoot(beadsDir string) string {
 func discoverWorktreesCmd(app *App) tea.Cmd {
 	return func() tea.Msg {
 		projects := app.GetProjects()
+		if app.opts.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] discoverWorktreesCmd: found %d projects\n", len(projects))
+			for i, p := range projects {
+				fmt.Fprintf(os.Stderr, "[DEBUG]   project[%d]: dir=%s, name=%s\n", i, p.Dir, p.Name)
+			}
+		}
+		
 		if len(projects) == 0 {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] discoverWorktreesCmd: no projects configured, using fallback\n")
+			}
 			return worktreesDiscoveredMsg{err: fmt.Errorf("no projects configured")}
 		}
 
 		discoverer := data.NewWorktreeDiscoverer()
 		nodes, errs := discoverer.DiscoverMulti(context.Background(), projects)
+		
+		if app.opts.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] discoverWorktreesCmd: discovered %d nodes, %d errors\n", len(nodes), len(errs))
+		}
 
 		var cmds []tea.Cmd
 		if len(errs) > 0 {
@@ -123,11 +138,17 @@ func loadRunningAgentsCmd(app *App) tea.Cmd {
 	return func() tea.Msg {
 		project := app.Project()
 		if project == nil || project.Store() == nil {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] loadRunningAgentsCmd: no project or store\n")
+			}
 			return runningAgentsLoadedMsg{}
 		}
 
 		store, ok := project.Store().(*dolt.Store)
 		if !ok {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] loadRunningAgentsCmd: store is not dolt.Store\n")
+			}
 			return runningAgentsLoadedMsg{}
 		}
 
@@ -139,14 +160,33 @@ func loadRunningAgentsCmd(app *App) tea.Cmd {
 			projectDirs = append(projectDirs, app.activeProject)
 		}
 
+		if app.opts.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] loadRunningAgentsCmd: querying projectDirs=%v\n", projectDirs)
+		}
+
 		if err := store.DeleteStaleRunningAgents(context.Background(), time.Hour); err != nil {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] loadRunningAgentsCmd: DeleteStaleRunningAgents error: %v\n", err)
+			}
 			return runningAgentsLoadedMsg{err: err}
 		}
 
 		agents, err := store.ValidateAndPruneRunningAgents(context.Background(), projectDirs, nil)
 		if err != nil {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] loadRunningAgentsCmd: ValidateAndPruneRunningAgents error: %v\n", err)
+			}
 			return runningAgentsLoadedMsg{err: err}
 		}
+		
+		if app.opts.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] loadRunningAgentsCmd: loaded %d valid agents\n", len(agents))
+			for _, a := range agents {
+				fmt.Fprintf(os.Stderr, "[DEBUG]   - %s: PID=%d, harness=%s, binary=%s, worktree=%s\n", 
+					a.Ticket, a.PID, a.HarnessName, a.HarnessBinary, a.WorktreePath)
+			}
+		}
+		
 		return runningAgentsLoadedMsg{agents: agents}
 	}
 }
@@ -154,15 +194,25 @@ func loadRunningAgentsCmd(app *App) tea.Cmd {
 func saveRunningAgentCmd(app *App, spec *domain.LaunchSpec, result *domain.LaunchResult, worktreePath string) tea.Cmd {
 	return func() tea.Msg {
 		if app == nil || spec == nil || result == nil {
+			if app != nil && app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: nil check failed (app=%v, spec=%v, result=%v)\n", 
+					app != nil, spec != nil, result != nil)
+			}
 			return nil
 		}
 
 		project := app.Project()
 		if project == nil || project.Store() == nil {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: no project or store\n")
+			}
 			return nil
 		}
 		store, ok := project.Store().(*dolt.Store)
 		if !ok {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: store is not dolt.Store\n")
+			}
 			return nil
 		}
 
@@ -182,7 +232,23 @@ func saveRunningAgentCmd(app *App, spec *domain.LaunchSpec, result *domain.Launc
 			worktreePath = projectDir
 		}
 		if result.PID <= 0 {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: invalid PID %d, not saving\n", result.PID)
+			}
 			return nil
+		}
+
+		if app.opts.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: saving agent\n")
+			fmt.Fprintf(os.Stderr, "[DEBUG]   projectDir=%s\n", projectDir)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   worktreePath=%s\n", worktreePath)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   PID=%d\n", result.PID)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   tmuxSession=%s\n", result.TmuxSession)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   windowName=%s\n", result.WindowName)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   ticket=%s\n", spec.Selection.Ticket.ID)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   harness=%s\n", spec.Selection.Harness.Name)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   harnessBinary=%s\n", harnessBinary)
+			fmt.Fprintf(os.Stderr, "[DEBUG]   renderedCommand=%s\n", spec.RenderedCommand)
 		}
 
 		err := store.UpsertRunningAgent(context.Background(), domain.PersistedRunningAgent{
@@ -199,8 +265,16 @@ func saveRunningAgentCmd(app *App, spec *domain.LaunchSpec, result *domain.Launc
 			Agent:         spec.Selection.Agent,
 		})
 		if err != nil {
+			if app.opts.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: UpsertRunningAgent error: %v\n", err)
+			}
 			return warningMsg{err: fmt.Errorf("failed to persist running agent: %w", err)}
 		}
+		
+		if app.opts.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: agent saved successfully\n")
+		}
+		
 		return nil
 	}
 }

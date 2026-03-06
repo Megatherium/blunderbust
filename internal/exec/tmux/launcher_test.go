@@ -163,7 +163,7 @@ func TestLauncher_Launch_DryRun(t *testing.T) {
 
 func TestLauncher_Launch_Success(t *testing.T) {
 	fake := NewFakeRunner()
-	fake.SetOutput("tmux", []string{"new-window", "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=", "-n", "bb-3zg", "opencode", "--model", "claude-sonnet"}, []byte("@1\n"))
+	fake.SetOutput("tmux", []string{"new-window", "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=", "-n", "bb-3zg", "exec opencode --model claude-sonnet"}, []byte("@1\n"))
 	fake.SetOutput("tmux", []string{"list-panes", "-t", "@1", "-F", "#{pane_id} #{pane_pid} #{session_name}"}, []byte("%1 4321 session-a\n"))
 	launcher := NewTmuxLauncher(fake, false, true, "foreground")
 
@@ -213,7 +213,7 @@ func TestLauncher_Launch_Success(t *testing.T) {
 		t.Errorf("Expected 2 commands to be executed, got %d", len(fake.Commands))
 	}
 
-	expectedCmd := "tmux new-window -P -F #{window_id} -e LINES= -e COLUMNS= -n bb-3zg opencode --model claude-sonnet"
+	expectedCmd := "tmux new-window -P -F #{window_id} -e LINES= -e COLUMNS= -n bb-3zg exec opencode --model claude-sonnet"
 	if fake.Commands[0] != expectedCmd {
 		t.Errorf("Expected command %q, got %q", expectedCmd, fake.Commands[0])
 	}
@@ -221,7 +221,7 @@ func TestLauncher_Launch_Success(t *testing.T) {
 
 func TestLauncher_Launch_CommandError(t *testing.T) {
 	fake := NewFakeRunner()
-	fake.SetError("tmux", []string{"new-window", "-n", "bb-3zg", "opencode"},
+	fake.SetError("tmux", []string{"new-window", "-P", "-F", "#{window_id}", "-e", "LINES=", "-e", "COLUMNS=", "-n", "bb-3zg", "exec opencode"},
 		errors.New("tmux command failed"))
 
 	launcher := NewTmuxLauncher(fake, false, true, "foreground")
@@ -359,7 +359,7 @@ func TestLauncher_buildCommand(t *testing.T) {
 		t.Errorf("Expected eleventh arg to be 'bb-3zg', got %q", cmd[10])
 	}
 
-	expectedCommand := "opencode --model claude-sonnet-4-20250514 --agent coder"
+	expectedCommand := "exec opencode --model claude-sonnet-4-20250514 --agent coder"
 	if cmd[11] != expectedCommand {
 		t.Errorf("Expected command %q, got %q", expectedCommand, cmd[11])
 	}
@@ -417,7 +417,7 @@ func TestLauncher_buildCommand_BackgroundMode(t *testing.T) {
 		t.Errorf("Expected fourth arg to be '-P', got %q", cmd[3])
 	}
 
-	expectedCommand := "opencode --model claude-sonnet-4-20250514 --agent coder"
+	expectedCommand := "exec opencode --model claude-sonnet-4-20250514 --agent coder"
 	if cmd[12] != expectedCommand {
 		t.Errorf("Expected command %q, got %q", expectedCommand, cmd[12])
 	}
@@ -508,7 +508,7 @@ func TestLauncher_buildCommand_Escaping(t *testing.T) {
 	cmd := launcher.buildCommand(spec)
 	cmdStr := strings.Join(cmd, " ")
 
-	if !contains(cmdStr, "echo 'hello world' && ls -la") {
+	if !contains(cmdStr, "exec echo 'hello world' && ls -la") {
 		t.Errorf("Command should contain full command: %q", cmdStr)
 	}
 

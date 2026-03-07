@@ -1333,3 +1333,61 @@ func (m UIModel) isFocusedListFiltering() bool {
 	}
 	return false
 }
+
+func updateListCaches(oldM, newM UIModel, msg tea.Msg) UIModel {
+	// High frequency messages that do not affect the lists
+	switch msg.(type) {
+	case animationTickMsg, refreshAnimationTickMsg, agentTickMsg, ticketUpdateCheckMsg, agentOutputMsg:
+		newM.ticketViewCache = oldM.ticketViewCache
+		newM.harnessViewCache = oldM.harnessViewCache
+		newM.modelViewCache = oldM.modelViewCache
+		newM.agentViewCache = oldM.agentViewCache
+		return newM
+	}
+
+	// For all other messages, rebuild the view caches
+	newM.ticketViewCache = newM.ticketList.View()
+	newM.harnessViewCache = newM.harnessList.View()
+	newM.modelViewCache = newM.modelList.View()
+	newM.agentViewCache = newM.agentList.View()
+	return newM
+}
+
+func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.showFilePicker {
+		switch msg.(type) {
+		case tea.KeyMsg, tea.WindowSizeMsg:
+			// Let normal flow handle it so we process app-level keys and resize
+		default:
+			var fpCmd tea.Cmd
+			m.filepicker, fpCmd = m.filepicker.Update(msg)
+			if fpCmd != nil {
+				return m, fpCmd
+			}
+		}
+	}
+
+	if newModel, cmd, handled := m.handleCoreMsgs(msg); handled {
+		if uiModel, ok := newModel.(UIModel); ok {
+			newModel = updateListCaches(m, uiModel, msg)
+		}
+		return newModel, cmd
+	}
+	if newModel, cmd, handled := m.handleProjectMsgs(msg); handled {
+		if uiModel, ok := newModel.(UIModel); ok {
+			newModel = updateListCaches(m, uiModel, msg)
+		}
+		return newModel, cmd
+	}
+	if newModel, cmd, handled := m.handleAgentMsgs(msg); handled {
+		if uiModel, ok := newModel.(UIModel); ok {
+			newModel = updateListCaches(m, uiModel, msg)
+		}
+		return newModel, cmd
+	}
+
+	newM, cmd := m.handleFocusUpdate(msg)
+	newM.updateKeyBindings()
+	newM = updateListCaches(m, newM, msg)
+	return newM, cmd
+}

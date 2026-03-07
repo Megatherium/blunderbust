@@ -137,6 +137,12 @@ type UIModel struct {
 	modelColumnDisabled bool // true when harness has no models
 	agentColumnDisabled bool // true when harness has no agents
 
+	// Caches for the list views to avoid re-rendering on every tick
+	ticketViewCache  string
+	harnessViewCache string
+	modelViewCache   string
+	agentViewCache   string
+
 	// Animation state
 	animState AnimationState
 

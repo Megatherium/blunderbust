@@ -83,6 +83,12 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		showSidebar:  true,
 		agents:       make(map[string]*RunningAgent),
 		currentTheme: currentTheme, // Default to TokyoNight theme
+
+		ticketViewCache:  tl.View(),
+		harnessViewCache: hl.View(),
+		modelViewCache:   ml.View(),
+		agentViewCache:   al.View(),
+
 		animState: AnimationState{
 			StartTime:       time.Now(),
 			ColorCycleStart: time.Now(),
@@ -370,35 +376,6 @@ func (m UIModel) handleFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
 	case FocusAgent:
 		m.agentList, cmd = m.agentList.Update(msg)
 	}
-	return m, cmd
-}
-
-func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.showFilePicker {
-		switch msg.(type) {
-		case tea.KeyMsg, tea.WindowSizeMsg:
-			// Let normal flow handle it so we process app-level keys and resize
-		default:
-			var fpCmd tea.Cmd
-			m.filepicker, fpCmd = m.filepicker.Update(msg)
-			if fpCmd != nil {
-				return m, fpCmd
-			}
-		}
-	}
-
-	if newModel, cmd, handled := m.handleCoreMsgs(msg); handled {
-		return newModel, cmd
-	}
-	if newModel, cmd, handled := m.handleProjectMsgs(msg); handled {
-		return newModel, cmd
-	}
-	if newModel, cmd, handled := m.handleAgentMsgs(msg); handled {
-		return newModel, cmd
-	}
-
-	m, cmd := m.handleFocusUpdate(msg)
-	m.updateKeyBindings()
 	return m, cmd
 }
 

@@ -31,6 +31,8 @@
 {"created_at":"2026-03-03T12:25:28Z","created_by":"Megatherium","depends_on_id":"bb-56d","issue_id":"bb-dla3","type":"discovered-from"}
 {"created_at":"2026-03-03T12:50:39Z","created_by":"Megatherium","depends_on_id":"bb-twhu","issue_id":"bb-dla3","type":"blocks"}
 {"created_at":"2026-03-04T17:13:17Z","created_by":"Megatherium","depends_on_id":"bb-onlf","issue_id":"bb-eoxr","type":"blocks"}
+{"created_at":"2026-03-08T08:10:36Z","created_by":"Megatherium","depends_on_id":"bb-a1hv","issue_id":"bb-fatd","type":"blocks"}
+{"created_at":"2026-03-08T07:51:23Z","created_by":"Megatherium","depends_on_id":"bb-fnqc","issue_id":"bb-fatd","type":"blocks"}
 {"created_at":"2026-03-04T10:50:19Z","created_by":"Megatherium","depends_on_id":"bb-h434","issue_id":"bb-fmuc","type":"blocks"}
 {"created_at":"2026-03-04T10:58:04Z","created_by":"Megatherium","depends_on_id":"bb-hhy0","issue_id":"bb-fmuc","type":"blocks"}
 {"created_at":"2026-03-03T23:26:42Z","created_by":"Megatherium","depends_on_id":"bb-op7d","issue_id":"bb-gesy","type":"blocks"}
@@ -52,6 +54,8 @@
 {"created_at":"2026-03-02T14:20:16Z","created_by":"Megatherium","depends_on_id":"bb-dsc","issue_id":"bb-pfc","type":"blocks"}
 {"created_at":"2026-03-07T22:07:57Z","created_by":"Megatherium","depends_on_id":"bb-7ugp","issue_id":"bb-psvy","type":"blocks"}
 {"created_at":"2026-03-07T21:09:55Z","created_by":"Megatherium","depends_on_id":"bb-bnyb","issue_id":"bb-psvy","type":"blocks"}
+{"created_at":"2026-03-08T08:01:22Z","created_by":"Megatherium","depends_on_id":"bb-ftmi","issue_id":"bb-qb3i","type":"discovered-from"}
+{"created_at":"2026-03-08T07:54:38Z","created_by":"Megatherium","depends_on_id":"bb-rqtg","issue_id":"bb-qb3i","type":"blocks"}
 {"created_at":"2026-03-06T10:47:04Z","created_by":"Megatherium","depends_on_id":"bb-sjt8","issue_id":"bb-qb3i","type":"discovered-from"}
 {"created_at":"2026-03-03T23:55:31Z","created_by":"Megatherium","depends_on_id":"bb-rf26","issue_id":"bb-rans","type":"blocks"}
 {"created_at":"2026-03-01T15:59:31Z","created_by":"Megatherium","depends_on_id":"bb-zfm","issue_id":"bb-rk0","type":"blocks"}

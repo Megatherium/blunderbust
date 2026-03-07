@@ -23,6 +23,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/spf13/cobra"
@@ -101,6 +103,10 @@ func init() {
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
+
 	// Handle --version flag early (before cobra processes arguments)
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
 		fmt.Printf("Blunderbust %s\nBuilt: %s\n", Version, BuildTime)

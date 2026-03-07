@@ -1169,6 +1169,11 @@ func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) 
 		}
 	}
 
+	if !m.animState.LockInActive {
+		// Stop the animation loop to conserve CPU when idle
+		return m, nil
+	}
+
 	// Continue animation loop
 	return m, animationTickCmd()
 }

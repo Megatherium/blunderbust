@@ -287,7 +287,7 @@ func (m UIModel) handleAgentMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		m.animState.LockInIntensity = 1.0
 		m.animState.LockInStartTime = time.Now()
 		m.animState.LockInTarget = msg.Column
-		return m, nil, true
+		return m, animationTickCmd(), true
 	case AgentClearedMsg:
 		newM, cmd := m.handleAgentCleared(msg)
 		return newM, cmd, true
@@ -440,7 +440,7 @@ func (m UIModel) continueInitAfterRegistry() tea.Cmd {
 			return ticketsLoadedMsg(tickets)
 		},
 		discoverWorktreesCmd(app),
-		animationTickCmd(),
+		// Animation tick is only started on demand (LockIn) to save CPU
 	)
 }
 

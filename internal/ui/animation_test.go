@@ -125,8 +125,11 @@ func TestHandleAnimationTick(t *testing.T) {
 	// Create a model with initialized animation state
 	m := UIModel{
 		animState: AnimationState{
-			StartTime:  time.Now().Add(-time.Second), // Started 1 second ago
-			PulsePhase: 0.5,
+			StartTime:       time.Now().Add(-time.Second), // Started 1 second ago
+			PulsePhase:      0.5,
+			LockInActive:    true,
+			LockInIntensity: 1.0,
+			LockInStartTime: time.Now(),
 		},
 	}
 

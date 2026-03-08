@@ -83,10 +83,7 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 		agents:       make(map[string]*RunningAgent),
 		currentTheme: currentTheme, // Default to TokyoNight theme
 
-		ticketViewCache:  tl.View(),
-		harnessViewCache: hl.View(),
-		modelViewCache:   ml.View(),
-		agentViewCache:   al.View(),
+		cachesDirty: true, // Initial build needed
 
 		animState: AnimationState{
 			StartTime:       time.Now(),

@@ -87,6 +87,7 @@ func (m UIModel) handleToggleThemeKeyMsg() (tea.Model, tea.Cmd, bool) {
 	m.harnessList.SetDelegate(newGradientDelegate(m.currentTheme))
 	m.modelList.SetDelegate(newGradientDelegate(m.currentTheme))
 	m.agentList.SetDelegate(newGradientDelegate(m.currentTheme))
+	m.cachesDirty = true
 	return m, nil, true
 }
 
@@ -175,6 +176,7 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 	}
 	m.updateSizes()
 	m.lastTicketUpdate = time.Now()
+	m.cachesDirty = true
 
 	// Restore ticket selection and visual cursor position if it still exists.
 	// When tickets reorder (for example after priority changes), Select() with the
@@ -275,6 +277,7 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 
 		// Add agent node to sidebar under the worktree
 		addAgentNodeToSidebar(&m, agentInfo)
+		m.cachesDirty = true
 
 		// Return to matrix instead of result screen
 		m.state = ViewStateMatrix
@@ -307,6 +310,7 @@ func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	}
 
 	m.updateSizes()
+	m.cachesDirty = true
 	return m, nil
 }
 
@@ -607,6 +611,7 @@ func (m UIModel) handleModelSkip() (UIModel, tea.Cmd) {
 	}
 	m.modelList = newModelList(models, m.currentTheme)
 	m.updateSizes()
+	m.cachesDirty = true
 
 	// Restore model selection if it still exists in the new list
 	// Note: We only set m.selection.Model here, not call m.modelList.Select().
@@ -648,6 +653,7 @@ func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 
 	m.agentList = newAgentList(agents, m.currentTheme)
 	m.updateSizes()
+	m.cachesDirty = true
 
 	// Restore agent selection if it still exists in the new list
 	// Note: We only set m.selection.Agent here, not call m.agentList.Select().
@@ -769,6 +775,7 @@ func (m UIModel) handleWorktreesDiscovered(msg worktreesDiscoveredMsg) (tea.Mode
 			addAgentNodeToSidebar(&m, running.Info)
 		}
 	}
+	m.cachesDirty = true
 
 	return m, nil
 }
@@ -823,6 +830,7 @@ func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea
 
 	m.focus = FocusTickets
 	m.sidebar.SetFocused(false)
+	m.cachesDirty = true
 	return m, nil
 }
 
@@ -1349,23 +1357,17 @@ func (m UIModel) isFocusedListFiltering() bool {
 	return false
 }
 
-func updateListCaches(oldM, newM UIModel, msg tea.Msg) UIModel {
-	// High frequency messages that do not affect the lists
-	switch msg.(type) {
-	case animationTickMsg, refreshAnimationTickMsg, agentTickMsg, ticketUpdateCheckMsg, agentOutputMsg:
-		newM.ticketViewCache = oldM.ticketViewCache
-		newM.harnessViewCache = oldM.harnessViewCache
-		newM.modelViewCache = oldM.modelViewCache
-		newM.agentViewCache = oldM.agentViewCache
-		return newM
+func updateListCaches(m *UIModel) UIModel {
+	if !m.cachesDirty {
+		return *m
 	}
 
-	// For all other messages, rebuild the view caches
-	newM.ticketViewCache = newM.ticketList.View()
-	newM.harnessViewCache = newM.harnessList.View()
-	newM.modelViewCache = newM.modelList.View()
-	newM.agentViewCache = newM.agentList.View()
-	return newM
+	m.ticketViewCache = m.ticketList.View()
+	m.harnessViewCache = m.harnessList.View()
+	m.modelViewCache = m.modelList.View()
+	m.agentViewCache = m.agentList.View()
+	m.cachesDirty = false
+	return *m
 }
 
 func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -1384,25 +1386,25 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if newModel, cmd, handled := m.handleCoreMsgs(msg); handled {
 		if uiModel, ok := newModel.(UIModel); ok {
-			newModel = updateListCaches(m, uiModel, msg)
+			newModel = updateListCaches(&uiModel)
 		}
 		return newModel, cmd
 	}
 	if newModel, cmd, handled := m.handleProjectMsgs(msg); handled {
 		if uiModel, ok := newModel.(UIModel); ok {
-			newModel = updateListCaches(m, uiModel, msg)
+			newModel = updateListCaches(&uiModel)
 		}
 		return newModel, cmd
 	}
 	if newModel, cmd, handled := m.handleAgentMsgs(msg); handled {
 		if uiModel, ok := newModel.(UIModel); ok {
-			newModel = updateListCaches(m, uiModel, msg)
+			newModel = updateListCaches(&uiModel)
 		}
 		return newModel, cmd
 	}
 
 	newM, cmd := m.handleFocusUpdate(msg)
 	newM.updateKeyBindings()
-	newM = updateListCaches(m, newM, msg)
+	newM = updateListCaches(&newM)
 	return newM, cmd
 }

@@ -1043,9 +1043,10 @@ func TestIntegration_RegistryLoadsBeforeHarnessSelection(t *testing.T) {
 		"openai": {
 			ID:   "openai",
 			Name: "OpenAI",
-			Env:  []string{},
+			Env:  []string{"OPENAI_API_KEY"},
 			Models: map[string]discovery.Model{
-				"gpt-4": {ID: "gpt-4", Name: "GPT-4"},
+				"gpt-4":         {ID: "gpt-4", Name: "GPT-4"},
+				"gpt-3.5-turbo": {ID: "gpt-3.5-turbo", Name: "GPT-3.5 Turbo"},
 			},
 		},
 	})
@@ -1084,7 +1085,7 @@ func TestIntegration_RegistryLoadsBeforeHarnessSelection(t *testing.T) {
 
 	// Model list should have openai models
 	finalM := updatedM.(UIModel)
-	assert.Equal(t, 1, len(finalM.modelList.VisibleItems()), "Should have 1 model from openai provider")
+	assert.Equal(t, 2, len(finalM.modelList.VisibleItems()), "Should have 2 models from openai provider")
 }
 
 func TestHandleModelSkip_WithDiscoveryKeywords(t *testing.T) {
@@ -1422,7 +1423,7 @@ func TestBuildMatrixConfig_UsesMaterializedLaunchContextForAgentNode(t *testing.
 		},
 	}
 
-	cfg := m.buildMatrixConfig()
+	cfg := updateListCaches(&m).buildMatrixConfig()
 	assert.Equal(t, "bb-123: Fix hover tracking", cfg.TicketView)
 	assert.Equal(t, "default-harness", cfg.HarnessView)
 	assert.Equal(t, "gpt-4", cfg.ModelView)
@@ -1441,7 +1442,7 @@ func TestBuildMatrixConfig_KeepsLiveListsWhenCursorNotOnAgent(t *testing.T) {
 	expectedModelView := m.modelList.View()
 	expectedAgentView := m.agentList.View()
 
-	cfg := m.buildMatrixConfig()
+	cfg := updateListCaches(&m).buildMatrixConfig()
 	assert.Equal(t, expectedTicketView, cfg.TicketView)
 	assert.Equal(t, expectedHarnessView, cfg.HarnessView)
 	assert.Equal(t, expectedModelView, cfg.ModelView)
@@ -1462,12 +1463,12 @@ func TestBuildMatrixConfig_KeepsLiveListsWhenHoverEnds(t *testing.T) {
 		},
 	}
 
-	cfgHovered := m.buildMatrixConfig()
+	cfgHovered := updateListCaches(&m).buildMatrixConfig()
 	assert.Equal(t, "bb-hovered: Hovered title", cfgHovered.TicketView)
 
 	endedModel, _ := m.handleAgentHoverEnded(AgentHoverEndedMsg{})
 	m = endedModel.(UIModel)
-	cfgNormal := m.buildMatrixConfig()
+	cfgNormal := updateListCaches(&m).buildMatrixConfig()
 	assert.Equal(t, m.ticketList.View(), cfgNormal.TicketView)
 }
 

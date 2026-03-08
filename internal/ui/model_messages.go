@@ -23,15 +23,6 @@ type launchResultMsg struct {
 
 type modalContentMsg string
 
-type addProjectPromptMsg struct {
-	projectPath string
-}
-
-type addProjectResultMsg struct {
-	success bool
-	err     error
-}
-
 // addProjectConfirmedMsg is emitted when user confirms adding a project.
 type addProjectConfirmedMsg struct {
 	path string

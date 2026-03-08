@@ -128,7 +128,7 @@ func (m UIModel) Init() tea.Cmd {
 			// Show add-project modal
 			return tea.Batch(
 				func() tea.Msg {
-					return addProjectPromptMsg{projectPath: targetProject}
+					return ShowAddProjectModalMsg{path: targetProject}
 				},
 				m.loadRegistryCmd(),
 			)
@@ -192,21 +192,6 @@ func (m UIModel) handleCoreMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 
 func (m UIModel) handleProjectMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	switch msg := msg.(type) {
-	case addProjectPromptMsg:
-		m.state = ViewStateAddProjectModal
-		m.pendingProjectPath = msg.projectPath
-		return m, nil, true
-	case addProjectResultMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			m.state = ViewStateError
-		} else if msg.success {
-			m.state = ViewStateMatrix
-			return m, m.activateProjectAndInit(m.pendingProjectPath), true
-		} else {
-			m.state = ViewStateMatrix
-		}
-		return m, m.continueNormalInit(), true
 	case worktreesDiscoveredMsg:
 		newM, cmd := m.handleWorktreesDiscovered(msg)
 		return newM, cmd, true
@@ -230,6 +215,9 @@ func (m UIModel) handleProjectMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		m.state = ViewStateAddProjectModal
 		m.pendingProjectPath = msg.path
 		return m, nil, true
+	case addProjectConfirmedMsg:
+		newM, cmd := m.handleAddProjectConfirmed(msg)
+		return newM, cmd, true
 	case addProjectCancelledMsg:
 		m.state = ViewStateFilePicker
 		m.pendingProjectPath = ""

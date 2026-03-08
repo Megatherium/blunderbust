@@ -343,11 +343,11 @@ func (m UIModel) handleAddProjectModalKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 	switch msg.String() {
 	case "y", "Y":
 		return m, func() tea.Msg {
-			return addProjectResultMsg{success: true}
+			return addProjectConfirmedMsg{path: m.pendingProjectPath}
 		}, true
 	case "n", "N", "q", "esc":
 		return m, func() tea.Msg {
-			return addProjectResultMsg{success: false}
+			return addProjectCancelledMsg{}
 		}, true
 	}
 	return m, nil, true

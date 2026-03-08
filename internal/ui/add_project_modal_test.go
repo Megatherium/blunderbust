@@ -67,7 +67,7 @@ func TestAddProjectModal_ValidProjectWithBeads(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAddProjectModal_KeyHandlers tests y/n key handling for the modal
+// TestAddProjectModal_KeyHandlers tests y/n key handling for modal
 func TestAddProjectModal_KeyHandlers(t *testing.T) {
 	app := newTestApp()
 	m := NewUIModel(app, nil)
@@ -82,23 +82,23 @@ func TestAddProjectModal_KeyHandlers(t *testing.T) {
 	require.True(t, handled, "y key should be handled")
 	require.NotNil(t, cmd)
 
-	// The command should return addProjectResultMsg
+	// The command should return addProjectConfirmedMsg
 	msg := cmd()
-	resultMsg, ok := msg.(addProjectResultMsg)
-	require.True(t, ok, "should return addProjectResultMsg")
-	assert.True(t, resultMsg.success, "y should indicate success")
+	confirmedMsg, ok := msg.(addProjectConfirmedMsg)
+	require.True(t, ok, "should return addProjectConfirmedMsg")
+	assert.Equal(t, "/test/project", confirmedMsg.path, "should include the pending project path")
 
 	// Reset and test 'n' key declines
 	m.state = ViewStateAddProjectModal
+	m.pendingProjectPath = "/test/project"
 	nMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
 	_, cmd, handled = m.handleKeyMsg(nMsg)
 	require.True(t, handled, "n key should be handled")
 	require.NotNil(t, cmd)
 
 	msg = cmd()
-	resultMsg, ok = msg.(addProjectResultMsg)
-	require.True(t, ok, "should return addProjectResultMsg")
-	assert.False(t, resultMsg.success, "n should indicate decline")
+	_, ok = msg.(addProjectCancelledMsg)
+	require.True(t, ok, "should return addProjectCancelledMsg")
 }
 
 // TestAddProjectModal_BlocksOtherKeys tests that other keys are blocked when modal is shown
@@ -127,27 +127,8 @@ func TestAddProjectModal_BlocksOtherKeys(t *testing.T) {
 	require.NotNil(t, cmd)
 
 	msg := cmd()
-	resultMsg, ok := msg.(addProjectResultMsg)
-	require.True(t, ok, "Escape should return addProjectResultMsg")
-	assert.False(t, resultMsg.success, "Escape should indicate decline")
-}
-
-// TestAddProject_Messages tests the message types work correctly
-func TestAddProject_Messages(t *testing.T) {
-	// Test addProjectPromptMsg
-	promptMsg := addProjectPromptMsg{projectPath: "/test/path"}
-	assert.Equal(t, "/test/path", promptMsg.projectPath)
-
-	// Test addProjectResultMsg - success
-	successMsg := addProjectResultMsg{success: true, err: nil}
-	assert.True(t, successMsg.success)
-	assert.NoError(t, successMsg.err)
-
-	// Test addProjectResultMsg - failure
-	testErr := assert.AnError
-	failureMsg := addProjectResultMsg{success: false, err: testErr}
-	assert.False(t, failureMsg.success)
-	assert.Error(t, failureMsg.err)
+	_, ok := msg.(addProjectCancelledMsg)
+	require.True(t, ok, "Escape should return addProjectCancelledMsg")
 }
 
 // TestApp_DeduplicateProjectName tests name collision handling

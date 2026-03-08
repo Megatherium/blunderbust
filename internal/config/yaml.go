@@ -8,13 +8,13 @@ package config
 
 // yamlConfig is the raw YAML structure for unmarshaling.
 type yamlConfig struct {
-	Harnesses         []yamlHarness            `yaml:"harnesses"`
-	Launcher          *yamlLauncherConfig      `yaml:"launcher,omitempty"`
-	Defaults          *yamlDefaults            `yaml:"defaults,omitempty"`
-	General           *yamlGeneralConfig       `yaml:"general,omitempty"`
-	Workspaces        map[string]yamlWorkspace `yaml:"workspaces,omitempty"`
-	FilePickerRecents []string                 `yaml:"filepicker_recents,omitempty"`
-	FilePickerMaxRecents int                   `yaml:"filepicker_max_recents,omitempty"`
+	Harnesses            []yamlHarness            `yaml:"harnesses"`
+	Launcher             *yamlLauncherConfig      `yaml:"launcher,omitempty"`
+	Defaults             *yamlDefaults            `yaml:"defaults,omitempty"`
+	General              *yamlGeneralConfig       `yaml:"general,omitempty"`
+	Workspaces           map[string]yamlWorkspace `yaml:"workspaces,omitempty"`
+	FilePickerRecents    []string                 `yaml:"filepicker_recents,omitempty"`
+	FilePickerMaxRecents int                      `yaml:"filepicker_max_recents,omitempty"`
 }
 
 type yamlWorkspace struct {

@@ -75,7 +75,7 @@ func discoverWorktreesCmd(app *App) tea.Cmd {
 				fmt.Fprintf(os.Stderr, "[DEBUG]   project[%d]: dir=%s, name=%s\n", i, p.Dir, p.Name)
 			}
 		}
-		
+
 		if len(projects) == 0 {
 			if app.opts.Debug {
 				fmt.Fprintf(os.Stderr, "[DEBUG] discoverWorktreesCmd: no projects configured, using fallback\n")
@@ -85,7 +85,7 @@ func discoverWorktreesCmd(app *App) tea.Cmd {
 
 		discoverer := data.NewWorktreeDiscoverer()
 		nodes, errs := discoverer.DiscoverMulti(context.Background(), projects)
-		
+
 		if app.opts.Debug {
 			fmt.Fprintf(os.Stderr, "[DEBUG] discoverWorktreesCmd: discovered %d nodes, %d errors\n", len(nodes), len(errs))
 		}
@@ -178,15 +178,15 @@ func loadRunningAgentsCmd(app *App) tea.Cmd {
 			}
 			return runningAgentsLoadedMsg{err: err}
 		}
-		
+
 		if app.opts.Debug {
 			fmt.Fprintf(os.Stderr, "[DEBUG] loadRunningAgentsCmd: loaded %d valid agents\n", len(agents))
 			for _, a := range agents {
-				fmt.Fprintf(os.Stderr, "[DEBUG]   - %s: PID=%d, harness=%s, binary=%s, worktree=%s\n", 
+				fmt.Fprintf(os.Stderr, "[DEBUG]   - %s: PID=%d, harness=%s, binary=%s, worktree=%s\n",
 					a.Ticket, a.PID, a.HarnessName, a.HarnessBinary, a.WorktreePath)
 			}
 		}
-		
+
 		return runningAgentsLoadedMsg{agents: agents}
 	}
 }
@@ -195,7 +195,7 @@ func saveRunningAgentCmd(app *App, spec *domain.LaunchSpec, result *domain.Launc
 	return func() tea.Msg {
 		if app == nil || spec == nil || result == nil {
 			if app != nil && app.opts.Debug {
-				fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: nil check failed (app=%v, spec=%v, result=%v)\n", 
+				fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: nil check failed (app=%v, spec=%v, result=%v)\n",
 					app != nil, spec != nil, result != nil)
 			}
 			return nil
@@ -270,11 +270,11 @@ func saveRunningAgentCmd(app *App, spec *domain.LaunchSpec, result *domain.Launc
 			}
 			return warningMsg{err: fmt.Errorf("failed to persist running agent: %w", err)}
 		}
-		
+
 		if app.opts.Debug {
 			fmt.Fprintf(os.Stderr, "[DEBUG] saveRunningAgentCmd: agent saved successfully\n")
 		}
-		
+
 		return nil
 	}
 }

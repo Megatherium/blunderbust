@@ -6,6 +6,7 @@ import (
 	"os"
 	osexec "os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/megatherium/blunderbust/internal/config"
 	"github.com/megatherium/blunderbust/internal/data"
@@ -17,19 +18,25 @@ import (
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
 )
 
+// fcListCmd is the command executor for fc-list, allowing test injection.
+var fcListCmd = osexec.Command
+
 type FontConfig struct {
 	HasNerdFont bool
 }
 
 func DetectNerdFont() bool {
-	if _, err := osexec.LookPath("fc-list"); err == nil {
-		out, err := osexec.Command("fc-list", ":family", "|", "grep", "-i", "nerd").CombinedOutput()
-		if err == nil && len(out) > 0 {
-			return true
-		}
+	if _, err := osexec.LookPath("fc-list"); err != nil {
+		return false
 	}
 
-	return false
+	out, err := fcListCmd("fc-list", ":family").CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	lower := strings.ToLower(string(out))
+	return strings.Contains(lower, "nerd")
 }
 
 // App encapsulates the Bubble Tea program's dependencies.

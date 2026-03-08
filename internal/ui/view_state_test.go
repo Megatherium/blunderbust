@@ -10,10 +10,10 @@ import (
 
 func TestRenderMainContent_MatrixState(t *testing.T) {
 	cfg := MainContentConfig{
-		State:     ViewStateMatrix,
-		Loading:   true,
-		AnimState: AnimationState{},
-		CurrentTheme:     MatrixTheme,
+		State:        ViewStateMatrix,
+		Loading:      true,
+		AnimState:    AnimationState{},
+		CurrentTheme: MatrixTheme,
 	}
 
 	s := RenderMainContent(cfg)
@@ -36,8 +36,8 @@ func TestRenderMainContent_ConfirmState(t *testing.T) {
 
 func TestRenderMainContent_ErrorState(t *testing.T) {
 	cfg := MainContentConfig{
-		State: ViewStateError,
-		Err:   assert.AnError,
+		State:        ViewStateError,
+		Err:          assert.AnError,
 		CurrentTheme: MatrixTheme,
 	}
 
@@ -49,7 +49,7 @@ func TestRenderMainContent_FilePicker(t *testing.T) {
 	cfg := MainContentConfig{
 		State:          ViewStateMatrix,
 		ShowFilePicker: true,
-		CurrentTheme:          MatrixTheme,
+		CurrentTheme:   MatrixTheme,
 	}
 
 	s := RenderMainContent(cfg)
@@ -62,7 +62,7 @@ func TestRenderMainContent_AddProjectModal(t *testing.T) {
 		State:               ViewStateMatrix,
 		ShowAddProjectModal: true,
 		PendingProjectPath:  "/path/to/project",
-		CurrentTheme:               MatrixTheme,
+		CurrentTheme:        MatrixTheme,
 	}
 
 	s := RenderMainContent(cfg)

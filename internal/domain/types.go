@@ -80,12 +80,12 @@ type Defaults struct {
 
 // Config holds the top-level blunderbust configuration.
 type Config struct {
-	Harnesses         []Harness
-	Launcher          *LauncherConfig
-	Defaults          *Defaults
-	General           *GeneralConfig
-	Workspace         Workspace
-	FilePickerRecents []string
+	Harnesses            []Harness
+	Launcher             *LauncherConfig
+	Defaults             *Defaults
+	General              *GeneralConfig
+	Workspace            Workspace
+	FilePickerRecents    []string
 	FilePickerMaxRecents int
 }
 

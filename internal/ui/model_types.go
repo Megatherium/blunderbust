@@ -26,6 +26,7 @@ var docStyle = lipgloss.NewStyle().Padding(1, 2)
 const (
 	footerHeight     = 1
 	filterHeight     = 3
+	statusBarHeight  = 1 // bubbles list status bar consumes 1 line
 	minWindowWidth   = 60
 	minWindowHeight  = 10
 	sidebarBaseWidth = 25

@@ -12,7 +12,10 @@ func (m *UIModel) updateSizes() {
 	}
 
 	listHeight := m.height - filterHeight
-	innerListHeight := listHeight - 2
+	// The bubbles list component consumes 1 line for the status bar.
+	// We add it back to innerListHeight so the visible items align with
+	// what the list component calculates as its viewport capacity.
+	innerListHeight := listHeight - 2 + statusBarHeight
 
 	var usableWidth int
 	if m.showSidebar {

@@ -114,11 +114,7 @@ type UIModel struct {
 
 	harnesses []domain.Harness
 
-	width  int
-	height int
-
-	termWidth  int
-	termHeight int
+	layout LayoutDimensions
 
 	err          error
 	warnings     []string
@@ -128,11 +124,6 @@ type UIModel struct {
 	modalContent string
 
 	showSidebar      bool
-	sidebarWidth     int
-	tWidth           int
-	hWidth           int
-	mWidth           int
-	aWidth           int
 	selectedWorktree string
 
 	// Agent tracking
@@ -145,7 +136,7 @@ type UIModel struct {
 	agentColumnDisabled bool // true when harness has no agents
 
 	// Caches for list views to avoid re-rendering on every tick
-	cachesDirty       bool // true when caches need rebuilding
+	cachesDirty      bool // true when caches need rebuilding
 	ticketViewCache  string
 	harnessViewCache string
 	modelViewCache   string

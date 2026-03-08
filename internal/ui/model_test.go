@@ -49,18 +49,18 @@ func TestUIModel_UpdateSizes(t *testing.T) {
 
 	updatedM, _ := m.handleWindowSizeMsg(tea.WindowSizeMsg{Width: 20, Height: 5})
 	m = updatedM
-	assert.Equal(t, 60, m.width)
-	assert.Equal(t, 10, m.height)
+	assert.Equal(t, 60, m.layout.Width)
+	assert.Equal(t, 10, m.layout.Height)
 
 	m.showSidebar = true
 	updatedM, _ = m.handleWindowSizeMsg(tea.WindowSizeMsg{Width: 100, Height: 30})
 	m = updatedM
-	assert.NotZero(t, m.sidebarWidth)
+	assert.NotZero(t, m.layout.SidebarWidth)
 
 	m.showSidebar = false
 	updatedM, _ = m.handleWindowSizeMsg(tea.WindowSizeMsg{Width: 100, Height: 30})
 	m = updatedM
-	assert.Equal(t, 0, m.sidebarWidth)
+	assert.Equal(t, 0, m.layout.SidebarWidth)
 }
 
 func TestUIModel_HandleKeyMsg_FocusBounds(t *testing.T) {

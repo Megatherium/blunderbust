@@ -7,60 +7,23 @@ import (
 )
 
 func (m *UIModel) updateSizes() {
-	if m.width == 0 || m.height == 0 {
+	if m.layout.Width == 0 || m.layout.Height == 0 {
 		return
 	}
 
-	listHeight := m.height - filterHeight
-	// The bubbles list component internally accounts for the status bar height
-	// when calculating pagination (in updatePagination()). The border consumes
-	// borderHeight lines, and the column title consumes 1 line, leaving:
-	// listHeight - borderHeight - 1 for the actual list content.
-	innerListHeight := listHeight - borderHeight - 1
-	if innerListHeight < 1 {
-		innerListHeight = 1
-	}
-
-	var usableWidth int
-	if m.showSidebar {
-		usableWidth = m.width - 8
-	} else {
-		usableWidth = m.width - 6
-	}
-
-	baseX := usableWidth / 4
-
-	if m.showSidebar {
-		m.sidebarWidth = baseX
-		m.tWidth = baseX
-		m.hWidth = baseX / 2
-		m.mWidth = baseX
-		aWidth := usableWidth - (m.sidebarWidth + m.tWidth + m.hWidth + m.mWidth)
-		if aWidth < 10 {
-			aWidth = 10
-		}
-		m.aWidth = aWidth
-	} else {
-		m.sidebarWidth = 0
-		m.tWidth = baseX
-		m.hWidth = baseX
-		m.mWidth = baseX
-		m.aWidth = usableWidth - (m.tWidth + m.hWidth + m.mWidth)
-	}
-
 	safeW := func(w int) int {
-		if w-2 < 1 {
+		if w-borderWidth < 1 {
 			return 1
 		}
-		return w - 2
+		return w - borderWidth
 	}
 
-	m.ticketList.SetSize(safeW(m.tWidth), innerListHeight)
-	m.harnessList.SetSize(safeW(m.hWidth), innerListHeight)
-	m.modelList.SetSize(safeW(m.mWidth), innerListHeight)
-	m.agentList.SetSize(safeW(m.aWidth), innerListHeight)
-	m.sidebar.SetSize(m.sidebarWidth, m.height)
-	m.help.Width = m.width
+	m.ticketList.SetSize(safeW(m.layout.TWidth), m.layout.InnerListHeight)
+	m.harnessList.SetSize(safeW(m.layout.HWidth), m.layout.InnerListHeight)
+	m.modelList.SetSize(safeW(m.layout.MWidth), m.layout.InnerListHeight)
+	m.agentList.SetSize(safeW(m.layout.AWidth), m.layout.InnerListHeight)
+	m.sidebar.SetSize(m.layout.SidebarWidth, m.layout.Height)
+	m.help.Width = m.layout.Width
 }
 
 func (m UIModel) getThemeValue() ThemePalette {
@@ -84,8 +47,8 @@ func (m UIModel) renderMainContent() string {
 		ModalContent:       m.modalContent,
 		PendingProjectPath: m.pendingProjectPath,
 		Warnings:           m.warnings,
-		Width:              m.width,
-		Height:             m.height,
+		Width:              m.layout.Width,
+		Height:             m.layout.Height,
 		Err:                m.err,
 		RetryStore:         m.retryStore,
 		MatrixConfig:       m.buildMatrixConfig(),
@@ -103,14 +66,14 @@ func (m UIModel) buildMatrixConfig() MatrixConfig {
 		theme = MatrixTheme
 	}
 	cfg := MatrixConfig{
-		Width:               m.width,
-		Height:              m.height,
+		Width:               m.layout.Width,
+		Height:              m.layout.Height,
 		ShowSidebar:         m.showSidebar,
-		SidebarWidth:        m.sidebarWidth,
-		TWidth:              m.tWidth,
-		HWidth:              m.hWidth,
-		MWidth:              m.mWidth,
-		AWidth:              m.aWidth,
+		SidebarWidth:        m.layout.SidebarWidth,
+		TWidth:              m.layout.TWidth,
+		HWidth:              m.layout.HWidth,
+		MWidth:              m.layout.MWidth,
+		AWidth:              m.layout.AWidth,
 		ModelColumnDisabled: m.modelColumnDisabled,
 		AgentColumnDisabled: m.agentColumnDisabled,
 		Focus:               m.focus,
@@ -170,7 +133,7 @@ func (m UIModel) View() string {
 	s := m.renderMainContent()
 
 	footerStyle := lipgloss.NewStyle().
-		Width(m.width).
+		Width(m.layout.Width).
 		Background(ThemeFooterBg).
 		Foreground(ThemeFooterFg).
 		Padding(0, 1)
@@ -196,9 +159,9 @@ func (m UIModel) View() string {
 	}
 
 	mainContentStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Height(m.height).
-		MaxHeight(m.height).
+		Width(m.layout.Width).
+		Height(m.layout.Height).
+		MaxHeight(m.layout.Height).
 		Background(theme.AppBg).
 		Foreground(theme.AppFg)
 
@@ -215,10 +178,10 @@ func (m UIModel) View() string {
 	// Because every line will end with `\u00A0` instead of a standard space, Bubble Tea's
 	// trailing whitespace stripper will be bypassed, and the inner blocks' background
 	// colored spaces will be fully preserved!
-	if m.termWidth > 0 && m.termHeight > 0 {
+	if m.layout.TermWidth > 0 && m.layout.TermHeight > 0 {
 		return lipgloss.Place(
-			m.termWidth,
-			m.termHeight,
+			m.layout.TermWidth,
+			m.layout.TermHeight,
 			lipgloss.Center,
 			lipgloss.Center,
 			fullView,

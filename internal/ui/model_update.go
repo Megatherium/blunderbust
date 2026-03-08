@@ -296,20 +296,7 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
-	m.termWidth = msg.Width
-	m.termHeight = msg.Height
-	h, v := docStyle.GetFrameSize()
-	// Account for: frame borders (v) + margins (verticalMargins) + footer
-	m.width, m.height = msg.Width-h, msg.Height-v-verticalMargins-footerHeight
-
-	if m.width < minWindowWidth {
-		m.width = minWindowWidth
-	}
-	if m.height < minWindowHeight {
-		m.height = minWindowHeight
-	}
-
-	m.updateSizes()
+	m.layout = Compute(msg.Width, msg.Height, m.showSidebar)
 	m.cachesDirty = true
 	return m, nil
 }

@@ -37,8 +37,8 @@ func TestUpdateSizes_HeightCalculation(t *testing.T) {
 	assert.Equal(t, 25, expectedInnerListHeight, "innerListHeight calculation incorrect")
 
 	// Verify the model was updated (lists should have non-zero dimensions)
-	assert.Greater(t, m.width, 0, "width should be set")
-	assert.Greater(t, m.height, 0, "height should be set")
+	assert.Greater(t, m.layout.Width, 0, "width should be set")
+	assert.Greater(t, m.layout.Height, 0, "height should be set")
 }
 
 // TestUpdateSizes_SafetyGuard verifies negative innerListHeight is clamped to 1
@@ -58,8 +58,8 @@ func TestUpdateSizes_SafetyGuard(t *testing.T) {
 	assert.GreaterOrEqual(t, expectedInnerListHeight, 1, "innerListHeight should be at least 1")
 
 	// Verify minimum dimensions are respected
-	assert.GreaterOrEqual(t, m.width, minWindowWidth, "width should respect minimum")
-	assert.GreaterOrEqual(t, m.height, minWindowHeight, "height should respect minimum")
+	assert.GreaterOrEqual(t, m.layout.Width, minWindowWidth, "width should respect minimum")
+	assert.GreaterOrEqual(t, m.layout.Height, minWindowHeight, "height should respect minimum")
 }
 
 // TestUpdateSizes_VariousTerminalSizes verifies pagination works across terminal sizes
@@ -91,9 +91,9 @@ func TestUpdateSizes_VariousTerminalSizes(t *testing.T) {
 			assert.GreaterOrEqual(t, innerListHeight, 1,
 				"innerListHeight should be positive for terminal height %d", tc.height)
 
-			// Verify the model properly sized the lists
-			assert.Greater(t, m.width, 0, "width should be set")
-			assert.Greater(t, m.height, 0, "height should be set")
+			// Verify the model properly sized lists
+			assert.Greater(t, m.layout.Width, 0, "width should be set")
+			assert.Greater(t, m.layout.Height, 0, "height should be set")
 		})
 	}
 }

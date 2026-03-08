@@ -24,6 +24,10 @@ func newTicketList(tickets []domain.Ticket, theme ...*ThemePalette) list.Model {
 	}
 
 	delegate := newGradientDelegate(theme...)
+	// Titles can wrap to 2 lines when column is narrow, plus 1 line for description = 3 lines total.
+	// This ensures pagination calculation matches actual rendered height.
+	delegate.SetHeight(3)
+
 	l := list.New(items, delegate, 0, 0)
 	l.Title = "Select a Ticket"
 	l.SetShowTitle(false)

@@ -27,6 +27,7 @@ const (
 	footerHeight     = 1
 	filterHeight     = 3
 	statusBarHeight  = 1 // bubbles list status bar consumes 1 line
+	borderHeight     = 2 // thick border consumes 2 lines (top + bottom)
 	minWindowWidth   = 60
 	minWindowHeight  = 10
 	sidebarBaseWidth = 25

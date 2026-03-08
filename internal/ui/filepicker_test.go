@@ -35,7 +35,7 @@ func TestFilePicker_AddProjectFlow(t *testing.T) {
 	app := &App{
 		projects: []domain.Project{},
 		stores:   make(map[string]data.TicketStore),
-		loader:    &mockLoader{},
+		loader:   &mockLoader{},
 		opts: domain.AppOptions{
 			Demo: true, // Use demo mode so CreateStore doesn't need real dolt DB
 		},
@@ -129,15 +129,15 @@ func TestHandleAddProjectConfirmed_Success(t *testing.T) {
 	app := &App{
 		projects: []domain.Project{},
 		stores:   make(map[string]data.TicketStore),
-		loader:    &mockLoader{},
+		loader:   &mockLoader{},
 		opts: domain.AppOptions{
 			Demo: true, // Use demo mode so CreateStore doesn't need real dolt DB
 		},
 	}
 
 	m := UIModel{
-		app:   app,
-		state: ViewStateAddProjectModal,
+		app:                app,
+		state:              ViewStateAddProjectModal,
 		pendingProjectPath: tempDir,
 	}
 
@@ -184,7 +184,7 @@ func TestHandleAddProjectConfirmed_DuplicateProject(t *testing.T) {
 	app := &App{
 		projects: []domain.Project{existingProject},
 		stores:   make(map[string]data.TicketStore),
-		loader:    &mockLoader{},
+		loader:   &mockLoader{},
 	}
 
 	m := UIModel{
@@ -225,7 +225,7 @@ func TestHandleAddProjectConfirmed_StoreCreationFailure(t *testing.T) {
 	app := &App{
 		projects: []domain.Project{},
 		stores:   make(map[string]data.TicketStore),
-		loader:    &mockLoader{},
+		loader:   &mockLoader{},
 	}
 
 	m := UIModel{

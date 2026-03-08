@@ -1324,6 +1324,12 @@ func (m UIModel) handleAddProjectConfirmed(msg addProjectConfirmedMsg) (tea.Mode
 	}
 	m.app.AddStore(projectDir, store)
 
+	if err := m.app.SetActiveProject(ctx, projectDir); err != nil {
+		m.warnings = append(m.warnings, fmt.Sprintf("Failed to activate project %s: %v", projectDir, err))
+		m.state = ViewStateFilePicker
+		return m, nil
+	}
+
 	if err := m.app.SaveConfig(); err != nil {
 		m.warnings = append(m.warnings, fmt.Sprintf("Failed to save config: %v", err))
 	}
@@ -1332,6 +1338,8 @@ func (m UIModel) handleAddProjectConfirmed(msg addProjectConfirmedMsg) (tea.Mode
 	m.pendingProjectPath = ""
 
 	return m, tea.Batch(
+		m.loadRegistryCmd(),
+		m.continueInitAfterRegistry(),
 		discoverWorktreesCmd(m.app),
 		func() tea.Msg {
 			return warningMsg{fmt.Errorf("added project: %s", projectDir)}

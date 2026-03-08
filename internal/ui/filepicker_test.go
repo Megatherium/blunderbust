@@ -3,6 +3,7 @@ package ui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,6 +11,17 @@ import (
 	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/domain"
 )
+
+// mockLoader is a minimal mock for testing
+type mockLoader struct{}
+
+func (m *mockLoader) Load(path string) (*domain.Config, error) {
+	return &domain.Config{}, nil
+}
+
+func (m *mockLoader) Save(path string, cfg *domain.Config) error {
+	return nil
+}
 
 func TestFilePicker_AddProjectFlow(t *testing.T) {
 	// Create a temporary directory with .beads subdirectory
@@ -23,6 +35,10 @@ func TestFilePicker_AddProjectFlow(t *testing.T) {
 	app := &App{
 		projects: []domain.Project{},
 		stores:   make(map[string]data.TicketStore),
+		loader:    &mockLoader{},
+		opts: domain.AppOptions{
+			Demo: true, // Use demo mode so CreateStore doesn't need real dolt DB
+		},
 	}
 
 	// Create UIModel
@@ -102,37 +118,138 @@ func TestCheckAndPromptAddProject_WithoutBeads(t *testing.T) {
 	}
 }
 
-func TestHandleAddProjectConfirmed(t *testing.T) {
-	// This is a simple smoke test - full integration would require more setup
-	// Create tempDir with .beads subdirectory so store creation doesn't fail
+func TestHandleAddProjectConfirmed_Success(t *testing.T) {
+	// Test successful project addition using demo mode
 	tempDir := t.TempDir()
 	beadsDir := filepath.Join(tempDir, ".beads")
 	if err := os.MkdirAll(beadsDir, 0755); err != nil {
 		t.Fatalf("Failed to create .beads directory: %v", err)
 	}
 
-	m := UIModel{
-		app: &App{
-			projects: []domain.Project{},
-			stores:   make(map[string]data.TicketStore),
+	app := &App{
+		projects: []domain.Project{},
+		stores:   make(map[string]data.TicketStore),
+		loader:    &mockLoader{},
+		opts: domain.AppOptions{
+			Demo: true, // Use demo mode so CreateStore doesn't need real dolt DB
 		},
+	}
+
+	m := UIModel{
+		app:   app,
 		state: ViewStateAddProjectModal,
+		pendingProjectPath: tempDir,
 	}
 
 	msg := addProjectConfirmedMsg{path: tempDir}
 	model, cmd := m.handleAddProjectConfirmed(msg)
 
-	// Type assert to access UIModel fields
+	// Verify state transition to matrix
 	uiModel, ok := model.(UIModel)
 	if !ok {
 		t.Fatal("Expected model to be UIModel")
 	}
+	if uiModel.state != ViewStateMatrix {
+		t.Errorf("Expected state to be ViewStateMatrix, got %d", uiModel.state)
+	}
+	if uiModel.pendingProjectPath != "" {
+		t.Errorf("Expected pendingProjectPath to be empty, got %s", uiModel.pendingProjectPath)
+	}
 
-	// Since store creation will fail (no real dolt DB), it goes to error branch
-	// which keeps file picker open. This is expected behavior for the smoke test.
-	// We just verify the function runs without panic and returns a command.
-	_ = uiModel
-	_ = cmd
+	// Verify project was added
+	if len(uiModel.app.GetProjects()) != 1 {
+		t.Errorf("Expected 1 project, got %d", len(uiModel.app.GetProjects()))
+	}
+	project := uiModel.app.GetProjects()[0]
+	if project.Dir != tempDir {
+		t.Errorf("Expected project dir to be %s, got %s", tempDir, project.Dir)
+	}
+
+	// Verify active project is set
+	if uiModel.app.Project() == nil {
+		t.Error("Expected active project to be set")
+	}
+
+	// Verify commands are returned
+	if cmd == nil {
+		t.Fatal("Expected commands to be returned")
+	}
+}
+
+func TestHandleAddProjectConfirmed_DuplicateProject(t *testing.T) {
+	// Test duplicate project detection
+	tempDir := t.TempDir()
+	existingProject := domain.Project{Dir: tempDir, Name: "test-project"}
+
+	app := &App{
+		projects: []domain.Project{existingProject},
+		stores:   make(map[string]data.TicketStore),
+		loader:    &mockLoader{},
+	}
+
+	m := UIModel{
+		app:   app,
+		state: ViewStateAddProjectModal,
+	}
+
+	msg := addProjectConfirmedMsg{path: tempDir}
+	model, _ := m.handleAddProjectConfirmed(msg)
+
+	uiModel := model.(UIModel)
+
+	// Verify state remains in file picker (not matrix)
+	if uiModel.state != ViewStateFilePicker {
+		t.Errorf("Expected state to be ViewStateFilePicker for duplicate, got %d", uiModel.state)
+	}
+
+	// Verify warning was added
+	if len(uiModel.warnings) != 1 {
+		t.Errorf("Expected 1 warning, got %d", len(uiModel.warnings))
+	}
+	if !strings.Contains(uiModel.warnings[0], "already exists") {
+		t.Errorf("Expected warning about duplicate, got: %s", uiModel.warnings[0])
+	}
+
+	// Verify project was not added again
+	if len(uiModel.app.GetProjects()) != 1 {
+		t.Errorf("Expected 1 project (unchanged), got %d", len(uiModel.app.GetProjects()))
+	}
+}
+
+func TestHandleAddProjectConfirmed_StoreCreationFailure(t *testing.T) {
+	// Test store creation failure handling
+	// Use a directory without .beads to trigger store creation failure
+	tempDir := t.TempDir()
+	// Don't create .beads directory - this will cause CreateStore to fail
+
+	app := &App{
+		projects: []domain.Project{},
+		stores:   make(map[string]data.TicketStore),
+		loader:    &mockLoader{},
+	}
+
+	m := UIModel{
+		app:   app,
+		state: ViewStateAddProjectModal,
+	}
+
+	msg := addProjectConfirmedMsg{path: tempDir}
+	model, _ := m.handleAddProjectConfirmed(msg)
+
+	uiModel := model.(UIModel)
+
+	// Verify state remains in file picker
+	if uiModel.state != ViewStateFilePicker {
+		t.Errorf("Expected state to be ViewStateFilePicker on error, got %d", uiModel.state)
+	}
+
+	// Verify warning was added
+	if len(uiModel.warnings) != 1 {
+		t.Errorf("Expected 1 warning, got %d", len(uiModel.warnings))
+	}
+	if !strings.Contains(uiModel.warnings[0], "Failed to create store") {
+		t.Errorf("Expected warning about store creation failure, got: %s", uiModel.warnings[0])
+	}
 }
 
 func TestOpenFilePickerCmd(t *testing.T) {

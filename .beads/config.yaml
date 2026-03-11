@@ -53,4 +53,5 @@
 types:
   custom: "review, refinement"
 backup:
+  git-push: false
   git-repo: backup

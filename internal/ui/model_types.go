@@ -140,6 +140,12 @@ type UIModel struct {
 	dirtyHarness bool // harness column cache needs rebuilding
 	dirtyModel   bool // model column cache needs rebuilding
 	dirtyAgent   bool // agent column cache needs rebuilding
+
+	initializedTicket  bool // true if ticketViewCache has been built at least once
+	initializedHarness bool // true if harnessViewCache has been built at least once
+	initializedModel   bool // true if modelViewCache has been built at least once
+	initializedAgent   bool // true if agentViewCache has been built at least once
+
 	ticketViewCache  string
 	harnessViewCache string
 	modelViewCache   string

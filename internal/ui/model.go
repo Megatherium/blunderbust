@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/data"
+	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/megatherium/blunderbust/internal/ui/filepicker"
 )
@@ -29,7 +30,12 @@ func initList(l *list.Model, width, height int, title string) {
 func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 	currentTheme := &TokyoNightTheme
 
-	hl := newHarnessList(harnesses, app.Registry, currentTheme)
+	var registry *discovery.Registry
+	if app != nil {
+		registry = app.Registry
+	}
+
+	hl := newHarnessList(harnesses, registry, currentTheme)
 	initList(&hl, 0, 0, "Select a Harness")
 
 	tl := newTicketList(nil, currentTheme)
@@ -381,39 +387,6 @@ func (m UIModel) handleFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
 }
 
 // activateProjectAndInit adds the project and initializes the TUI with it.
-func (m UIModel) activateProjectAndInit(projectPath string) tea.Cmd {
-	// Capture app reference explicitly to avoid confusion about what we're mutating
-	app := m.app
-	return tea.Batch(
-		func() tea.Msg {
-			// Add project to workspace
-			project := domain.Project{
-				Dir:  projectPath,
-				Name: filepath.Base(projectPath),
-			}
-			app.AddProject(project)
-
-			// Activate the project
-			if err := app.SetActiveProject(context.Background(), projectPath); err != nil {
-				return errMsg{err}
-			}
-
-			// Load tickets
-			projectCtx := app.Project()
-			if projectCtx == nil {
-				return errMsg{fmt.Errorf("failed to get project context")}
-			}
-
-			tickets, err := projectCtx.Store().
-				ListTickets(context.Background(), data.TicketFilter{})
-			if err != nil {
-				return errMsg{err}
-			}
-			return ticketsLoadedMsg(tickets)
-		},
-		discoverWorktreesCmd(app),
-	)
-}
 
 // continueNormalInit proceeds with normal TUI initialization.
 func (m UIModel) continueNormalInit() tea.Cmd {
@@ -450,6 +423,9 @@ func (m UIModel) continueInitAfterRegistry() tea.Cmd {
 // Extracted to avoid code duplication in Init().
 func (m UIModel) loadRegistryCmd() tea.Cmd {
 	return func() tea.Msg {
+		if m.app == nil {
+			return registryLoadedMsg{}
+		}
 		if err := m.app.Registry.Load(context.Background()); err != nil {
 			return warningMsg{err: fmt.Errorf("model discovery load failed: %w", err)}
 		}

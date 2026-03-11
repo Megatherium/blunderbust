@@ -7,6 +7,7 @@ import (
 	osexec "os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/megatherium/blunderbust/internal/config"
 	"github.com/megatherium/blunderbust/internal/data"
@@ -61,6 +62,7 @@ func detectNerdFontWithDetector(detector fontDetector) bool {
 
 // App encapsulates the Bubble Tea program's dependencies.
 type App struct {
+	mu            sync.RWMutex
 	stores        map[string]data.TicketStore
 	projects      []domain.Project
 	activeProject string
@@ -96,6 +98,9 @@ func NewApp(loader config.Loader, launcher exec.Launcher, statusChecker *tmux.St
 
 // Project returns the current project context (may be nil if CreateProjectContext hasn't been called).
 func (a *App) Project() *data.ProjectContext {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.activeProject == "" {
 		return nil
 	}
@@ -120,8 +125,10 @@ func (a *App) CreateProjectContext(ctx context.Context) (*data.ProjectContext, e
 		return a.loadSingleProject(ctx, a.opts.BeadsDir)
 	}
 
+	a.mu.Lock()
 	a.projects = cfg.Workspace.Projects
 	if len(a.projects) == 0 {
+		a.mu.Unlock()
 		return a.loadSingleProject(ctx, a.opts.BeadsDir)
 	}
 
@@ -129,14 +136,18 @@ func (a *App) CreateProjectContext(ctx context.Context) (*data.ProjectContext, e
 
 	// Create store for the first project in workspaces config
 	firstProjectDir := a.projects[0].Dir
+	a.mu.Unlock()
+
 	beadsDir := filepath.Join(firstProjectDir, ".beads")
 	store, err := a.createStore(ctx, beadsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create store for project %s at %s: %w", firstProjectDir, beadsDir, err)
 	}
 
+	a.mu.Lock()
 	a.stores[firstProjectDir] = store
 	a.activeProject = firstProjectDir
+	a.mu.Unlock()
 
 	return a.Project(), nil
 }
@@ -150,6 +161,7 @@ func (a *App) loadSingleProject(ctx context.Context, beadsDir string) (*data.Pro
 		return nil, err
 	}
 
+	a.mu.Lock()
 	a.stores = make(map[string]data.TicketStore)
 	rootPath := extractRepoRoot(beadsDir)
 	a.stores[rootPath] = store
@@ -157,6 +169,7 @@ func (a *App) loadSingleProject(ctx context.Context, beadsDir string) (*data.Pro
 
 	name := data.GetProjectName(rootPath)
 	a.projects = []domain.Project{{Dir: rootPath, Name: name}}
+	a.mu.Unlock()
 
 	return a.Project(), nil
 }
@@ -213,34 +226,51 @@ func (a *App) Close() error {
 
 // GetProjects returns the list of configured projects.
 func (a *App) GetProjects() []domain.Project {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	return a.projects
 }
 
 // SetActiveProject switches the active project context, creating the store lazily if needed.
 func (a *App) SetActiveProject(ctx context.Context, projectDir string) error {
-	if _, exists := a.stores[projectDir]; !exists {
-		beadsDir := filepath.Join(projectDir, ".beads")
-		store, err := a.createStore(ctx, beadsDir)
-		if err != nil {
-			return err
-		}
-		a.stores[projectDir] = store
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Check if store already exists
+	if _, exists := a.stores[projectDir]; exists {
+		a.activeProject = projectDir
+		return nil
 	}
+
+	beadsDir := filepath.Join(projectDir, ".beads")
+	store, err := a.createStore(ctx, beadsDir)
+	if err != nil {
+		return err
+	}
+	a.stores[projectDir] = store
 	a.activeProject = projectDir
 	return nil
 }
 
 // StoreForProject returns a store for projectDir, creating it lazily if needed.
 func (a *App) StoreForProject(ctx context.Context, projectDir string) (data.TicketStore, error) {
+	a.mu.RLock()
 	if store, exists := a.stores[projectDir]; exists {
+		a.mu.RUnlock()
 		return store, nil
 	}
+	a.mu.RUnlock()
+
 	beadsDir := filepath.Join(projectDir, ".beads")
 	store, err := a.createStore(ctx, beadsDir)
 	if err != nil {
 		return nil, err
 	}
+
+	a.mu.Lock()
 	a.stores[projectDir] = store
+	a.mu.Unlock()
+
 	return store, nil
 }
 
@@ -251,6 +281,9 @@ func (a *App) GetTargetProject() string {
 
 // IsProjectInWorkspace checks if a project directory is already in the workspace.
 func (a *App) IsProjectInWorkspace(projectDir string) bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	for _, p := range a.projects {
 		if p.Dir == projectDir {
 			return true
@@ -277,19 +310,41 @@ func (a *App) ValidateProject(projectDir string) error {
 
 // AddProject adds a new project to the workspace.
 func (a *App) AddProject(project domain.Project) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	for _, p := range a.projects {
 		if p.Dir == project.Dir {
 			return
 		}
 	}
 
-	project.Name = a.deduplicateProjectName(project.Name)
+	// deduplicateProjectName uses a.projects without locking (so we assume it's called with lock)
+	existingNames := make(map[string]bool)
+	for _, p := range a.projects {
+		existingNames[p.Name] = true
+	}
+
+	name := project.Name
+	if existingNames[name] {
+		for i := 1; ; i++ {
+			candidate := fmt.Sprintf("%s-%d", name, i)
+			if !existingNames[candidate] {
+				name = candidate
+				break
+			}
+		}
+	}
+	project.Name = name
 
 	a.projects = append(a.projects, project)
 }
 
 // AddStore adds a store for a project directory.
 func (a *App) AddStore(projectDir string, store data.TicketStore) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.stores == nil {
 		a.stores = make(map[string]data.TicketStore)
 	}
@@ -305,7 +360,9 @@ func (a *App) SaveConfig() error {
 		return fmt.Errorf("failed to reload config: %w", err)
 	}
 
+	a.mu.RLock()
 	cfg.Workspace.Projects = a.projects
+	a.mu.RUnlock()
 
 	if err := a.loader.Save(a.opts.ConfigPath, cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
@@ -316,6 +373,9 @@ func (a *App) SaveConfig() error {
 
 // deduplicateProjectName ensures unique project names by adding counter suffix
 func (a *App) deduplicateProjectName(name string) string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	existingNames := make(map[string]bool)
 	for _, p := range a.projects {
 		existingNames[p.Name] = true

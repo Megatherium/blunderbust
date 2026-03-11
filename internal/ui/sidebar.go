@@ -126,7 +126,7 @@ func (m SidebarModel) Update(msg tea.Msg) (SidebarModel, tea.Cmd) {
 }
 
 // TickAnimation advances the internal frame counter used for visual effects.
-// It should be called per UI update loop rather than per message or per render.
+// It should be called per UI update loop (once per message) rather than per render.
 func (m *SidebarModel) TickAnimation() {
 	m.animFrame++
 }

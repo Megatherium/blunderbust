@@ -1388,19 +1388,19 @@ func (m UIModel) isFocusedListFiltering() bool {
 }
 
 func updateListCaches(m *UIModel) UIModel {
-	if m.dirtyTicket {
+	if m.dirtyTicket || m.ticketViewCache == "" {
 		m.ticketViewCache = m.ticketList.View()
 		m.dirtyTicket = false
 	}
-	if m.dirtyHarness {
+	if m.dirtyHarness || m.harnessViewCache == "" {
 		m.harnessViewCache = m.harnessList.View()
 		m.dirtyHarness = false
 	}
-	if m.dirtyModel {
+	if m.dirtyModel || m.modelViewCache == "" {
 		m.modelViewCache = m.modelList.View()
 		m.dirtyModel = false
 	}
-	if m.dirtyAgent {
+	if m.dirtyAgent || m.agentViewCache == "" {
 		m.agentViewCache = m.agentList.View()
 		m.dirtyAgent = false
 	}

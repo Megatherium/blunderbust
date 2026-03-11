@@ -87,7 +87,10 @@ func (m UIModel) handleToggleThemeKeyMsg() (tea.Model, tea.Cmd, bool) {
 	m.harnessList.SetDelegate(newGradientDelegate(m.currentTheme))
 	m.modelList.SetDelegate(newGradientDelegate(m.currentTheme))
 	m.agentList.SetDelegate(newGradientDelegate(m.currentTheme))
-	m.cachesDirty = true
+	m.dirtyTicket = true
+	m.dirtyHarness = true
+	m.dirtyModel = true
+	m.dirtyAgent = true
 	return m, nil, true
 }
 
@@ -176,7 +179,7 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 	}
 	m.updateSizes()
 	m.lastTicketUpdate = time.Now()
-	m.cachesDirty = true
+	m.dirtyTicket = true
 
 	// Restore ticket selection and visual cursor position if it still exists.
 	// When tickets reorder (for example after priority changes), Select() with the
@@ -277,7 +280,6 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 
 		// Add agent node to sidebar under the worktree
 		addAgentNodeToSidebar(&m, agentInfo)
-		m.cachesDirty = true
 
 		// Return to matrix instead of result screen
 		m.state = ViewStateMatrix
@@ -297,7 +299,10 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 
 func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	m.layout = Compute(msg.Width, msg.Height, m.showSidebar)
-	m.cachesDirty = true
+	m.dirtyTicket = true
+	m.dirtyHarness = true
+	m.dirtyModel = true
+	m.dirtyAgent = true
 	return m, nil
 }
 
@@ -598,7 +603,7 @@ func (m UIModel) handleModelSkip() (UIModel, tea.Cmd) {
 	}
 	m.modelList = newModelList(models, m.currentTheme)
 	m.updateSizes()
-	m.cachesDirty = true
+	m.dirtyModel = true
 
 	// Restore model selection if it still exists in the new list
 	// Note: We only set m.selection.Model here, not call m.modelList.Select().
@@ -640,7 +645,7 @@ func (m UIModel) handleAgentSkip() (UIModel, tea.Cmd) {
 
 	m.agentList = newAgentList(agents, m.currentTheme)
 	m.updateSizes()
-	m.cachesDirty = true
+	m.dirtyAgent = true
 
 	// Restore agent selection if it still exists in the new list
 	// Note: We only set m.selection.Agent here, not call m.agentList.Select().
@@ -762,7 +767,6 @@ func (m UIModel) handleWorktreesDiscovered(msg worktreesDiscoveredMsg) (tea.Mode
 			addAgentNodeToSidebar(&m, running.Info)
 		}
 	}
-	m.cachesDirty = true
 
 	return m, nil
 }
@@ -817,7 +821,7 @@ func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea
 
 	m.focus = FocusTickets
 	m.sidebar.SetFocused(false)
-	m.cachesDirty = true
+	m.dirtyTicket = true
 	return m, nil
 }
 
@@ -1078,6 +1082,9 @@ func (m *UIModel) advanceFocus() {
 		return
 	}
 
+	// Mark current focus column dirty
+	m.markColumnDirty(m.focus)
+
 	// Find the next enabled column
 	for nextFocus := m.focus + 1; nextFocus <= FocusAgent; nextFocus++ {
 		// Skip disabled columns
@@ -1092,6 +1099,8 @@ func (m *UIModel) advanceFocus() {
 			m.sidebar.SetFocused(false)
 		}
 		m.focus = nextFocus
+		// Mark new focus column dirty
+		m.markColumnDirty(m.focus)
 		return
 	}
 	// No enabled column found, stay at current position
@@ -1103,6 +1112,9 @@ func (m *UIModel) retreatFocus() {
 	if m.focus <= FocusSidebar {
 		return
 	}
+
+	// Mark current focus column dirty
+	m.markColumnDirty(m.focus)
 
 	// Find the previous enabled column
 	for nextFocus := m.focus - 1; nextFocus >= FocusSidebar; nextFocus-- {
@@ -1118,9 +1130,33 @@ func (m *UIModel) retreatFocus() {
 			m.sidebar.SetFocused(true)
 		}
 		m.focus = nextFocus
+		// Mark new focus column dirty
+		m.markColumnDirty(m.focus)
 		return
 	}
 	// No enabled column found, stay at current position
+}
+
+// markColumnDirty sets the appropriate dirty flag based on the given focus type
+func (m *UIModel) markColumnDirty(focus FocusColumn) {
+	switch focus {
+	case FocusTickets:
+		m.dirtyTicket = true
+	case FocusHarness:
+		m.dirtyHarness = true
+	case FocusModel:
+		m.dirtyModel = true
+	case FocusAgent:
+		m.dirtyAgent = true
+	}
+}
+
+// markAllColumnsDirty sets all column dirty flags to true
+func (m *UIModel) markAllColumnsDirty() {
+	m.dirtyTicket = true
+	m.dirtyHarness = true
+	m.dirtyModel = true
+	m.dirtyAgent = true
 }
 
 func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) {
@@ -1352,15 +1388,22 @@ func (m UIModel) isFocusedListFiltering() bool {
 }
 
 func updateListCaches(m *UIModel) UIModel {
-	if !m.cachesDirty {
-		return *m
+	if m.dirtyTicket {
+		m.ticketViewCache = m.ticketList.View()
+		m.dirtyTicket = false
 	}
-
-	m.ticketViewCache = m.ticketList.View()
-	m.harnessViewCache = m.harnessList.View()
-	m.modelViewCache = m.modelList.View()
-	m.agentViewCache = m.agentList.View()
-	m.cachesDirty = false
+	if m.dirtyHarness {
+		m.harnessViewCache = m.harnessList.View()
+		m.dirtyHarness = false
+	}
+	if m.dirtyModel {
+		m.modelViewCache = m.modelList.View()
+		m.dirtyModel = false
+	}
+	if m.dirtyAgent {
+		m.agentViewCache = m.agentList.View()
+		m.dirtyAgent = false
+	}
 	return *m
 }
 
@@ -1397,8 +1440,8 @@ func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return newModel, cmd
 	}
 
-	newM, cmd := m.handleFocusUpdate(msg)
-	newM.updateKeyBindings()
-	newM = updateListCaches(&newM)
-	return newM, cmd
+	uiModel, cmd := m.handleFocusUpdate(msg)
+	uiModel.updateKeyBindings()
+	newModel := updateListCaches(&uiModel)
+	return newModel, cmd
 }

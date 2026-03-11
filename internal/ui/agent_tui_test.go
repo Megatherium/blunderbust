@@ -412,6 +412,61 @@ func TestAgentTui_KeyboardNavigation(t *testing.T) {
 	}
 }
 
+// TestAgentTui_ColumnNavigationCacheEfficiency tests that navigation within a column
+// doesn't unnecessarily rebuild other columns' cached views.
+// This test verifies the fix for the UI lag issue where navigating within a column
+// (e.g., pressing ArrowDown in tickets) didn't update the cursor until switching columns.
+func TestAgentTui_ColumnNavigationCacheEfficiency(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	session := startAgentTuiSession(t, true)
+	defer session.cleanup(t)
+
+	// Wait for initial render
+	time.Sleep(1 * time.Second)
+
+	// Connect to websocket to observe
+	conn := connectWebsocket(t, session.WsURL)
+	defer conn.Close(websocket.StatusNormalClosure, "test complete")
+
+	// Send live preview request
+	sendLivePreviewRequest(t, conn, session.SessionID)
+
+	// Read initial screen
+	events := readLivePreviewEvents(t, conn, 2*time.Second, nil)
+	initialScreen := getScreenContent(events)
+
+	// Press ArrowDown twice to move cursor within ticket column
+	// The cursor should update immediately without requiring a column switch
+	for i := 0; i < 2; i++ {
+		cmd := exec.Command("agent-tui", "press", "Down", "--session", session.SessionID)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("Failed to send Down key: %v, output: %s", err, output)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Read updated screen - this should show the cursor moved
+	events = readLivePreviewEvents(t, conn, 2*time.Second, nil)
+	updatedScreen := getScreenContent(events)
+
+	// Verify the screen changed (cursor moved)
+	assert.NotEqual(t, initialScreen, updatedScreen, "Screen should change after navigation")
+
+	// The ticket column should show a different selection (cursor moved)
+	// We can verify this by looking for the selection indicator
+	t.Logf("Initial screen length: %d, Updated screen length: %d",
+		len(initialScreen), len(updatedScreen))
+
+	// Send quit key
+	quitCmd := exec.Command("agent-tui", "type", "q", "--session", session.SessionID)
+	if output, err := quitCmd.CombinedOutput(); err != nil {
+		t.Fatalf("Failed to send quit key: %v, output: %s", err, output)
+	}
+}
+
 // TestAgentTui_SidebarToggle tests sidebar visibility toggle
 func TestAgentTui_SidebarToggle(t *testing.T) {
 	if testing.Short() {

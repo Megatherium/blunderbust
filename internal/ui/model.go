@@ -42,9 +42,12 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 	initList(&al, 0, 0, "Select an Agent")
 
 	h := help.New()
-	h.Styles.ShortKey = h.Styles.ShortKey.Background(ThemeFooterBg).Foreground(ThemeFooterFg).Bold(true)
+	h.Styles.ShortKey = h.Styles.ShortKey.Background(ThemeFooterBg).
+		Foreground(ThemeFooterFg).
+		Bold(true)
 	h.Styles.ShortDesc = h.Styles.ShortDesc.Background(ThemeFooterBg).Foreground(ThemeFooterFg)
-	h.Styles.ShortSeparator = h.Styles.ShortSeparator.Background(ThemeFooterBg).Foreground(ThemeFooterFg)
+	h.Styles.ShortSeparator = h.Styles.ShortSeparator.Background(ThemeFooterBg).
+		Foreground(ThemeFooterFg)
 
 	var recents []string
 	var maxRecents int
@@ -66,24 +69,27 @@ func NewUIModel(app *App, harnesses []domain.Harness) UIModel {
 	}
 
 	return UIModel{
-		app:         app,
-		state:       ViewStateLoading,
-		focus:       FocusSidebar,
-		harnesses:   harnesses,
-		ticketList:  tl,
-		harnessList: hl,
-		modelList:   ml,
-		agentList:   al,
-		filepicker:  fp,
-		sidebar:     NewSidebarModel(),
-		help:        h,
-		keys:        keys,
-		showModal:   false,
-		showSidebar: true,
+		app:          app,
+		state:        ViewStateLoading,
+		focus:        FocusSidebar,
+		harnesses:    harnesses,
+		ticketList:   tl,
+		harnessList:  hl,
+		modelList:    ml,
+		agentList:    al,
+		filepicker:   fp,
+		sidebar:      NewSidebarModel(),
+		help:         h,
+		keys:         keys,
+		showModal:    false,
+		showSidebar:  true,
 		agents:       make(map[string]*RunningAgent),
 		currentTheme: currentTheme, // Default to TokyoNight theme
 
-		cachesDirty: true, // Initial build needed
+		dirtyTicket:  true, // Initial build needed
+		dirtyHarness: true,
+		dirtyModel:   true,
+		dirtyAgent:   true,
 
 		animState: AnimationState{
 			StartTime:       time.Now(),
@@ -317,6 +323,9 @@ func (m UIModel) handleSidebarFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
 					m.selection.Ticket = domain.Ticket{}
 					m.selection.Model = ""
 					m.selection.Agent = ""
+					m.dirtyTicket = true
+					m.dirtyModel = true
+					m.dirtyAgent = true
 					cmd = tea.Batch(cmd, loadTicketsCmd(m.app.Project().Store()))
 				}
 			}
@@ -333,10 +342,13 @@ func (m UIModel) handleHarnessFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
 	}
 
 	m.harnessList, cmd = m.harnessList.Update(msg)
+	m.dirtyHarness = true
 
 	if i, ok := m.harnessList.SelectedItem().(harnessItem); ok {
 		if prevHarness != i.harness.Name {
 			m.selection.Harness = i.harness
+			m.dirtyModel = true
+			m.dirtyAgent = true
 			m, _ = m.handleModelSkip()
 			m, _ = m.handleAgentSkip()
 		}
@@ -355,12 +367,15 @@ func (m UIModel) handleFocusUpdate(msg tea.Msg) (UIModel, tea.Cmd) {
 		return m.handleSidebarFocusUpdate(msg)
 	case FocusTickets:
 		m.ticketList, cmd = m.ticketList.Update(msg)
+		m.dirtyTicket = true
 	case FocusHarness:
 		return m.handleHarnessFocusUpdate(msg)
 	case FocusModel:
 		m.modelList, cmd = m.modelList.Update(msg)
+		m.dirtyModel = true
 	case FocusAgent:
 		m.agentList, cmd = m.agentList.Update(msg)
+		m.dirtyAgent = true
 	}
 	return m, cmd
 }
@@ -389,7 +404,8 @@ func (m UIModel) activateProjectAndInit(projectPath string) tea.Cmd {
 				return errMsg{fmt.Errorf("failed to get project context")}
 			}
 
-			tickets, err := projectCtx.Store().ListTickets(context.Background(), data.TicketFilter{})
+			tickets, err := projectCtx.Store().
+				ListTickets(context.Background(), data.TicketFilter{})
 			if err != nil {
 				return errMsg{err}
 			}

@@ -136,7 +136,10 @@ type UIModel struct {
 	agentColumnDisabled bool // true when harness has no agents
 
 	// Caches for list views to avoid re-rendering on every tick
-	cachesDirty      bool // true when caches need rebuilding
+	dirtyTicket  bool // ticket column cache needs rebuilding
+	dirtyHarness bool // harness column cache needs rebuilding
+	dirtyModel   bool // model column cache needs rebuilding
+	dirtyAgent   bool // agent column cache needs rebuilding
 	ticketViewCache  string
 	harnessViewCache string
 	modelViewCache   string

@@ -79,9 +79,6 @@ var (
 				Italic(true)
 )
 
-// sidebarAnimFrame is a package-level frame counter for consistent animation timing
-var sidebarAnimFrame int
-
 // SidebarModel is a bubbletea model that renders a tree view of projects,
 // worktrees, and harnesses for navigation.
 type SidebarModel struct {
@@ -92,6 +89,7 @@ type SidebarModel struct {
 	focused       bool
 	hasStoreError bool
 	hasNerdFont   bool
+	animFrame     int
 }
 
 // NewSidebarModel creates a new sidebar model with default state.
@@ -125,6 +123,12 @@ func (m SidebarModel) Update(msg tea.Msg) (SidebarModel, tea.Cmd) {
 	nextAgentID := hoveredAgentIDFromNode(m.state.CurrentNode())
 	hoverCmd := hoverTransitionCmd(prevAgentID, nextAgentID)
 	return m, tea.Batch(cmd, hoverCmd)
+}
+
+// TickAnimation advances the internal frame counter used for visual effects.
+// It should be called per UI update loop rather than per message or per render.
+func (m *SidebarModel) TickAnimation() {
+	m.animFrame++
 }
 
 func (m SidebarModel) handleKey(msg tea.KeyMsg) (SidebarModel, tea.Cmd) {
@@ -368,9 +372,8 @@ func (m SidebarModel) renderAgentName(node *domain.SidebarNode, name string, isC
 			return agentRunningStyle.Render("● " + name)
 		case domain.AgentFailed:
 			// Glitch effect: alternate between bright red and dark red
-			// Use package-level frame counter for consistent, predictable timing
-			sidebarAnimFrame++
-			if sidebarAnimFrame%4 < 2 {
+			// Animation frame is incremented in Update() for pure View()
+			if m.animFrame%4 < 2 {
 				return agentFailedStyle.Render("● " + name)
 			}
 			return agentFailedGlitchStyle.Render("● " + name)

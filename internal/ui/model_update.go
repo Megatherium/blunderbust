@@ -1408,6 +1408,10 @@ func updateListCaches(m *UIModel) UIModel {
 }
 
 func (m UIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Advance sidebar animation per event to ensure glitch effect runs
+	// at a rate proportional to overall UI activity, matching old behavior.
+	m.sidebar.TickAnimation()
+
 	if m.state == ViewStateFilePicker {
 		switch msg.(type) {
 		case tea.KeyMsg, tea.WindowSizeMsg:

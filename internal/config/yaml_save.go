@@ -80,11 +80,5 @@ func (l *YAMLLoader) domainToYAML(cfg *domain.Config) yamlConfig {
 		}
 	}
 
-	yamlCfg.FilePickerRecents = cfg.FilePickerRecents
-
-	if cfg.FilePickerMaxRecents > 0 {
-		yamlCfg.FilePickerMaxRecents = cfg.FilePickerMaxRecents
-	}
-
 	return yamlCfg
 }

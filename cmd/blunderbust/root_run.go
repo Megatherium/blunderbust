@@ -46,6 +46,7 @@ func runRoot(_ *cobra.Command, args []string) error {
 
 	appOpts := domain.AppOptions{
 		ConfigPath:    cfgPath,
+		TUIConfigPath: resolveTUIConfigPath(),
 		BeadsDir:      beadsPath,
 		DSN:           dsn,
 		DryRun:        dryRun,
@@ -124,4 +125,16 @@ func resolveConfigPath() string {
 	}
 
 	return "./config.yaml"
+}
+
+func resolveTUIConfigPath() string {
+	home, err := os.UserHomeDir()
+	if err == nil {
+		xdgConfig := filepath.Join(home, ".config", "blunderbust", "tui_config.yaml")
+		if _, statErr := os.Stat(xdgConfig); statErr == nil {
+			return xdgConfig
+		}
+	}
+
+	return "./tui_config.yaml"
 }

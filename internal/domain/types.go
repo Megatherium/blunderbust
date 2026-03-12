@@ -78,13 +78,11 @@ type Defaults struct {
 
 // Config holds the top-level blunderbust configuration.
 type Config struct {
-	Harnesses            []Harness
-	Launcher             *LauncherConfig
-	Defaults             *Defaults
-	General              *GeneralConfig
-	Workspace            Workspace
-	FilePickerRecents    []string
-	FilePickerMaxRecents int
+	Harnesses []Harness
+	Launcher  *LauncherConfig
+	Defaults  *Defaults
+	General   *GeneralConfig
+	Workspace Workspace
 }
 
 // Workspace represents a collection of projects defined in configuration.
@@ -103,6 +101,7 @@ type Project struct {
 type AppOptions struct {
 	DryRun        bool
 	ConfigPath    string
+	TUIConfigPath string
 	Debug         bool
 	BeadsDir      string
 	DSN           string

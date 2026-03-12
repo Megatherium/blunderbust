@@ -111,25 +111,28 @@ The file picker (accessed via `p` key) uses a bubbles fork with recents support.
 ### Architecture
 
 - **bubbles fork**: `internal/ui/filepicker/filepicker.go`
-  - `MaxRecents` field controls maximum recents (default: 5)
+  - `MaxRecents` field controls maximum recents (default:5)
   - `RecentsChangedMsg` emitted when recents list changes
   - `ShowRecents` enables dual-pane UI (filepicker + recents)
 
 ### Configuration Fields
 
-- `domain.Config.FilePickerMaxRecents` - Maximum recent directories
-- `domain.Config.FilePickerRecents` - Recent directories list
-- YAML: `filepicker_max_recents` and `filepicker_recents`
+- **TUI-specific config** (separate from `domain.Config`):
+  - `config.TUIConfig.FilePickerMaxRecents` - Maximum recent directories
+  - `config.TUIConfig.FilePickerRecents` - Recent directories list
+  - YAML: `filepicker_max_recents` and `filepicker_recents` in `tui_config.yaml`
 
 ### Key Implementation Points
 
-1. **Loading**: In `NewUIModel()` (model.go), config is loaded and:
-   - `fp.Recents` is populated from `cfg.FilePickerRecents`
-   - `fp.MaxRecents` is set from `cfg.FilePickerMaxRecents`
+1. **Loading**: In `NewUIModel()` and `Init()` (model.go), TUI config is loaded:
+   - `config.LoadTUIConfig(app.Opts.TUIConfigPath)` reads from `tui_config.yaml`
+   - `fp.Recents` is populated from loaded config
+   - `fp.MaxRecents` is set from loaded config (defaults to 5)
 
 2. **Saving**: In `handleProjectMsgs()` (model.go), `filepicker.RecentsChangedMsg`:
+   - Loads current TUI config
    - Updates `cfg.FilePickerRecents` with new recents
-   - Saves config immediately using `app.loader.Save()`
+   - Saves config immediately using `config.SaveTUIConfig()`
    - Logs errors to stderr
 
 3. **UI**: Dual-pane view in `RenderFilePicker()` (view_filepicker.go):
@@ -137,12 +140,19 @@ The file picker (accessed via `p` key) uses a bubbles fork with recents support.
    - Right: Recents list (when `ShowRecents=true`)
    - `Tab` key swaps focus between panes
 
+### Config File Locations
+
+- CLI resolution (see `cmd/blunderbust/root_run.go:resolveTUIConfigPath()`):
+  1. `~/.config/blunderbust/tui_config.yaml` (if exists)
+  2. `./tui_config.yaml` (fallback)
+
 ### Testing
 
-See `internal/ui/filepicker_test.go`:
-- `TestNewUIModel_FilePickerMaxRecents` - Custom max recents
-- `TestNewUIModel_FilePickerMaxRecents_Default` - Default value
-- `TestUpdate_RecentsChangedMsg_SavesConfig` - Persistence
+See `internal/config/yaml_tui_test.go`:
+- `TestLoadTUIConfig_WithValues` - Full config loading
+- `TestLoadTUIConfig_DefaultMaxRecents` - Default value handling
+- `TestSaveTUIConfig` - Persistence verification
+- `TestTUIConfig_RoundTrip` - Full save/load cycle
 
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)

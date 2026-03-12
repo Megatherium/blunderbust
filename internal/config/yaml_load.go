@@ -177,15 +177,6 @@ func (l *YAMLLoader) convertAndValidate(raw *yamlConfig, configDir string) (*dom
 	}
 	config.General = &domain.GeneralConfig{AutostartDolt: autostart}
 
-	config.FilePickerRecents = raw.FilePickerRecents
-
-	// Default FilePickerMaxRecents to 5 if not specified or invalid
-	if raw.FilePickerMaxRecents > 0 {
-		config.FilePickerMaxRecents = raw.FilePickerMaxRecents
-	} else {
-		config.FilePickerMaxRecents = 5
-	}
-
 	return config, nil
 }
 

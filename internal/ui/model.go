@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/app"
+	"github.com/megatherium/blunderbust/internal/config"
 	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
@@ -65,8 +66,8 @@ func NewUIModel(app *app.App, harnesses []domain.Harness) UIModel {
 
 	var recents []string
 	var maxRecents int
-	if app != nil && app.Loader != nil {
-		if cfg, err := app.Loader.Load(app.Opts.ConfigPath); err == nil && cfg != nil {
+	if app != nil && app.Opts.TUIConfigPath != "" {
+		if cfg, err := config.LoadTUIConfig(app.Opts.TUIConfigPath); err == nil && cfg != nil {
 			recents = cfg.FilePickerRecents
 			maxRecents = cfg.FilePickerMaxRecents
 		}
@@ -132,8 +133,8 @@ func (m UIModel) checkAndPromptAddProject(dirPath string) tea.Cmd {
 }
 
 func (m UIModel) Init() tea.Cmd {
-	if m.app != nil && m.app.Loader != nil {
-		if cfg, err := m.app.Loader.Load(m.app.Opts.ConfigPath); err == nil && cfg != nil {
+	if m.app != nil && m.app.Opts.TUIConfigPath != "" {
+		if cfg, err := config.LoadTUIConfig(m.app.Opts.TUIConfigPath); err == nil && cfg != nil {
 			m.filepicker.Recents = cfg.FilePickerRecents
 			m.filepicker.MaxRecents = cfg.FilePickerMaxRecents
 		}
@@ -256,13 +257,11 @@ func (m UIModel) handleProjectMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		m.pendingProjectPath = ""
 		return m, nil, true
 	case filepicker.RecentsChangedMsg:
-		// Save recents to config when they change
-		if m.app != nil && m.app.Loader != nil {
-			cfg, err := m.app.Loader.Load(m.app.Opts.ConfigPath)
+		if m.app != nil && m.app.Opts.TUIConfigPath != "" {
+			cfg, err := config.LoadTUIConfig(m.app.Opts.TUIConfigPath)
 			if err == nil && cfg != nil {
 				cfg.FilePickerRecents = msg.Recents
-				if err := m.app.Loader.Save(m.app.Opts.ConfigPath, cfg); err != nil {
-					// Log error to stderr
+				if err := config.SaveTUIConfig(m.app.Opts.TUIConfigPath, cfg); err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to save recents: %v\n", err)
 				}
 			}

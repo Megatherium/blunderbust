@@ -9,6 +9,239 @@ import (
 	"github.com/megatherium/blunderbust/internal/domain"
 )
 
+func TestNewSidebarState(t *testing.T) {
+	state := NewSidebarState()
+	assert.NotNil(t, state)
+	assert.Empty(t, state.Nodes)
+	assert.Equal(t, 0, state.Cursor)
+	assert.Empty(t, state.FlatNodes)
+	assert.Empty(t, state.SelectedPath)
+}
+
+func TestSidebarState_SetNodes(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{
+			ID:         "project1",
+			Name:       "Project 1",
+			Path:       "/project1",
+			Type:       domain.NodeTypeProject,
+			IsExpanded: false,
+			Children:   []domain.SidebarNode{},
+		},
+	}
+
+	state.SetNodes(nodes)
+	assert.Equal(t, 1, len(state.Nodes))
+	assert.Equal(t, 1, len(state.FlatNodes))
+}
+
+func TestSidebarState_SetNodes_RebuildsFlatNodes(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{
+			ID:         "project1",
+			Name:       "Project 1",
+			Path:       "/project1",
+			Type:       domain.NodeTypeProject,
+			IsExpanded: true,
+			Children: []domain.SidebarNode{
+				{
+					ID:   "worktree1",
+					Name: "Worktree 1",
+					Path: "/project1/worktree1",
+					Type: domain.NodeTypeWorktree,
+				},
+			},
+		},
+	}
+
+	state.SetNodes(nodes)
+	assert.Equal(t, 2, len(state.FlatNodes))
+	assert.Equal(t, nodes[0].ID, state.FlatNodes[0].Node.ID)
+	assert.Equal(t, 0, state.FlatNodes[0].Depth)
+	assert.Equal(t, nodes[0].Children[0].ID, state.FlatNodes[1].Node.ID)
+	assert.Equal(t, 1, state.FlatNodes[1].Depth)
+}
+
+func TestSidebarState_CurrentNode(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{
+			ID:   "node1",
+			Name: "Node 1",
+			Path: "/node1",
+			Type: domain.NodeTypeProject,
+		},
+		{
+			ID:   "node2",
+			Name: "Node 2",
+			Path: "/node2",
+			Type: domain.NodeTypeProject,
+		},
+	}
+
+	state.SetNodes(nodes)
+	state.Cursor = 1
+
+	node := state.CurrentNode()
+	assert.NotNil(t, node)
+	assert.Equal(t, "node2", node.ID)
+}
+
+func TestSidebarState_CurrentNode_OutOfBounds(t *testing.T) {
+	state := NewSidebarState()
+	state.Cursor = 10
+
+	node := state.CurrentNode()
+	assert.Nil(t, node)
+}
+
+func TestSidebarState_MoveUp(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{ID: "node1", Name: "Node 1", Path: "/node1", Type: domain.NodeTypeProject},
+		{ID: "node2", Name: "Node 2", Path: "/node2", Type: domain.NodeTypeProject},
+	}
+
+	state.SetNodes(nodes)
+	state.Cursor = 1
+	state.MoveUp()
+
+	assert.Equal(t, 0, state.Cursor)
+}
+
+func TestSidebarState_MoveUp_AtTop(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{ID: "node1", Name: "Node 1", Path: "/node1", Type: domain.NodeTypeProject},
+	}
+
+	state.SetNodes(nodes)
+	state.Cursor = 0
+	state.MoveUp()
+
+	assert.Equal(t, 0, state.Cursor)
+}
+
+func TestSidebarState_MoveDown(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{ID: "node1", Name: "Node 1", Path: "/node1", Type: domain.NodeTypeProject},
+		{ID: "node2", Name: "Node 2", Path: "/node2", Type: domain.NodeTypeProject},
+	}
+
+	state.SetNodes(nodes)
+	state.Cursor = 0
+	state.MoveDown()
+
+	assert.Equal(t, 1, state.Cursor)
+}
+
+func TestSidebarState_MoveDown_AtBottom(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{ID: "node1", Name: "Node 1", Path: "/node1", Type: domain.NodeTypeProject},
+	}
+
+	state.SetNodes(nodes)
+	state.Cursor = 0
+	state.MoveDown()
+
+	assert.Equal(t, 0, state.Cursor)
+}
+
+func TestSidebarState_ToggleExpand(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{
+			ID:         "project1",
+			Name:       "Project 1",
+			Path:       "/project1",
+			Type:       domain.NodeTypeProject,
+			IsExpanded: false,
+			Children: []domain.SidebarNode{
+				{ID: "worktree1", Name: "Worktree 1", Path: "/project1/wt1", Type: domain.NodeTypeWorktree},
+			},
+		},
+	}
+
+	state.SetNodes(nodes)
+	assert.Equal(t, 1, len(state.FlatNodes))
+
+	state.ToggleExpand()
+	assert.True(t, state.Nodes[0].IsExpanded)
+	assert.Equal(t, 2, len(state.FlatNodes))
+
+	state.ToggleExpand()
+	assert.False(t, state.Nodes[0].IsExpanded)
+	assert.Equal(t, 1, len(state.FlatNodes))
+}
+
+func TestSidebarState_SelectByPath(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{ID: "node1", Name: "Node 1", Path: "/node1", Type: domain.NodeTypeProject},
+		{ID: "node2", Name: "Node 2", Path: "/node2", Type: domain.NodeTypeProject},
+	}
+
+	state.SetNodes(nodes)
+
+	found := state.SelectByPath("/node2")
+	assert.True(t, found)
+	assert.Equal(t, 1, state.Cursor)
+	assert.Equal(t, "/node2", state.SelectedPath)
+}
+
+func TestSidebarState_SelectByPath_NotFound(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{ID: "node1", Name: "Node 1", Path: "/node1", Type: domain.NodeTypeProject},
+	}
+
+	state.SetNodes(nodes)
+
+	found := state.SelectByPath("/nonexistent")
+	assert.False(t, found)
+}
+
+func TestSidebarState_HasMultipleWorktrees(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{
+			ID:   "project1",
+			Name: "Project 1",
+			Path: "/project1",
+			Type: domain.NodeTypeProject,
+			Children: []domain.SidebarNode{
+				{ID: "wt1", Name: "WT 1", Path: "/p1/wt1", Type: domain.NodeTypeWorktree},
+				{ID: "wt2", Name: "WT 2", Path: "/p1/wt2", Type: domain.NodeTypeWorktree},
+			},
+		},
+	}
+
+	state.SetNodes(nodes)
+	assert.True(t, state.HasMultipleWorktrees())
+}
+
+func TestSidebarState_HasMultipleWorktrees_Single(t *testing.T) {
+	state := NewSidebarState()
+	nodes := []domain.SidebarNode{
+		{
+			ID:   "project1",
+			Name: "Project 1",
+			Path: "/project1",
+			Type: domain.NodeTypeProject,
+			Children: []domain.SidebarNode{
+				{ID: "wt1", Name: "WT 1", Path: "/p1/wt1", Type: domain.NodeTypeWorktree},
+			},
+		},
+	}
+
+	state.SetNodes(nodes)
+	assert.False(t, state.HasMultipleWorktrees())
+}
+
 func TestSidebarModel_Init(t *testing.T) {
 	m := NewSidebarModel()
 	assert.NotNil(t, m.State())

@@ -130,7 +130,7 @@ func RebuildAgentNodesInSidebar(m *UIModel) {
 }
 
 // RestoreSidebarCursorByPath restores the sidebar cursor to the previous path if possible
-func RestoreSidebarCursorByPath(state *domain.SidebarState, path string) {
+func RestoreSidebarCursorByPath(state *SidebarState, path string) {
 	if path == "" {
 		return
 	}

@@ -190,8 +190,8 @@ func TestRebuildAgentsInProject(t *testing.T) {
 }
 
 func TestRestoreSidebarCursorByPath(t *testing.T) {
-	state := &domain.SidebarState{
-		FlatNodes: []domain.FlatNodeInfo{
+	state := &SidebarState{
+		FlatNodes: []FlatNodeInfo{
 			{Node: &domain.SidebarNode{Path: "node-1"}},
 			{Node: &domain.SidebarNode{Path: "node-2"}},
 		},
@@ -205,7 +205,7 @@ func TestRestoreSidebarCursorByPath(t *testing.T) {
 	})
 
 	t.Run("Empty FlatNodes bounds cursor to 0", func(t *testing.T) {
-		emptyState := &domain.SidebarState{FlatNodes: []domain.FlatNodeInfo{}}
+		emptyState := &SidebarState{FlatNodes: []FlatNodeInfo{}}
 		emptyState.Cursor = 5
 		// Since path is empty, function returns early without changing cursor
 		// The cursor remains at 5 because empty path is a no-op
@@ -295,7 +295,7 @@ func TestUpdateAgentNodeStatus(t *testing.T) {
 		},
 	}
 
-	m.sidebar.State().FlatNodes = []domain.FlatNodeInfo{
+	m.sidebar.State().FlatNodes = []FlatNodeInfo{
 		{
 			Node: &domain.SidebarNode{
 				Type: domain.NodeTypeAgent,

@@ -20,6 +20,205 @@ const (
 	indentString    = "  "
 )
 
+// FlatNodeInfo represents a flattened view of a sidebar node
+// with its depth in the tree hierarchy.
+type FlatNodeInfo struct {
+	Node    *domain.SidebarNode
+	Depth   int
+	Visible bool
+}
+
+// SidebarState manages the TUI-specific state of the sidebar tree including
+// node hierarchy, cursor position, and selection.
+type SidebarState struct {
+	Nodes        []domain.SidebarNode
+	Cursor       int
+	SelectedPath string
+
+	FlatNodes []FlatNodeInfo
+}
+
+// NewSidebarState creates a new sidebar state with empty nodes.
+func NewSidebarState() SidebarState {
+	return SidebarState{
+		Nodes:     make([]domain.SidebarNode, 0),
+		Cursor:    0,
+		FlatNodes: make([]FlatNodeInfo, 0),
+	}
+}
+
+// SetNodes replaces the current node tree with the provided nodes.
+func (s *SidebarState) SetNodes(nodes []domain.SidebarNode) {
+	s.Nodes = nodes
+	s.rebuildFlatNodes()
+}
+
+// RebuildFlatNodes rebuilds the flattened node list from the tree.
+func (s *SidebarState) RebuildFlatNodes() {
+	s.rebuildFlatNodes()
+}
+
+// rebuildFlatNodes rebuilds the flattened node list from the tree.
+func (s *SidebarState) rebuildFlatNodes() {
+	s.FlatNodes = make([]FlatNodeInfo, 0)
+	for i := range s.Nodes {
+		s.flattenNode(&s.Nodes[i], 0)
+	}
+}
+
+func (s *SidebarState) flattenNode(node *domain.SidebarNode, depth int) {
+	s.FlatNodes = append(s.FlatNodes, FlatNodeInfo{
+		Node:    node,
+		Depth:   depth,
+		Visible: true,
+	})
+
+	if node.IsExpanded {
+		for i := range node.Children {
+			s.flattenNode(&node.Children[i], depth+1)
+		}
+	}
+}
+
+// VisibleNodes returns the flattened list of all visible nodes.
+func (s *SidebarState) VisibleNodes() []FlatNodeInfo {
+	return s.FlatNodes
+}
+
+// CurrentNode returns the node at the current cursor position,
+// or nil if the cursor is out of bounds.
+func (s *SidebarState) CurrentNode() *domain.SidebarNode {
+	if s.Cursor < 0 || s.Cursor >= len(s.FlatNodes) {
+		return nil
+	}
+	return s.FlatNodes[s.Cursor].Node
+}
+
+// MoveUp moves the cursor up one position if possible.
+func (s *SidebarState) MoveUp() {
+	if s.Cursor > 0 {
+		s.Cursor--
+		s.updateSelection()
+	}
+}
+
+// MoveDown moves the cursor down one position if possible.
+func (s *SidebarState) MoveDown() {
+	if s.Cursor < len(s.FlatNodes)-1 {
+		s.Cursor++
+		s.updateSelection()
+	}
+}
+
+func (s *SidebarState) updateSelection() {
+	if node := s.CurrentNode(); node != nil {
+		s.SelectedPath = node.Path
+	}
+}
+
+// ToggleExpand toggles the expansion state of the current node.
+// Has no effect if the current node has no children.
+func (s *SidebarState) ToggleExpand() {
+	node := s.CurrentNode()
+	if node == nil || len(node.Children) == 0 {
+		return
+	}
+
+	node.IsExpanded = !node.IsExpanded
+	s.rebuildFlatNodes()
+}
+
+// ExpandAll expands all nodes in the tree recursively.
+func (s *SidebarState) ExpandAll() {
+	for i := range s.Nodes {
+		s.expandNodeRecursive(&s.Nodes[i])
+	}
+	s.rebuildFlatNodes()
+}
+
+func (s *SidebarState) expandNodeRecursive(node *domain.SidebarNode) {
+	if len(node.Children) > 0 {
+		node.IsExpanded = true
+		for i := range node.Children {
+			s.expandNodeRecursive(&node.Children[i])
+		}
+	}
+}
+
+// CollapseAll collapses all nodes in the tree recursively.
+func (s *SidebarState) CollapseAll() {
+	for i := range s.Nodes {
+		s.collapseNodeRecursive(&s.Nodes[i])
+	}
+	s.rebuildFlatNodes()
+}
+
+func (s *SidebarState) collapseNodeRecursive(node *domain.SidebarNode) {
+	node.IsExpanded = false
+	for i := range node.Children {
+		s.collapseNodeRecursive(&node.Children[i])
+	}
+}
+
+// SelectByPath moves the cursor to the node with the given path.
+// Returns true if found, false otherwise.
+func (s *SidebarState) SelectByPath(path string) bool {
+	for i, info := range s.FlatNodes {
+		if info.Node.Path == path {
+			s.Cursor = i
+			s.SelectedPath = path
+			return true
+		}
+	}
+	return false
+}
+
+// SelectedWorktree returns the currently selected worktree node,
+// or the first worktree found if the current selection is not a worktree.
+// Returns nil if no worktrees exist.
+func (s *SidebarState) SelectedWorktree() *domain.SidebarNode {
+	node := s.CurrentNode()
+	if node == nil {
+		return nil
+	}
+
+	if node.Type == domain.NodeTypeWorktree {
+		return node
+	}
+
+	for _, info := range s.FlatNodes {
+		if info.Node.Type == domain.NodeTypeWorktree {
+			return info.Node
+		}
+	}
+
+	return nil
+}
+
+// HasMultipleWorktrees returns true if there is more than one worktree
+// in the sidebar tree.
+func (s *SidebarState) HasMultipleWorktrees() bool {
+	count := 0
+	for _, node := range s.Nodes {
+		count += countWorktreesRecursive(node)
+		if count > 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func countWorktreesRecursive(node domain.SidebarNode) int {
+	count := 0
+	if node.Type == domain.NodeTypeWorktree {
+		count = 1
+	}
+	for _, child := range node.Children {
+		count += countWorktreesRecursive(child)
+	}
+	return count
+}
+
 // Style definitions for sidebar rendering.
 var (
 	sidebarStyle = lipgloss.NewStyle().
@@ -82,7 +281,7 @@ var (
 // SidebarModel is a bubbletea model that renders a tree view of projects,
 // worktrees, and harnesses for navigation.
 type SidebarModel struct {
-	state         domain.SidebarState
+	state         SidebarState
 	selectedPath  string
 	width         int
 	height        int
@@ -95,7 +294,7 @@ type SidebarModel struct {
 // NewSidebarModel creates a new sidebar model with default state.
 func NewSidebarModel() SidebarModel {
 	return SidebarModel{
-		state:   domain.NewSidebarState(),
+		state:   NewSidebarState(),
 		focused: false,
 	}
 }
@@ -419,7 +618,7 @@ func (m *SidebarModel) SetHasNerdFont(hasNerdFont bool) {
 }
 
 // State returns a pointer to the sidebar state for manipulation.
-func (m *SidebarModel) State() *domain.SidebarState {
+func (m *SidebarModel) State() *SidebarState {
 	return &m.state
 }
 

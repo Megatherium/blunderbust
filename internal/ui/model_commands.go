@@ -85,7 +85,7 @@ func discoverWorktreesCmd(myApp *app.App) tea.Cmd {
 			return worktreesDiscoveredMsg{err: fmt.Errorf("no projects configured")}
 		}
 
-		builder := sidebar.NewTreeBuilder()
+		builder := sidebar.NewTreeBuilderDefault()
 		nodes, errs := builder.BuildFromProjects(context.Background(), projects)
 
 		if myApp.Opts.Debug {

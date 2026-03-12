@@ -14,16 +14,52 @@ import (
 	"github.com/megatherium/blunderbust/internal/domain"
 )
 
-type TreeBuilder struct {
-	discoverer *data.WorktreeDiscoverer
+// Package sidebar provides adapters for building UI-specific tree structures
+// from domain data. This separation allows different UI implementations
+// (TUI, WebUI, CLI) to use the same data layer without
+// importing UI-specific packages.
+//
+// TreeBuilder converts worktree discovery results into sidebar nodes
+// suitable for rendering in the UI.
+
+type worktreeDiscoverer interface {
+	Discover(ctx context.Context, repoRoot string) ([]domain.WorktreeInfo, error)
 }
 
-func NewTreeBuilder() *TreeBuilder {
+// TreeBuilder constructs sidebar tree structures from project worktree data.
+// It uses a discoverer to fetch worktree information and converts
+// it into domain.SidebarNode objects for UI rendering.
+type TreeBuilder struct {
+	discoverer worktreeDiscoverer
+}
+
+// NewTreeBuilder creates a TreeBuilder with the specified discoverer.
+// This allows dependency injection for testing and alternative implementations.
+func NewTreeBuilder(discoverer worktreeDiscoverer) *TreeBuilder {
 	return &TreeBuilder{
-		discoverer: data.NewWorktreeDiscoverer(),
+		discoverer: discoverer,
 	}
 }
 
+// NewTreeBuilderDefault creates a TreeBuilder with the default WorktreeDiscoverer.
+// Use this in production code where you don't need to mock the discoverer.
+func NewTreeBuilderDefault() *TreeBuilder {
+	return NewTreeBuilder(data.NewWorktreeDiscoverer())
+}
+
+// BuildFromProjects builds sidebar nodes for multiple projects.
+// It discovers worktrees for each project and converts them into sidebar nodes.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - projects: List of projects to build sidebar nodes for
+//
+// Returns:
+//   - []domain.SidebarNode: Complete list of project and worktree nodes
+//   - []error: Any errors encountered (partial results may be returned)
+//
+// Note: This function continues processing after errors, returning partial results.
+// Errors are collected and returned along with successfully built nodes.
 func (b *TreeBuilder) BuildFromProjects(ctx context.Context, projects []domain.Project) ([]domain.SidebarNode, []error) {
 	var allNodes []domain.SidebarNode
 	var errs []error
@@ -42,6 +78,15 @@ func (b *TreeBuilder) BuildFromProjects(ctx context.Context, projects []domain.P
 	return allNodes, errs
 }
 
+// buildSidebarTree constructs a project node with its worktree children.
+//
+// Parameters:
+//   - worktrees: List of worktree info to convert to nodes
+//   - projectName: Name for the project node
+//   - projectDir: Directory path for the project node
+//
+// Returns:
+//   - []domain.SidebarNode: Single project node with worktree children
 func buildSidebarTree(worktrees []domain.WorktreeInfo, projectName, projectDir string) []domain.SidebarNode {
 	projectNode := domain.SidebarNode{
 		ID:         "project-" + projectName,

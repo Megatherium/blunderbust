@@ -13,7 +13,7 @@ func NewTestModel() *UIModel {
 		state:     ViewStateMatrix,
 		focus:     FocusSidebar,
 		selection: domain.Selection{},
-		sidebar:   SidebarModel{},
+		sidebar:   NewSidebarModel(),
 		animState: AnimationState{
 			StartTime:       time.Now(),
 			ColorCycleStart: time.Now(),

@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -70,8 +71,16 @@ func (m UIModel) handleErrMsg(msg errMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+const maxWarnings = 50
+
 func (m UIModel) handleWarningMsg(msg warningMsg) (tea.Model, tea.Cmd) {
 	m.warnings = append(m.warnings, msg.err.Error())
+	if len(m.warnings) > maxWarnings {
+		m.warnings = m.warnings[len(m.warnings)-maxWarnings:]
+	}
+	if m.app != nil && m.app.Opts.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG][i29d] handleWarningMsg: warnings count=%d (latest: %s)\n", len(m.warnings), msg.err.Error())
+	}
 	return m, nil
 }
 
@@ -291,6 +300,10 @@ func (m UIModel) handleTicketsAutoRefreshed(msg ticketsAutoRefreshedMsg) (tea.Mo
 
 	cmds = append(cmds, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
 		return clearRefreshIndicatorMsg{}
+	}))
+
+	cmds = append(cmds, tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
+		return ticketUpdateCheckMsg{}
 	}))
 
 	return m, tea.Batch(cmds...)

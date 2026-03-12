@@ -781,6 +781,7 @@ func TestHandleRefreshAnimationTick(t *testing.T) {
 	app.Stores = map[string]data.TicketStore{"test-project": &mockStore{}}
 	m := NewUIModel(app, nil)
 	m.refreshAnimationFrame = 2
+	m.refreshedRecently = true
 
 	newM, cmd := m.handleRefreshAnimationTick()
 	updatedM := newM.(UIModel)
@@ -796,10 +797,26 @@ func TestRefreshAnimationCycle(t *testing.T) {
 	m := NewUIModel(app, nil)
 
 	m.refreshAnimationFrame = 3
+	m.refreshedRecently = true
 	newM, _ := m.handleRefreshAnimationTick()
 	updatedM := newM.(UIModel)
 
 	assert.Equal(t, 0, updatedM.refreshAnimationFrame, "Animation should cycle from 3 to 0")
+}
+
+func TestRefreshAnimationTick_StopsWhenNotRefreshedRecently(t *testing.T) {
+	app := newTestApp()
+	app.ActiveProject = "test-project"
+	app.Stores = map[string]data.TicketStore{"test-project": &mockStore{}}
+	m := NewUIModel(app, nil)
+	m.refreshAnimationFrame = 2
+	m.refreshedRecently = false
+
+	newM, cmd := m.handleRefreshAnimationTick()
+	updatedM := newM.(UIModel)
+
+	assert.Equal(t, 2, updatedM.refreshAnimationFrame, "Animation frame should not change")
+	assert.Nil(t, cmd, "Should not return tick command when not refreshed recently")
 }
 
 func TestHandleTicketUpdateCheckNeeded(t *testing.T) {

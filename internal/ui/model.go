@@ -192,12 +192,17 @@ func (m UIModel) handleCoreMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	case ticketsLoadedMsg:
 		m.lastTicketUpdate = latestTicketUpdate(msg)
 		updatedM, _ := m.handleTicketsLoaded(msg)
-		return updatedM, tea.Batch(
-			tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
-				return ticketUpdateCheckMsg{}
-			}),
-			loadRunningAgentsCmd(m.app),
-		), true
+		if !updatedM.(UIModel).pollStarted {
+			um := updatedM.(UIModel)
+			um.pollStarted = true
+			return um, tea.Batch(
+				tea.Tick(ticketPollingInterval, func(t time.Time) tea.Msg {
+					return ticketUpdateCheckMsg{}
+				}),
+				loadRunningAgentsCmd(m.app),
+			), true
+		}
+		return updatedM, nil, true
 	case errMsg:
 		newM, cmd := m.handleErrMsg(msg)
 		return newM, cmd, true

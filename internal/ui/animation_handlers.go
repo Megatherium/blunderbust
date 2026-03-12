@@ -65,6 +65,9 @@ func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) 
 }
 
 func (m UIModel) handleRefreshAnimationTick() (tea.Model, tea.Cmd) {
+	if !m.refreshedRecently {
+		return m, nil
+	}
 	m.refreshAnimationFrame = (m.refreshAnimationFrame + 1) % 4
 	return m, tea.Tick(animationTickInterval, func(t time.Time) tea.Msg {
 		return refreshAnimationTickMsg{}

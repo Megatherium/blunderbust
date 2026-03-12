@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -207,7 +208,15 @@ func (m UIModel) HandleAgentTick(msg agentTickMsg) (tea.Model, tea.Cmd) {
 	agentID := msg.agentID
 	agent, ok := m.agents[agentID]
 	if !ok {
+		if m.app.Opts.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG][i29d] HandleAgentTick: orphan tick for gone agent %s (total agents=%d)\n", agentID, len(m.agents))
+		}
 		return m, nil
+	}
+
+	if m.app.Opts.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG][i29d] HandleAgentTick: agent=%s status=%v viewing=%v (total agents=%d)\n",
+			agentID, agent.Info.Status, m.viewingAgentID == agentID, len(m.agents))
 	}
 
 	var readOutputCmd tea.Cmd

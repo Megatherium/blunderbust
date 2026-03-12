@@ -158,6 +158,7 @@ func TestHandleRefreshAnimationTick_FrameCycle(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			model := NewTestModel()
 			model.refreshAnimationFrame = tc.initialFrame
+			model.refreshedRecently = true
 
 			newModel, _ := model.handleRefreshAnimationTick()
 

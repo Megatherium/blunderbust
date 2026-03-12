@@ -166,6 +166,9 @@ type UIModel struct {
 	// Error recovery
 	retryStore data.TicketStore // Store preserved for retry/start operations after errors
 
+	// Tracks whether the initial ticket load has completed and poll loop started
+	pollStarted bool
+
 	// File picker for adding projects
 	filepicker         filepicker.Model
 	pendingProjectPath string

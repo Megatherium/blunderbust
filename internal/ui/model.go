@@ -11,10 +11,10 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/megatherium/blunderbust/internal/app"
 	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
-	"github.com/megatherium/blunderbust/internal/app"
 	"github.com/megatherium/blunderbust/internal/ui/filepicker"
 )
 
@@ -273,22 +273,22 @@ func (m UIModel) handleAgentMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		newM, cmd := m.handleLaunchResult(msg)
 		return newM, cmd, true
 	case AgentHoveredMsg:
-		newM, cmd := m.handleAgentHovered(msg)
+		newM, cmd := m.HandleAgentHovered(msg)
 		return newM, cmd, true
 	case AgentHoverEndedMsg:
-		newM, cmd := m.handleAgentHoverEnded(msg)
+		newM, cmd := m.HandleAgentHoverEnded(msg)
 		return newM, cmd, true
 	case AgentSelectedMsg:
-		newM, cmd := m.handleAgentSelected(msg)
+		newM, cmd := m.HandleAgentSelected(msg)
 		return newM, cmd, true
 	case AgentStatusMsg:
-		newM, cmd := m.handleAgentStatus(msg)
+		newM, cmd := m.HandleAgentStatus(msg)
 		return newM, cmd, true
 	case agentTickMsg:
-		newM, cmd := m.handleAgentTick(msg)
+		newM, cmd := m.HandleAgentTick(msg)
 		return newM, cmd, true
 	case agentOutputMsg:
-		newM, cmd := m.handleAgentOutput(msg)
+		newM, cmd := m.HandleAgentOutput(msg)
 		return newM, cmd, true
 	case animationTickMsg:
 		newM, cmd := m.handleAnimationTick(msg)
@@ -300,10 +300,10 @@ func (m UIModel) handleAgentMsgs(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		m.animState.LockInTarget = msg.Column
 		return m, animationTickCmd(), true
 	case AgentClearedMsg:
-		newM, cmd := m.handleAgentCleared(msg)
+		newM, cmd := m.HandleAgentCleared(msg)
 		return newM, cmd, true
 	case AllStoppedAgentsClearedMsg:
-		newM, cmd := m.handleAllStoppedAgentsCleared(msg)
+		newM, cmd := m.HandleAllStoppedAgentsCleared(msg)
 		return newM, cmd, true
 	case ticketUpdateCheckMsg:
 		newM, cmd := m.handleTicketUpdateCheck()

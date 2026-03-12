@@ -3,14 +3,12 @@ package ui
 import (
 	"context"
 	"fmt"
-	"math"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/x/ansi"
 
 	_ "github.com/megatherium/blunderbust/internal/ui/filepicker"
 
@@ -273,7 +271,7 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 		}
 
 		// Add agent node to sidebar under the worktree
-		addAgentNodeToSidebar(&m, agentInfo)
+		AddAgentNodeToSidebar(&m, agentInfo)
 
 		// Return to matrix instead of result screen
 		m.state = ViewStateMatrix
@@ -434,7 +432,7 @@ func (m UIModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return model, tea.Batch(flashCmd, cmd), true
 	}
 
-	if model, cmd, handled := m.handleSidebarAgentKeysMsg(msg); handled {
+	if model, cmd, handled := m.HandleSidebarAgentKeysMsg(msg); handled {
 		return model, cmd, true
 	}
 
@@ -758,7 +756,7 @@ func (m UIModel) handleWorktreesDiscovered(msg worktreesDiscoveredMsg) (tea.Mode
 
 	for _, running := range m.agents {
 		if running != nil && running.Info != nil {
-			addAgentNodeToSidebar(&m, running.Info)
+			AddAgentNodeToSidebar(&m, running.Info)
 		}
 	}
 
@@ -773,7 +771,7 @@ func (m UIModel) handleRunningAgentsLoaded(msg runningAgentsLoadedMsg) (tea.Mode
 
 	var cmds []tea.Cmd
 	for _, persisted := range msg.agents {
-		agentID := persistedAgentID(persisted)
+		agentID := PersistedAgentID(persisted)
 		if existing, ok := m.agents[agentID]; ok && existing != nil {
 			existing.Info.Status = domain.AgentRunning
 			continue
@@ -793,7 +791,7 @@ func (m UIModel) handleRunningAgentsLoaded(msg runningAgentsLoadedMsg) (tea.Mode
 			AgentName:    persisted.Agent,
 		}
 		m.agents[agentID] = &RunningAgent{Info: info}
-		addAgentNodeToSidebar(&m, info)
+		AddAgentNodeToSidebar(&m, info)
 
 		if persisted.LauncherID != "" {
 			cmds = append(cmds,
@@ -817,397 +815,6 @@ func (m UIModel) handleWorktreeSelected(msg WorktreeSelectedMsg) (tea.Model, tea
 	m.sidebar.SetFocused(false)
 	m.dirtyTicket = true
 	return m, nil
-}
-
-// Agent management helpers
-
-func addAgentNodeToSidebar(m *UIModel, agentInfo *domain.AgentInfo) {
-	state := m.sidebar.State()
-	prevPath := ""
-	if node := state.CurrentNode(); node != nil {
-		prevPath = node.Path
-	}
-
-	for i := range state.Nodes {
-		addAgentToProject(&state.Nodes[i], agentInfo)
-	}
-	state.RebuildFlatNodes()
-	restoreSidebarCursorByPath(state, prevPath)
-}
-
-func addAgentToProject(projectNode *domain.SidebarNode, agentInfo *domain.AgentInfo) {
-	for i := range projectNode.Children {
-		worktreeNode := &projectNode.Children[i]
-		if worktreeNode.Type == domain.NodeTypeWorktree && worktreeNode.Path == agentInfo.WorktreePath {
-			for _, child := range worktreeNode.Children {
-				if child.Type == domain.NodeTypeAgent && child.AgentInfo != nil && child.AgentInfo.ID == agentInfo.ID {
-					return
-				}
-			}
-			agentNode := domain.SidebarNode{
-				ID:         "agent-" + agentInfo.ID,
-				Name:       agentInfo.Name,
-				Path:       "agent:" + agentInfo.ID,
-				Type:       domain.NodeTypeAgent,
-				IsExpanded: false,
-				IsRunning:  true,
-				AgentInfo:  agentInfo,
-				Children:   make([]domain.SidebarNode, 0),
-			}
-			worktreeNode.Children = append(worktreeNode.Children, agentNode)
-			worktreeNode.IsExpanded = true
-			return
-		}
-	}
-}
-
-func persistedAgentID(a domain.PersistedRunningAgent) string {
-	if a.LauncherID != "" && a.PID > 0 {
-		return fmt.Sprintf("%s:%d", a.LauncherID, a.PID)
-	}
-	if a.LauncherID != "" {
-		return a.LauncherID
-	}
-	if a.PID > 0 {
-		return fmt.Sprintf("pid:%d", a.PID)
-	}
-	return fmt.Sprintf("agent:%d", a.ID)
-}
-
-func updateAgentNodeStatus(m *UIModel, agentID string, status domain.AgentStatus) {
-	state := m.sidebar.State()
-	for i := range state.FlatNodes {
-		node := state.FlatNodes[i].Node
-		if node.Type == domain.NodeTypeAgent && node.AgentInfo != nil && node.AgentInfo.ID == agentID {
-			node.AgentInfo.Status = status
-			node.IsRunning = status == domain.AgentRunning
-			return
-		}
-	}
-}
-
-func (m UIModel) handleAgentHovered(msg AgentHoveredMsg) (tea.Model, tea.Cmd) {
-	m.hoveredAgentID = msg.AgentID
-	return m, nil
-}
-
-func (m UIModel) handleAgentHoverEnded(msg AgentHoverEndedMsg) (tea.Model, tea.Cmd) {
-	m.hoveredAgentID = ""
-	return m, nil
-}
-
-func (m UIModel) handleAgentSelected(msg AgentSelectedMsg) (tea.Model, tea.Cmd) {
-	m.state = ViewStateAgentOutput
-	m.viewingAgentID = msg.AgentID
-	m.hoveredAgentID = ""
-
-	var readOutputCmd tea.Cmd
-	if agent, ok := m.agents[msg.AgentID]; ok {
-		readOutputCmd = readAgentOutputCmd(msg.AgentID, agent.Capture)
-	}
-
-	return m, readOutputCmd
-}
-
-func (m UIModel) handleAgentStatus(msg AgentStatusMsg) (tea.Model, tea.Cmd) {
-	if agent, ok := m.agents[msg.AgentID]; ok {
-		agent.Info.Status = msg.Status
-		updateAgentNodeStatus(&m, msg.AgentID, msg.Status)
-	}
-	return m, nil
-}
-
-func (m UIModel) handleAgentTick(msg agentTickMsg) (tea.Model, tea.Cmd) {
-	agentID := msg.agentID
-	agent, ok := m.agents[agentID]
-	if !ok {
-		return m, nil
-	}
-
-	// If viewing this agent, read output
-	var readOutputCmd tea.Cmd
-	if m.viewingAgentID == agentID {
-		readOutputCmd = readAgentOutputCmd(agentID, agent.Capture)
-	}
-
-	// Continue monitoring if still running
-	if agent.Info.Status == domain.AgentRunning {
-		return m, tea.Batch(
-			pollAgentStatusCmd(m.app, agentID, agent.Info.LauncherID),
-			startAgentMonitoringCmd(agentID),
-			readOutputCmd,
-		)
-	}
-
-	return m, readOutputCmd
-}
-
-func (m UIModel) handleAgentOutput(msg agentOutputMsg) (tea.Model, tea.Cmd) {
-	if agent, ok := m.agents[msg.agentID]; ok {
-		clean := ansi.Strip(msg.content)
-		clean = strings.ReplaceAll(clean, "\r\n", "\n")
-		clean = strings.ReplaceAll(clean, "\r", "\n")
-		agent.LastOutput = clean
-	}
-	return m, nil
-}
-
-func (m UIModel) handleAgentCleared(msg AgentClearedMsg) (tea.Model, tea.Cmd) {
-	// Remove from agents map
-	delete(m.agents, msg.AgentID)
-	if m.hoveredAgentID == msg.AgentID {
-		m.hoveredAgentID = ""
-	}
-
-	// If we were viewing this agent, stop viewing
-	if m.state == ViewStateAgentOutput && m.viewingAgentID == msg.AgentID {
-		m.viewingAgentID = ""
-		m.state = ViewStateMatrix
-	}
-
-	// Remove agent node from sidebar
-	removeAgentNodeFromSidebar(&m, msg.AgentID)
-	return m, nil
-}
-
-func (m UIModel) handleAllStoppedAgentsCleared(msg AllStoppedAgentsClearedMsg) (tea.Model, tea.Cmd) {
-	// Remove from agents map and clear view if needed
-	for _, id := range msg.ClearedIDs {
-		delete(m.agents, id)
-		if m.state == ViewStateAgentOutput && m.viewingAgentID == id {
-			m.viewingAgentID = ""
-			m.state = ViewStateMatrix
-		}
-		if m.hoveredAgentID == id {
-			m.hoveredAgentID = ""
-		}
-	}
-
-	// Rebuild sidebar to remove all cleared agents
-	rebuildAgentNodesInSidebar(&m)
-	return m, nil
-}
-
-func removeAgentNodeFromSidebar(m *UIModel, agentID string) {
-	state := m.sidebar.State()
-	prevPath := ""
-	if node := state.CurrentNode(); node != nil {
-		prevPath = node.Path
-	}
-
-	for i := range state.Nodes {
-		removeAgentFromProject(&state.Nodes[i], agentID)
-	}
-	state.RebuildFlatNodes()
-	restoreSidebarCursorByPath(state, prevPath)
-}
-
-func removeAgentFromProject(projectNode *domain.SidebarNode, agentID string) {
-	for i := range projectNode.Children {
-		worktreeNode := &projectNode.Children[i]
-		if worktreeNode.Type == domain.NodeTypeWorktree {
-			// Filter out the agent with matching ID
-			newChildren := make([]domain.SidebarNode, 0, len(worktreeNode.Children))
-			for _, child := range worktreeNode.Children {
-				if child.Type != domain.NodeTypeAgent || child.AgentInfo == nil || child.AgentInfo.ID != agentID {
-					newChildren = append(newChildren, child)
-				}
-			}
-			worktreeNode.Children = newChildren
-		}
-	}
-}
-
-func rebuildAgentNodesInSidebar(m *UIModel) {
-	state := m.sidebar.State()
-	prevPath := ""
-	if node := state.CurrentNode(); node != nil {
-		prevPath = node.Path
-	}
-
-	for i := range state.Nodes {
-		rebuildAgentsInProject(&state.Nodes[i], m.agents)
-	}
-	state.RebuildFlatNodes()
-	restoreSidebarCursorByPath(state, prevPath)
-}
-
-func restoreSidebarCursorByPath(state *domain.SidebarState, path string) {
-	if path == "" {
-		return
-	}
-	if state.SelectByPath(path) {
-		return
-	}
-	if len(state.FlatNodes) == 0 {
-		state.Cursor = 0
-		return
-	}
-	if state.Cursor >= len(state.FlatNodes) {
-		state.Cursor = len(state.FlatNodes) - 1
-	}
-}
-
-func rebuildAgentsInProject(projectNode *domain.SidebarNode, agents map[string]*RunningAgent) {
-	for i := range projectNode.Children {
-		worktreeNode := &projectNode.Children[i]
-		if worktreeNode.Type == domain.NodeTypeWorktree {
-			// Keep only non-agent children and agents that still exist
-			newChildren := make([]domain.SidebarNode, 0, len(worktreeNode.Children))
-			for _, child := range worktreeNode.Children {
-				if child.Type != domain.NodeTypeAgent {
-					newChildren = append(newChildren, child)
-				} else if child.AgentInfo != nil {
-					// Check if agent still exists
-					if _, ok := agents[child.AgentInfo.ID]; ok {
-						newChildren = append(newChildren, child)
-					}
-				}
-			}
-			worktreeNode.Children = newChildren
-		}
-	}
-}
-
-// advanceFocus moves focus right, skipping disabled columns
-func (m *UIModel) advanceFocus() {
-	// Check if we can actually advance
-	if m.focus >= FocusAgent {
-		return
-	}
-
-	// Mark current focus column dirty
-	m.markColumnDirty(m.focus)
-
-	// Find the next enabled column
-	for nextFocus := m.focus + 1; nextFocus <= FocusAgent; nextFocus++ {
-		// Skip disabled columns
-		if nextFocus == FocusModel && m.modelColumnDisabled {
-			continue
-		}
-		if nextFocus == FocusAgent && m.agentColumnDisabled {
-			continue
-		}
-		// Found an enabled column, move to it
-		if m.focus == FocusSidebar {
-			m.sidebar.SetFocused(false)
-		}
-		m.focus = nextFocus
-		// Mark new focus column dirty
-		m.markColumnDirty(m.focus)
-		return
-	}
-	// No enabled column found, stay at current position
-}
-
-// retreatFocus moves focus left, skipping disabled columns
-func (m *UIModel) retreatFocus() {
-	// Check if we can actually retreat
-	if m.focus <= FocusSidebar {
-		return
-	}
-
-	// Mark current focus column dirty
-	m.markColumnDirty(m.focus)
-
-	// Find the previous enabled column
-	for nextFocus := m.focus - 1; nextFocus >= FocusSidebar; nextFocus-- {
-		// Skip disabled columns
-		if nextFocus == FocusModel && m.modelColumnDisabled {
-			continue
-		}
-		if nextFocus == FocusAgent && m.agentColumnDisabled {
-			continue
-		}
-		// Found an enabled column, move to it
-		if nextFocus == FocusSidebar {
-			m.sidebar.SetFocused(true)
-		}
-		m.focus = nextFocus
-		// Mark new focus column dirty
-		m.markColumnDirty(m.focus)
-		return
-	}
-	// No enabled column found, stay at current position
-}
-
-// markColumnDirty sets the appropriate dirty flag based on the given focus type
-func (m *UIModel) markColumnDirty(focus FocusColumn) {
-	switch focus {
-	case FocusTickets:
-		m.dirtyTicket = true
-	case FocusHarness:
-		m.dirtyHarness = true
-	case FocusModel:
-		m.dirtyModel = true
-	case FocusAgent:
-		m.dirtyAgent = true
-	}
-}
-
-// markAllColumnsDirty sets all column dirty flags to true
-func (m *UIModel) markAllColumnsDirty() {
-	m.dirtyTicket = true
-	m.dirtyHarness = true
-	m.dirtyModel = true
-	m.dirtyAgent = true
-}
-
-func (m UIModel) handleAnimationTick(msg animationTickMsg) (tea.Model, tea.Cmd) {
-	elapsed := msg.Time.Sub(m.animState.StartTime).Seconds()
-
-	// Pulse cycle: 0 to 1 to 0 over PulsePeriodSeconds
-	// Using sine wave: sin(2π * t / period)
-	period := PulsePeriodSeconds
-	phase := (math.Sin(2*math.Pi*elapsed/period) + 1) / 2 // Normalize to 0-1
-
-	m.animState.PulsePhase = phase
-
-	// Handle color cycling - change palette every ColorCycleInterval
-	cycleElapsed := msg.Time.Sub(m.animState.ColorCycleStart).Seconds()
-	if cycleElapsed >= ColorCycleInterval.Seconds() {
-		var cycleCount int
-		if m.currentTheme == nil {
-			cycleCount = len(MatrixThemeColorCycles)
-		} else {
-			switch m.currentTheme.Name {
-			case CyberpunkTheme.Name:
-				cycleCount = len(CyberpunkThemeColorCycles)
-			case TokyoNightTheme.Name:
-				cycleCount = len(TokyoNightThemeColorCycles)
-			default:
-				cycleCount = len(MatrixThemeColorCycles)
-			}
-		}
-		if cycleCount < 1 {
-			cycleCount = 1
-		}
-		m.animState.ColorCycleIndex = (m.animState.ColorCycleIndex + 1) % cycleCount
-		m.animState.ColorCycleStart = msg.Time
-	}
-
-	// Decay lock-in flash intensity
-	if m.animState.LockInActive {
-		flashElapsed := msg.Time.Sub(m.animState.LockInStartTime).Milliseconds()
-		flashDuration := int64(LockInFlashDuration / time.Millisecond)
-
-		if flashElapsed >= flashDuration {
-			// Flash complete - reset to inactive state
-			m.animState.LockInActive = false
-			m.animState.LockInIntensity = 0.0
-		} else {
-			// Linear decay: 1.0 → 0.0 over the flash duration
-			m.animState.LockInIntensity = 1.0 - float64(flashElapsed)/float64(flashDuration)
-		}
-	}
-
-	if !m.animState.LockInActive {
-		// Stop the animation loop to conserve CPU when idle
-		return m, nil
-	}
-
-	// Continue animation loop
-	return m, animationTickCmd()
 }
 
 func (m UIModel) handleTicketUpdateCheck() (tea.Model, tea.Cmd) {
@@ -1257,44 +864,6 @@ func (m UIModel) handleTicketsAutoRefreshed(msg ticketsAutoRefreshedMsg) (tea.Mo
 func (m UIModel) handleClearRefreshIndicator() (tea.Model, tea.Cmd) {
 	m.refreshedRecently = false
 	return m, nil
-}
-
-func (m UIModel) handleRefreshAnimationTick() (tea.Model, tea.Cmd) {
-	m.refreshAnimationFrame = (m.refreshAnimationFrame + 1) % 4
-	return m, tea.Tick(animationTickInterval, func(t time.Time) tea.Msg {
-		return refreshAnimationTickMsg{}
-	})
-}
-
-func (m UIModel) handleSidebarAgentKeysMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if m.focus != FocusSidebar {
-		return m, nil, false
-	}
-
-	switch msg.String() {
-	case "c":
-		node := m.sidebar.State().CurrentNode()
-		if node != nil && node.Type == domain.NodeTypeAgent && node.AgentInfo != nil {
-			var capture *tmux.OutputCapture
-			if agent, ok := m.agents[node.AgentInfo.ID]; ok {
-				capture = agent.Capture
-			}
-			return m, clearAgentCmd(node.AgentInfo.ID, capture), true
-		}
-	case "C":
-		var toClear []agentToClear
-		for id, agent := range m.agents {
-			if agent.Info.Status != domain.AgentRunning {
-				toClear = append(toClear, agentToClear{id: id, capture: agent.Capture})
-			}
-		}
-		if len(toClear) > 0 {
-			return m, clearAllStoppedAgentsCmd(toClear), true
-		}
-		return m, nil, true
-	}
-
-	return m, nil, false
 }
 
 func (m UIModel) handleAddProjectConfirmed(msg addProjectConfirmedMsg) (tea.Model, tea.Cmd) {

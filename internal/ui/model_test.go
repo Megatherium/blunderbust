@@ -10,8 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/app"
+	"github.com/megatherium/blunderbust/internal/data"
 	"github.com/megatherium/blunderbust/internal/discovery"
 	"github.com/megatherium/blunderbust/internal/domain"
 )
@@ -43,13 +43,13 @@ type mockProvider struct {
 	configured bool
 }
 
-func (p *mockProvider) Name() string                     { return p.name }
-func (p *mockProvider) DisplayName() string              { return strings.ToTitle(p.name) }
-func (p *mockProvider) IsConfigured() bool               { return p.configured }
-func (p *mockProvider) GetModels() []discovery.Model     { return p.models }
+func (p *mockProvider) Name() string                           { return p.name }
+func (p *mockProvider) DisplayName() string                    { return strings.ToTitle(p.name) }
+func (p *mockProvider) IsConfigured() bool                     { return p.configured }
+func (p *mockProvider) GetModels() []discovery.Model           { return p.models }
 func (p *mockProvider) Authenticate(ctx context.Context) error { return nil }
-func (p *mockProvider) Description() string              { return "Mock provider" }
-func (p *mockProvider) RequiredEnvVars() []string        { return []string{"MOCK_API_KEY"} }
+func (p *mockProvider) Description() string                    { return "Mock provider" }
+func (p *mockProvider) RequiredEnvVars() []string              { return []string{"MOCK_API_KEY"} }
 
 // Helper to create a test app
 func newTestApp() *app.App {
@@ -945,7 +945,7 @@ func TestHandleModelSkip_MixedDiscoveryKeywords(t *testing.T) {
 	app.ActiveProject = "."
 	app.Stores = make(map[string]data.TicketStore)
 	app.Stores["."] = &mockStore{}
-	
+
 	// Inject openai provider into registry cache to simulate it being configured
 	app.Registry.SetProvider(discovery.Provider{
 		ID:   "openai",
@@ -1442,7 +1442,7 @@ func TestBuildMatrixConfig_KeepsLiveListsWhenHoverEnds(t *testing.T) {
 	cfgHovered := updateListCaches(&m).buildMatrixConfig()
 	assert.Equal(t, "bb-hovered: Hovered title", cfgHovered.TicketView)
 
-	endedModel, _ := m.handleAgentHoverEnded(AgentHoverEndedMsg{})
+	endedModel, _ := m.HandleAgentHoverEnded(AgentHoverEndedMsg{})
 	m = endedModel.(UIModel)
 	cfgNormal := updateListCaches(&m).buildMatrixConfig()
 	assert.Equal(t, m.ticketList.View(), cfgNormal.TicketView)
@@ -1496,7 +1496,7 @@ func TestHandleAgentSelected_ClearsHoveredAgentID(t *testing.T) {
 	m.hoveredAgentID = "agent-1"
 	m.agents["agent-1"] = &RunningAgent{}
 
-	newModel, _ := m.handleAgentSelected(AgentSelectedMsg{AgentID: "agent-1"})
+	newModel, _ := m.HandleAgentSelected(AgentSelectedMsg{AgentID: "agent-1"})
 	updated := newModel.(UIModel)
 
 	assert.Equal(t, "agent-1", updated.viewingAgentID)

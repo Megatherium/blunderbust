@@ -17,6 +17,7 @@ import (
 	"github.com/megatherium/blunderbust/internal/data/dolt"
 	"github.com/megatherium/blunderbust/internal/domain"
 	"github.com/megatherium/blunderbust/internal/exec/tmux"
+	"github.com/megatherium/blunderbust/internal/ui/sidebar"
 )
 
 func startServerAndRetryCmd(myApp *app.App, store *dolt.Store) tea.Cmd {
@@ -84,8 +85,8 @@ func discoverWorktreesCmd(myApp *app.App) tea.Cmd {
 			return worktreesDiscoveredMsg{err: fmt.Errorf("no projects configured")}
 		}
 
-		discoverer := data.NewWorktreeDiscoverer()
-		nodes, errs := discoverer.DiscoverMulti(context.Background(), projects)
+		builder := sidebar.NewTreeBuilder()
+		nodes, errs := builder.BuildFromProjects(context.Background(), projects)
 
 		if myApp.Opts.Debug {
 			fmt.Fprintf(os.Stderr, "[DEBUG] discoverWorktreesCmd: discovered %d nodes, %d errors\n", len(nodes), len(errs))

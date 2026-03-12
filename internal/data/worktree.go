@@ -52,56 +52,6 @@ func (d *WorktreeDiscoverer) Discover(ctx context.Context, repoRoot string) ([]d
 	return results, nil
 }
 
-func (d *WorktreeDiscoverer) DiscoverMulti(ctx context.Context, projects []domain.Project) ([]domain.SidebarNode, []error) {
-	var allNodes []domain.SidebarNode
-	var errs []error
-
-	for _, p := range projects {
-		worktrees, err := d.Discover(ctx, p.Dir)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("project %s: %w", p.Name, err))
-			continue
-		}
-
-		nodes := d.BuildSidebarTree(worktrees, p.Name, p.Dir)
-		allNodes = append(allNodes, nodes...)
-	}
-
-	return allNodes, errs
-}
-
-func (d *WorktreeDiscoverer) BuildSidebarTree(worktrees []domain.WorktreeInfo, projectName, projectDir string) []domain.SidebarNode {
-	projectNode := domain.SidebarNode{
-		ID:         "project-" + projectName,
-		Name:       projectName,
-		Path:       projectDir,
-		Type:       domain.NodeTypeProject,
-		IsExpanded: true,
-		Children:   make([]domain.SidebarNode, 0, len(worktrees)),
-	}
-
-	if len(worktrees) == 0 {
-		return []domain.SidebarNode{projectNode}
-	}
-
-	for i, wt := range worktrees {
-		worktreeNode := domain.SidebarNode{
-			ID:            fmt.Sprintf("worktree-%s-%d", projectName, i),
-			Name:          wt.Name,
-			Path:          wt.Path,
-			Type:          domain.NodeTypeWorktree,
-			IsExpanded:    false,
-			IsRunning:     false,
-			WorktreeInfo:  &worktrees[i],
-			ParentProject: &projectNode, // Set the pointer
-			Children:      make([]domain.SidebarNode, 0),
-		}
-		projectNode.Children = append(projectNode.Children, worktreeNode)
-	}
-
-	return []domain.SidebarNode{projectNode}
-}
-
 func (d *WorktreeDiscoverer) extractName(path string, isMain bool) string {
 	if isMain {
 		return "main"

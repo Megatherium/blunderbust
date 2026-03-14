@@ -18,7 +18,11 @@ func (m *UIModel) updateSizes() {
 		return w - borderWidth
 	}
 
-	m.ticketList.SetSize(safeW(m.layout.TWidth), m.layout.InnerListHeight)
+	ticketContentW := safeW(m.layout.TWidth)
+	if m.ticketDel != nil {
+		m.ticketDel.SetWidth(ticketContentW)
+	}
+	m.ticketList.SetSize(ticketContentW, m.layout.InnerListHeight)
 	m.harnessList.SetSize(safeW(m.layout.HWidth), m.layout.InnerListHeight)
 	m.modelList.SetSize(safeW(m.layout.MWidth), m.layout.InnerListHeight)
 	m.agentList.SetSize(safeW(m.layout.AWidth), m.layout.InnerListHeight)

@@ -47,7 +47,10 @@ func NewUIModel(app *app.App, harnesses []domain.Harness) UIModel {
 	hl := newHarnessList(harnesses, registry, theme)
 	initList(&hl, 0, 0, "Select a Harness")
 
-	tl := newTicketList(nil, theme)
+	ticketDel := newTicketDelegate(theme)
+	tl := list.New(nil, ticketDel, 0, 0)
+	tl.Title = "Select a Ticket"
+	tl.SetShowTitle(false)
 	initList(&tl, 0, 0, "Select a Ticket")
 
 	ml := newModelList(nil, theme)
@@ -90,6 +93,7 @@ func NewUIModel(app *app.App, harnesses []domain.Harness) UIModel {
 		focus:        FocusSidebar,
 		harnesses:    harnesses,
 		ticketList:   tl,
+		ticketDel:    ticketDel,
 		harnessList:  hl,
 		modelList:    ml,
 		agentList:    al,

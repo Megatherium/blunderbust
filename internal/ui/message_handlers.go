@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/megatherium/blunderbust/internal/domain"
@@ -19,6 +20,13 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 		prevTicketID = i.ticket.ID
 	}
 
+	// Ensure we have a live ticketDelegate reference; create one if missing.
+	if m.ticketDel == nil {
+		m.ticketDel = newTicketDelegate(m.currentTheme)
+	} else {
+		m.ticketDel.applyTheme(m.currentTheme)
+	}
+
 	if len(msg) == 0 {
 		if m.app.Project() == nil || m.app.Project().Store() == nil {
 			m.ticketList = createErrorList("Couldn't load ticket list:\nStore initialization failed", m.currentTheme)
@@ -28,10 +36,16 @@ func (m UIModel) handleTicketsLoaded(msg ticketsLoadedMsg) (tea.Model, tea.Cmd) 
 			}
 			return m, nil
 		}
-		m.ticketList = newEmptyTicketList(m.currentTheme)
+		items := []list.Item{emptyTicketItem{}}
+		m.ticketList = list.New(items, m.ticketDel, 0, 0)
+		m.ticketList.SetShowStatusBar(false)
 		m.sidebar.SetStoreError(false)
 	} else {
-		m.ticketList = newTicketList(msg, m.currentTheme)
+		items := make([]list.Item, 0, len(msg))
+		for i := range msg {
+			items = append(items, ticketItem{ticket: msg[i]})
+		}
+		m.ticketList = list.New(items, m.ticketDel, 0, 0)
 		m.sidebar.SetStoreError(false)
 	}
 	initList(&m.ticketList, 0, 0, "Select a Ticket")
@@ -148,6 +162,7 @@ func (m UIModel) handleLaunchResult(msg launchResultMsg) (tea.Model, tea.Cmd) {
 
 func (m UIModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (UIModel, tea.Cmd) {
 	m.layout = Compute(msg.Width, msg.Height, m.showSidebar)
+	m.updateSizes()
 	m.dirtyTicket = true
 	m.dirtyHarness = true
 	m.dirtyModel = true

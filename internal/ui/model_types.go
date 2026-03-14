@@ -172,6 +172,11 @@ type UIModel struct {
 	// File picker for adding projects
 	filepicker         filepicker.Model
 	pendingProjectPath string
+
+	// ticketDel is the dynamic-height delegate for ticketList.
+	// Stored separately because list.Model (v1) does not expose its delegate,
+	// so we need a direct reference to call SetWidth on resize/theme-toggle.
+	ticketDel *ticketDelegate
 }
 
 // RunningAgent tracks a launched agent session

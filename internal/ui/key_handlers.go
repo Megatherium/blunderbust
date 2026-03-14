@@ -69,7 +69,13 @@ func (m UIModel) handleToggleSidebarKeyMsg() (tea.Model, tea.Cmd, bool) {
 func (m UIModel) handleToggleThemeKeyMsg() (tea.Model, tea.Cmd, bool) {
 	m.animState.nextTheme()
 	m.currentTheme = m.animState.getCurrentTheme()
-	m.ticketList.SetDelegate(newGradientDelegate(m.currentTheme))
+	// Ticket list uses the dynamic ticketDelegate; update its theme in-place
+	// so width state is preserved.
+	if m.ticketDel != nil {
+		m.ticketDel.applyTheme(m.currentTheme)
+	} else {
+		m.ticketList.SetDelegate(newGradientDelegate(m.currentTheme))
+	}
 	m.harnessList.SetDelegate(newGradientDelegate(m.currentTheme))
 	m.modelList.SetDelegate(newGradientDelegate(m.currentTheme))
 	m.agentList.SetDelegate(newGradientDelegate(m.currentTheme))

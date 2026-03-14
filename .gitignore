@@ -57,3 +57,4 @@ bdb-debug
 .claude/
 .logs/
 __pycache__/
+.blackboxcli/

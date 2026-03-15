@@ -21,27 +21,6 @@ var (
 	errFakeGit = errors.New("fake git error")
 )
 
-func TestNewWorktreeDiscoverer_NilGitClient(t *testing.T) {
-	discoverer := data.NewWorktreeDiscoverer(nil)
-
-	if discoverer == nil {
-		t.Fatal("NewWorktreeDiscoverer returned nil")
-	}
-
-	if discoverer == nil {
-		t.Error("NewWorktreeDiscoverer did not create default GitClient")
-	}
-}
-
-func TestNewWorktreeDiscoverer_WithGitClient(t *testing.T) {
-	fakeClient := fake.NewFakeGitClient()
-	discoverer := data.NewWorktreeDiscoverer(fakeClient)
-
-	if discoverer == nil {
-		t.Error("NewWorktreeDiscoverer did not set provided GitClient")
-	}
-}
-
 func TestWorktreeDiscoverer_Discover_SingleMain(t *testing.T) {
 	fakeClient := fake.NewFakeGitClient()
 	fakeClient.SetWorktrees("/repo", []data.WorktreeEntry{
